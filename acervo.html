@@ -571,7 +571,7 @@ class Component extends DCLogic {
     dietaModalOpen: false, dietaAlunoKey: '', dietaNome: '', dietaMeta: '', dietaCafe: '', dietaAlmoco: '', dietaJantar: '', dietaAviso: false,
     dietasCriadas: [],
 
-    exerciciosDb: [], treinosDb: [],
+    exerciciosDb: [], treinosDb: [], clientesDb: [],
     exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício',
 
     treinoDetalheId: '', treinoDetalheExercicios: [],
@@ -585,11 +585,12 @@ class Component extends DCLogic {
   async loadAcervo() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const [exRes, trRes] = await Promise.all([
+    const [exRes, trRes, clRes] = await Promise.all([
       supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).is('cliente_id', null).order('created_at', { ascending: false })
+      supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
+      supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id)
     ]);
-    this.setState({ exerciciosDb: exRes.data || [], treinosDb: trRes.data || [] });
+    this.setState({ exerciciosDb: exRes.data || [], treinosDb: trRes.data || [], clientesDb: clRes.data || [] });
   }
 
   onBotaoNovoClick(tipo) {
@@ -677,12 +678,20 @@ class Component extends DCLogic {
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130'
       })),
       tecnicas: [],
-      treinos: this.state.treinosDb.map(tr => ({
-        icon: '📋', iconBg: 'rgba(249,115,22,.12)',
-        nome: tr.nome, meta: diasLabel(tr.dias_semana),
-        tags: [], uso: '', border: '#1a2130',
-        onClick: () => tr.split_id ? (window.location.href = 'montar-treino.html?split_id=' + tr.split_id) : this.openTreinoDetalhe(tr.id)
-      })),
+      treinos: this.state.treinosDb.map(tr => {
+        const cliente = tr.cliente_id ? (this.state.clientesDb.find(c => c.id === tr.cliente_id) || {}).nome : null;
+        return {
+          icon: '📋', iconBg: 'rgba(249,115,22,.12)',
+          nome: tr.nome, meta: diasLabel(tr.dias_semana),
+          tags: [], uso: '', border: '#1a2130',
+          flag: cliente ? ('com ' + cliente) : '', flagColor: '#3b82f6', flagBg: 'rgba(59,130,246,.12)',
+          onClick: () => {
+            if (cliente) { window.location.href = 'alunos.html'; return; }
+            if (tr.split_id) { window.location.href = 'montar-treino.html?split_id=' + tr.split_id; return; }
+            this.openTreinoDetalhe(tr.id);
+          }
+        };
+      }),
       predefinidos: [],
       cardio: [],
       formulas: [],
