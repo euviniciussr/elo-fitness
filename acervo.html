@@ -372,29 +372,6 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </div>
     </sc-if>
 
-    <!-- NOVO TREINO -->
-    <sc-if value="{{ treinoModalOpen }}" hint-placeholder-val="{{ true }}">
-      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:440px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-            <div style="font-size:17px;font-weight:800;">Novo treino</div>
-            <button sc-camel-on-click="{{ closeTreinoModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
-          </div>
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome do treino</label>
-          <input value="{{ treinoNome }}" sc-camel-on-change="{{ onTreinoNomeChange }}" placeholder="Ex: Treino A — Peito e Tríceps" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:16px;">
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:8px;">Dias da semana</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <sc-for list="{{ diasSemanaOptions }}" as="d" hint-placeholder-count="7">
-              <button sc-camel-on-click="{{ d.onClick }}" style="display:flex;align-items:center;justify-content:space-between;background:{{ d.bg }};border:1px solid {{ d.border }};color:{{ d.color }};font-family:inherit;font-size:13px;font-weight:600;padding:9px 12px;border-radius:8px;cursor:pointer;">
-                {{ d.label }}<span>{{ d.check }}</span>
-              </button>
-            </sc-for>
-          </div>
-          <div style="{{ treinoErroDisplay }}color:#f87171;font-size:12px;margin-top:12px;">{{ treinoErro }}</div>
-          <button sc-camel-on-click="{{ onCriarTreino }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ criarTreinoLabel }}</button>
-        </div>
-      </div>
-    </sc-if>
 
     <!-- DETALHE DO TREINO -->
     <sc-if value="{{ treinoDetalheOpen }}" hint-placeholder-val="{{ true }}">
@@ -597,8 +574,6 @@ class Component extends DCLogic {
     exerciciosDb: [], treinosDb: [],
     exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício',
 
-    treinoModalOpen: false, treinoNome: '', treinoDiasSel: [], treinoErro: '', criarTreinoLabel: 'Criar treino',
-
     treinoDetalheId: '', treinoDetalheExercicios: [],
     addExOpen: false, addExExercicioId: '', addExSeries: '', addExDescanso: '', addExTecnica: 'nenhuma', addExErro: '', salvarExLabel: 'Adicionar'
   };
@@ -619,7 +594,7 @@ class Component extends DCLogic {
 
   onBotaoNovoClick(tipo) {
     if (tipo === 'exercicios') this.setState({ exModalOpen: true, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '' });
-    else if (tipo === 'treinos') this.setState({ treinoModalOpen: true, treinoNome: '', treinoDiasSel: [], treinoErro: '' });
+    else if (tipo === 'treinos') window.location.href = 'montar-treino.html';
   }
 
   async onCriarExercicio() {
@@ -632,25 +607,6 @@ class Component extends DCLogic {
     });
     if (error) { this.setState({ criarExLabel: 'Criar exercício', exErro: error.message }); return; }
     this.setState({ exModalOpen: false, criarExLabel: 'Criar exercício' });
-    this.loadAcervo();
-  }
-
-  toggleTreinoDia(idx) {
-    const sel = this.state.treinoDiasSel;
-    const next = sel.includes(idx) ? sel.filter(d => d !== idx) : [...sel, idx];
-    this.setState({ treinoDiasSel: next });
-  }
-
-  async onCriarTreino() {
-    const nome = this.state.treinoNome.trim();
-    if (!nome) { this.setState({ treinoErro: 'Digite o nome do treino.' }); return; }
-    this.setState({ criarTreinoLabel: 'Criando…', treinoErro: '' });
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error } = await supabaseClient.from('treinos').insert({
-      trainer_id: user.id, cliente_id: null, nome, dias_semana: this.state.treinoDiasSel
-    });
-    if (error) { this.setState({ criarTreinoLabel: 'Criar treino', treinoErro: error.message }); return; }
-    this.setState({ treinoModalOpen: false, criarTreinoLabel: 'Criar treino' });
     this.loadAcervo();
   }
 
@@ -725,7 +681,7 @@ class Component extends DCLogic {
         icon: '📋', iconBg: 'rgba(249,115,22,.12)',
         nome: tr.nome, meta: diasLabel(tr.dias_semana),
         tags: [], uso: '', border: '#1a2130',
-        onClick: () => this.openTreinoDetalhe(tr.id)
+        onClick: () => tr.split_id ? (window.location.href = 'montar-treino.html?split_id=' + tr.split_id) : this.openTreinoDetalhe(tr.id)
       })),
       predefinidos: [],
       cardio: [],
@@ -823,24 +779,6 @@ class Component extends DCLogic {
       criarExLabel: this.state.criarExLabel,
       closeExModal: () => this.setState({ exModalOpen: false }),
       onCriarExercicio: () => this.onCriarExercicio(),
-
-      treinoModalOpen: this.state.treinoModalOpen,
-      treinoNome: this.state.treinoNome,
-      onTreinoNomeChange: (e) => this.setState({ treinoNome: e.target.value }),
-      treinoErro: this.state.treinoErro, treinoErroDisplay: this.state.treinoErro ? '' : 'display:none;',
-      criarTreinoLabel: this.state.criarTreinoLabel,
-      closeTreinoModal: () => this.setState({ treinoModalOpen: false }),
-      onCriarTreino: () => this.onCriarTreino(),
-      diasSemanaOptions: DIAS_SEMANA.map((label, idx) => {
-        const sel = this.state.treinoDiasSel.includes(idx);
-        return {
-          label, check: sel ? '✓' : '',
-          bg: sel ? 'rgba(249,115,22,.12)' : '#0d1119',
-          border: sel ? 'rgba(249,115,22,.35)' : '#1e2633',
-          color: sel ? '#f97316' : '#9aa4b2',
-          onClick: () => this.toggleTreinoDia(idx)
-        };
-      }),
 
       treinoDetalheOpen: !!this.state.treinoDetalheId,
       treinoDetalheNome: (this.state.treinosDb.find(t => t.id === this.state.treinoDetalheId) || {}).nome || '',

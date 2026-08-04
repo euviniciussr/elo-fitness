@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Montar treino — Performa AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+textarea{font-family:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.voltar{font-size:13px;font-weight:700;color:#9aa4b2;}
+.voltar:hover{color:#e5e9f0;}
+
+.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+p.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
+
+.qtd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:420px;}
+.qtd-btn{background:#0d1119;border:1px solid #1e2633;border-radius:12px;padding:22px 0;text-align:center;font-size:22px;font-weight:800;color:#e5e9f0;}
+.qtd-btn:hover{border-color:rgba(249,115,22,.45);color:#f97316;}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid #171d29;padding-bottom:0;}
+.tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:#9aa4b2;border-bottom:2px solid transparent;cursor:pointer;}
+.tab.active{color:#f97316;border-color:#f97316;}
+
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-size:13.5px;outline:none;}
+textarea{resize:vertical;min-height:52px;}
+.counter{font-size:11px;color:#66707e;text-align:right;margin-top:3px;}
+
+.dias-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;}
+.dia-btn{display:flex;align-items:center;justify-content:space-between;background:#0d1119;border:1px solid #1e2633;color:#9aa4b2;font-size:12.5px;font-weight:600;padding:9px 11px;border-radius:8px;}
+.dia-btn.sel{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:#f97316;}
+
+.ex-item{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+.ex-nome{font-size:14px;font-weight:700;}
+.ex-meta{font-size:12px;color:#66707e;margin-top:3px;}
+.ex-remove{background:none;border:none;color:#66707e;font-size:13px;}
+.ex-remove:hover{color:#f87171;}
+
+.btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:#1e2633;color:#e5e9f0;}
+.btn:disabled{opacity:.55;cursor:default;}
+
+.add-ex-form{background:#0d1119;border:1px dashed #1e2633;border-radius:12px;padding:18px;margin-top:14px;display:flex;flex-direction:column;gap:12px;}
+
+.aplicar-box{margin-top:28px;padding-top:24px;border-top:1px solid #171d29;}
+.erro{color:#f87171;font-size:12.5px;margin-top:8px;}
+.ok{color:#4ade80;font-size:12.5px;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">P</div>
+    <div class="logo-text">Performa <span>AI</span></div>
+  </div>
+  <a class="voltar" href="acervo.html">← Voltar pro acervo</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="app">Carregando…</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const splitIdParam = params.get('split_id');
+const app = document.getElementById('app');
+
+const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+const LETRAS = ['A','B','C','D','E','F'];
+
+let userId = null;
+let treinos = [];
+let exerciciosLib = [];
+let clientes = [];
+let activeIndex = 0;
+let splitId = splitIdParam;
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+async function init() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  userId = user.id;
+
+  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome');
+  exerciciosLib = exs || [];
+
+  const { data: cls } = await supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome');
+  clientes = cls || [];
+
+  if (splitId) {
+    const { data: ts } = await supabaseClient.from('treinos').select('*').eq('split_id', splitId).order('ordem');
+    treinos = ts || [];
+    for (const tr of treinos) await loadExerciciosDoTreino(tr);
+    renderMontar();
+  } else {
+    renderQuantidade();
+  }
+}
+
+async function loadExerciciosDoTreino(treino) {
+  const { data } = await supabaseClient
+    .from('treino_exercicios')
+    .select('*, exercicios(nome)')
+    .eq('treino_id', treino.id)
+    .order('ordem');
+  treino._exercicios = data || [];
+}
+
+function renderQuantidade() {
+  app.innerHTML = '';
+  const header = el('<div><h1>Nova divisão de treino</h1><p class="sub">Quantos treinos essa divisão vai ter? (ex: A, B, C, D)</p></div>');
+  const grid = el('<div class="qtd-grid"></div>');
+  for (let n = 1; n <= 6; n++) {
+    const b = el('<button type="button" class="qtd-btn">' + n + '</button>');
+    b.addEventListener('click', () => criarDivisao(n));
+    grid.appendChild(b);
+  }
+  app.appendChild(header);
+  app.appendChild(grid);
+}
+
+async function criarDivisao(n) {
+  app.innerHTML = '<div class="sub">Criando divisão…</div>';
+  splitId = crypto.randomUUID();
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    rows.push({
+      trainer_id: userId, cliente_id: null, nome: 'Treino ' + LETRAS[i],
+      dias_semana: [], habilitado: true, split_id: splitId, ordem: i
+    });
+  }
+  const { data, error } = await supabaseClient.from('treinos').insert(rows).select();
+  if (error) {
+    app.innerHTML = '<div class="erro">Não foi possível criar: ' + error.message + '</div>';
+    return;
+  }
+  treinos = data.sort((a, b) => a.ordem - b.ordem);
+  treinos.forEach(t => t._exercicios = []);
+  activeIndex = 0;
+  history.replaceState(null, '', 'montar-treino.html?split_id=' + splitId);
+  renderMontar();
+}
+
+function renderMontar() {
+  app.innerHTML = '';
+
+  const header = el('<div><h1>Montar divisão de treino</h1><p class="sub">Escolha um treino na aba acima, defina os dias e adicione os exercícios.</p></div>');
+  app.appendChild(header);
+
+  const tabs = el('<div class="tabs"></div>');
+  treinos.forEach((tr, i) => {
+    const t = el('<div class="tab' + (i === activeIndex ? ' active' : '') + '">' + tr.nome + '</div>');
+    t.addEventListener('click', () => { activeIndex = i; renderMontar(); });
+    tabs.appendChild(t);
+  });
+  app.appendChild(tabs);
+
+  const treino = treinos[activeIndex];
+  renderTreinoBody(treino);
+
+  const aplicarBox = el('<div class="aplicar-box"></div>');
+  renderAplicarBox(aplicarBox);
+  app.appendChild(aplicarBox);
+}
+
+function renderTreinoBody(treino) {
+  const body = el('<div></div>');
+
+  const nomeLabel = el('<label>Nome do treino</label>');
+  const nomeInput = el('<input value="' + treino.nome.replace(/"/g, '&quot;') + '">');
+  nomeInput.addEventListener('change', async (e) => {
+    treino.nome = e.target.value;
+    await supabaseClient.from('treinos').update({ nome: treino.nome }).eq('id', treino.id);
+    renderMontar();
+  });
+  body.appendChild(nomeLabel);
+  body.appendChild(nomeInput);
+
+  const diasLabel = el('<label style="margin-top:16px;">Dias da semana</label>');
+  body.appendChild(diasLabel);
+  const diasGrid = el('<div class="dias-grid"></div>');
+  DIAS.forEach((label, idx) => {
+    const sel = (treino.dias_semana || []).includes(idx);
+    const b = el('<button type="button" class="dia-btn' + (sel ? ' sel' : '') + '">' + label.slice(0, 3) + (sel ? ' ✓' : '') + '</button>');
+    b.addEventListener('click', async () => {
+      const cur = new Set(treino.dias_semana || []);
+      if (cur.has(idx)) cur.delete(idx); else cur.add(idx);
+      treino.dias_semana = Array.from(cur).sort((a, b) => a - b);
+      await supabaseClient.from('treinos').update({ dias_semana: treino.dias_semana }).eq('id', treino.id);
+      renderMontar();
+    });
+    diasGrid.appendChild(b);
+  });
+  body.appendChild(diasGrid);
+
+  const exLabel = el('<label>Exercícios</label>');
+  body.appendChild(exLabel);
+
+  if (!treino._exercicios || treino._exercicios.length === 0) {
+    body.appendChild(el('<div class="sub" style="margin:0 0 10px;">Nenhum exercício ainda.</div>'));
+  } else {
+    treino._exercicios.forEach(te => {
+      const item = el(
+        '<div class="ex-item"><div><div class="ex-nome">' + (te.exercicios || {}).nome + '</div>' +
+        '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · descanso ' + (te.intervalo_descanso || '—') + '</div></div>' +
+        '<button type="button" class="ex-remove">remover</button></div>'
+      );
+      item.querySelector('.ex-remove').addEventListener('click', async () => {
+        await supabaseClient.from('treino_exercicios').delete().eq('id', te.id);
+        treino._exercicios = treino._exercicios.filter(x => x.id !== te.id);
+        renderMontar();
+      });
+      body.appendChild(item);
+    });
+  }
+
+  if (exerciciosLib.length === 0) {
+    body.appendChild(el('<div class="sub" style="margin-top:10px;">Você ainda não tem exercícios no acervo. <a href="acervo.html">Crie um primeiro</a> e volte aqui.</div>'));
+  } else {
+    body.appendChild(renderAddExForm(treino));
+  }
+
+  app.appendChild(body);
+}
+
+function renderAddExForm(treino) {
+  const form = el('<div class="add-ex-form"></div>');
+
+  const selWrap = el('<div><label>Exercício</label></div>');
+  const sel = el('<select><option value="">Selecione…</option></select>');
+  exerciciosLib.forEach(e => sel.appendChild(el('<option value="' + e.id + '">' + e.nome + '</option>')));
+  selWrap.appendChild(sel);
+  form.appendChild(selWrap);
+
+  const seriesWrap = el('<div><label>Séries</label></div>');
+  const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 3x12, 4x8-10, 3x15"></textarea>');
+  const seriesCount = el('<div class="counter">0/250</div>');
+  seriesTa.addEventListener('input', () => seriesCount.textContent = seriesTa.value.length + '/250');
+  seriesWrap.appendChild(seriesTa);
+  seriesWrap.appendChild(seriesCount);
+  form.appendChild(seriesWrap);
+
+  const descansoWrap = el('<div><label>Intervalo de descanso</label></div>');
+  const descansoTa = el('<textarea maxlength="50" placeholder="Ex: 60s, 1-2min, 90 segundos"></textarea>');
+  const descansoCount = el('<div class="counter">0/50</div>');
+  descansoTa.addEventListener('input', () => descansoCount.textContent = descansoTa.value.length + '/50');
+  descansoWrap.appendChild(descansoTa);
+  descansoWrap.appendChild(descansoCount);
+  form.appendChild(descansoWrap);
+
+  const tecWrap = el('<div><label>Técnica avançada</label></div>');
+  const tecSel = el(
+    '<select>' +
+    '<option value="nenhuma">Nenhuma técnica avançada</option>' +
+    '<option value="super_set">Super set</option>' +
+    '<option value="drop_set">Drop set</option>' +
+    '<option value="bi_set">Bi-set</option>' +
+    '<option value="rest_pause">Rest-pause</option>' +
+    '</select>'
+  );
+  tecWrap.appendChild(tecSel);
+  form.appendChild(tecWrap);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  form.appendChild(erro);
+
+  const addBtn = el('<button type="button" class="btn btn-primary">Adicionar exercício</button>');
+  addBtn.addEventListener('click', async () => {
+    if (!sel.value) {
+      erro.textContent = 'Escolha um exercício.';
+      erro.style.display = '';
+      return;
+    }
+    erro.style.display = 'none';
+    addBtn.disabled = true;
+    addBtn.textContent = 'Adicionando…';
+    const { error } = await supabaseClient.from('treino_exercicios').insert({
+      treino_id: treino.id, exercicio_id: sel.value,
+      ordem: (treino._exercicios || []).length,
+      series: seriesTa.value.trim() || null,
+      intervalo_descanso: descansoTa.value.trim() || null,
+      tecnica_avancada: tecSel.value
+    });
+    if (error) {
+      erro.textContent = error.message;
+      erro.style.display = '';
+      addBtn.disabled = false;
+      addBtn.textContent = 'Adicionar exercício';
+      return;
+    }
+    await loadExerciciosDoTreino(treino);
+    renderMontar();
+  });
+  form.appendChild(addBtn);
+
+  return form;
+}
+
+function renderAplicarBox(box) {
+  box.innerHTML = '';
+  box.appendChild(el('<div style="font-size:14px;font-weight:800;margin-bottom:4px;">Aplicar essa divisão a um aluno</div>'));
+
+  const jaAplicado = treinos[0] && treinos[0].cliente_id;
+  if (jaAplicado) {
+    const cliente = clientes.find(c => c.id === treinos[0].cliente_id);
+    box.appendChild(el('<div class="ok">Aplicado a ' + (cliente ? cliente.nome : 'um aluno') + '. O aluno já vê esses treinos no app dele.</div>'));
+    return;
+  }
+
+  if (clientes.length === 0) {
+    box.appendChild(el('<div class="sub" style="margin:0;">Você ainda não tem alunos cadastrados. <a href="alunos.html">Convide um aluno</a> primeiro.</div>'));
+    return;
+  }
+
+  const row = el('<div style="display:flex;gap:10px;margin-top:12px;"></div>');
+  const sel = el('<select style="flex:1;"><option value="">Escolha o aluno…</option></select>');
+  clientes.forEach(c => sel.appendChild(el('<option value="' + c.id + '">' + c.nome + '</option>')));
+  const btn = el('<button type="button" class="btn btn-primary">Enviar pro aluno</button>');
+  const erro = el('<div class="erro" style="display:none;"></div>');
+
+  btn.addEventListener('click', async () => {
+    if (!sel.value) {
+      erro.textContent = 'Escolha um aluno.';
+      erro.style.display = '';
+      return;
+    }
+    erro.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    const { error } = await supabaseClient.from('treinos').update({ cliente_id: sel.value, habilitado: true }).eq('split_id', splitId);
+    if (error) {
+      erro.textContent = error.message;
+      erro.style.display = '';
+      btn.disabled = false;
+      btn.textContent = 'Enviar pro aluno';
+      return;
+    }
+    treinos.forEach(t => t.cliente_id = sel.value);
+    renderMontar();
+  });
+
+  row.appendChild(sel);
+  row.appendChild(btn);
+  box.appendChild(row);
+  box.appendChild(erro);
+}
+
+init();
+</script>
+</body>
+</html>
