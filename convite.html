@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convite — Performa AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
+.card{width:100%;max-width:420px;background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:28px 26px;}
+.logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;}
+.logo-badge{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:19px;}
+.logo-text{font-size:21px;font-weight:800;}
+.logo-text span{color:#f97316;}
+h1{font-size:18px;font-weight:800;margin:0 0 4px;}
+p.sub{font-size:13px;color:#9aa4b2;margin:0 0 20px;}
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:12px;}
+button{width:100%;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;}
+button:disabled{opacity:.6;cursor:default;}
+.erro{color:#f87171;font-size:12.5px;margin-top:2px;margin-bottom:12px;}
+.info{color:#9aa4b2;font-size:13px;text-align:center;padding:12px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-badge">P</div>
+      <div class="logo-text">Performa <span>AI</span></div>
+    </div>
+    <div id="content"><div class="info">Carregando convite…</div></div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+const content = document.getElementById('content');
+
+function renderErro(msg) {
+  content.innerHTML = '<div class="info">' + msg + '</div>';
+}
+
+function renderCadastro(convite) {
+  content.innerHTML =
+    '<h1>Você foi convidado por ' + convite.trainer_nome + '</h1>' +
+    '<p class="sub">Digite sua senha. Se ainda não tem conta, ela é criada agora; se já confirmou o e-mail antes, isso te loga direto.</p>' +
+    '<label>Nome</label><input id="f-nome" placeholder="Seu nome">' +
+    '<label>E-mail</label><input value="' + convite.email + '" disabled>' +
+    '<label>Senha</label><input id="f-senha" type="password" placeholder="••••••••">' +
+    '<div class="erro" id="f-erro" style="display:none;"></div>' +
+    '<button id="f-btn">Continuar</button>';
+
+  document.getElementById('f-btn').addEventListener('click', async () => {
+    const nome = document.getElementById('f-nome').value.trim();
+    const senha = document.getElementById('f-senha').value;
+    const erroEl = document.getElementById('f-erro');
+    const btn = document.getElementById('f-btn');
+    if (!senha) {
+      erroEl.textContent = 'Digite sua senha.';
+      erroEl.style.display = '';
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Aguarde…';
+    erroEl.style.display = 'none';
+
+    const signIn = await supabaseClient.auth.signInWithPassword({ email: convite.email, password: senha });
+    if (!signIn.error) {
+      await finalizarAceite(signIn.data.user.user_metadata?.nome || nome);
+      return;
+    }
+
+    if (!nome) {
+      erroEl.textContent = 'Não encontramos uma conta com essa senha — se é seu primeiro acesso, preencha o Nome também.';
+      erroEl.style.display = '';
+      btn.disabled = false; btn.textContent = 'Continuar';
+      return;
+    }
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: convite.email, password: senha, options: { data: { nome } }
+    });
+    if (error) {
+      erroEl.textContent = error.message;
+      erroEl.style.display = '';
+      btn.disabled = false; btn.textContent = 'Continuar';
+      return;
+    }
+
+    if (data.session) {
+      await finalizarAceite(nome);
+    } else {
+      content.innerHTML = '<div class="info">Conta criada! Confirme seu e-mail e depois volte nesse mesmo link pra entrar.</div>';
+    }
+  });
+}
+
+async function finalizarAceite(nome) {
+  const { error } = await supabaseClient.rpc('accept_convite', { p_token: token, p_nome: nome });
+  if (error) {
+    renderErro('Não foi possível concluir: ' + error.message);
+    return;
+  }
+  window.location.href = 'app-aluno.html';
+}
+
+async function init() {
+  if (!token) {
+    renderErro('Link de convite inválido.');
+    return;
+  }
+
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const { data: convite, error } = await supabaseClient.rpc('get_convite', { p_token: token }).single();
+  if (error || !convite) {
+    renderErro('Convite não encontrado.');
+    return;
+  }
+  if (convite.status === 'aceito') {
+    renderErro('Esse convite já foi utilizado. Faça login normalmente.');
+    return;
+  }
+  if (convite.status === 'expirado') {
+    renderErro('Esse convite expirou. Peça um novo link ao seu personal.');
+    return;
+  }
+
+  if (session && session.user.email === convite.email) {
+    await finalizarAceite(session.user.user_metadata?.nome || '');
+    return;
+  }
+
+  renderCadastro(convite);
+}
+
+init();
+</script>
+</body>
+</html>
