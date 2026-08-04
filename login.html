@@ -320,31 +320,29 @@ class Component extends DCLogic {
 </script>
 <script>
 (function(){
-  function wireAcessoRapido() {
-    var savera = document.getElementById('qa-savera');
-    var vinicius = document.getElementById('qa-vinicius');
-    if (!savera || !vinicius || savera.dataset.wired) {
-      if (!savera || !vinicius) requestAnimationFrame(wireAcessoRapido);
+  var CONTAS = {
+    'qa-savera': { email: 'savera.personal@gmail.com', senha: 'Savera2026!', destino: 'dashboard.html' },
+    'qa-vinicius': { email: 'vinicius.aluno@gmail.com', senha: 'Vinicius2026!', destino: 'app-aluno.html' }
+  };
+  var emAndamento = false;
+
+  document.addEventListener('click', async function(e){
+    var btn = e.target.closest && e.target.closest('#qa-savera, #qa-vinicius');
+    if (!btn || emAndamento) return;
+    var conta = CONTAS[btn.id];
+    if (!conta) return;
+    emAndamento = true;
+    var original = btn.textContent;
+    btn.textContent = 'Entrando…';
+    var { error } = await supabaseClient.auth.signInWithPassword({ email: conta.email, password: conta.senha });
+    if (error) {
+      emAndamento = false;
+      btn.textContent = original;
+      alert('Acesso rápido falhou: ' + error.message);
       return;
     }
-    savera.dataset.wired = '1';
-    async function entrar(email, senha, destino, btn) {
-      btn.disabled = true;
-      var original = btn.textContent;
-      btn.textContent = 'Entrando…';
-      var { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: senha });
-      if (error) {
-        btn.disabled = false;
-        btn.textContent = original;
-        alert('Acesso rápido falhou: ' + error.message);
-        return;
-      }
-      window.location.href = destino;
-    }
-    savera.addEventListener('click', function(){ entrar('savera.personal@gmail.com', 'Savera2026!', 'dashboard.html', savera); });
-    vinicius.addEventListener('click', function(){ entrar('vinicius.aluno@gmail.com', 'Vinicius2026!', 'app-aluno.html', vinicius); });
-  }
-  requestAnimationFrame(wireAcessoRapido);
+    window.location.href = conta.destino;
+  }, true);
 })();
 </script>
 </body></html>
