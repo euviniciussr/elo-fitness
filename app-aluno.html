@@ -325,7 +325,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
           <div>
             <h1 style="margin:0;font-size:23px;font-weight:800;">Meu treino</h1>
-            <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Ainda não tem um treino prescrito</div>
+            <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">{{ treinoSubtitulo }}</div>
           </div>
         </div>
 
@@ -674,6 +674,7 @@ class Component extends DCLogic {
       ],
 
       semTreino: exData.length === 0,
+      treinoSubtitulo: exData.length === 0 ? 'Ainda não tem um treino prescrito' : exData.length + (exData.length === 1 ? ' exercício prescrito' : ' exercícios prescritos'),
       progressoTreino: doneCount + ' de ' + exData.length + ' exercícios',
       progressoW: exData.length ? Math.round(doneCount / exData.length * 100) + '%' : '0%',
       treinoConcluido: todos,
