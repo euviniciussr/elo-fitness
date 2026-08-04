@@ -313,7 +313,7 @@ class Component extends DCLogic {
       criarContaTexto: isCadastro ? 'Já tem conta?' : 'Não tem conta?',
       criarContaLink: isCadastro ? 'Entrar' : 'Criar conta grátis',
       toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', erro: '' }),
-      acessoRapidoDisplay: ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname) ? '' : 'display:none;'
+      acessoRapidoDisplay: ''
     };
   }
 }
