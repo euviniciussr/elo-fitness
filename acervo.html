@@ -367,7 +367,23 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             </div>
             <div>
               <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Categoria</label>
-              <input value="{{ exCategoria }}" sc-camel-on-change="{{ onExCategoriaChange }}" placeholder="Ex: Peito, Costas, Pernas…" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              <select value="{{ exCategoria }}" sc-camel-on-change="{{ onExCategoriaChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+                <option value="">Selecione…</option>
+                <option value="Peito">Peito</option>
+                <option value="Costas">Costas</option>
+                <option value="Deltoide">Deltoide</option>
+                <option value="Quadríceps">Quadríceps</option>
+                <option value="Isquiotibiais">Isquiotibiais</option>
+                <option value="Glúteo">Glúteo</option>
+                <option value="Bíceps">Bíceps</option>
+                <option value="Tríceps">Tríceps</option>
+                <option value="Antebraço">Antebraço</option>
+                <option value="Panturrilha">Panturrilha</option>
+                <option value="Ativação">Ativação</option>
+                <option value="Alongamentos">Alongamentos</option>
+                <option value="Mobilidade">Mobilidade</option>
+                <option value="Fortalecimento MMII">Fortalecimento MMII</option>
+              </select>
             </div>
             <div>
               <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Link do vídeo (opcional)</label>
