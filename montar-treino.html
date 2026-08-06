@@ -383,11 +383,18 @@ function renderTreinoBody(treino) {
 function renderAddExForm(treino) {
   const form = el('<div class="add-ex-form"></div>');
 
+  const exListId = 'ex-lib-' + treino.id;
   const selWrap = el('<div><label>Exercício</label></div>');
-  const sel = el('<select><option value="">Selecione…</option></select>');
-  exerciciosLib.forEach(e => sel.appendChild(el('<option value="' + e.id + '">' + e.nome + '</option>')));
+  const sel = el('<input list="' + exListId + '" placeholder="Digite pra buscar…" autocomplete="off">');
+  const datalist = el('<datalist id="' + exListId + '"></datalist>');
+  exerciciosLib.forEach(e => datalist.appendChild(el('<option value="' + e.nome.replace(/"/g, '&quot;') + '">')));
   selWrap.appendChild(sel);
+  selWrap.appendChild(datalist);
   form.appendChild(selWrap);
+  const exercicioSelecionado = () => {
+    const nome = sel.value.trim().toLowerCase();
+    return exerciciosLib.find(e => e.nome.toLowerCase() === nome);
+  };
 
   const seriesWrap = el('<div><label>Séries</label></div>');
   const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 3x12, 4x8-10, 3x15"></textarea>');
@@ -423,8 +430,9 @@ function renderAddExForm(treino) {
 
   const addBtn = el('<button type="button" class="btn btn-primary">Adicionar exercício</button>');
   addBtn.addEventListener('click', async () => {
-    if (!sel.value) {
-      erro.textContent = 'Escolha um exercício.';
+    const escolhido = exercicioSelecionado();
+    if (!escolhido) {
+      erro.textContent = 'Escolha um exercício da lista.';
       erro.style.display = '';
       return;
     }
@@ -432,7 +440,7 @@ function renderAddExForm(treino) {
     addBtn.disabled = true;
     addBtn.textContent = 'Adicionando…';
     const { error } = await supabaseClient.from('treino_exercicios').insert({
-      treino_id: treino.id, exercicio_id: sel.value,
+      treino_id: treino.id, exercicio_id: escolhido.id,
       ordem: (treino._exercicios || []).length,
       series: seriesTa.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
