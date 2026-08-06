@@ -712,6 +712,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <div sc-camel-on-click="{{ t.onClick }}" style="background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:12px 14px;cursor:pointer;">
             <div style="font-size:13.5px;font-weight:700;">{{ t.nome }}</div>
             <div style="font-size:11.5px;color:#66707e;margin-top:2px;">{{ t.dias }}</div>
+            <div style="font-size:11px;font-weight:700;margin-top:4px;color:{{ t.statusColor }};">{{ t.status }}</div>
           </div>
         </sc-for>
       </div>
@@ -1047,9 +1048,13 @@ class Component extends DCLogic {
         const list = this.state.treinoAlunoList;
         const standalone = list.filter(tr => !tr.split_id);
         const splitIds = Array.from(new Set(list.filter(tr => tr.split_id).map(tr => tr.split_id)));
+        const statusOf = (habilitado) => habilitado
+          ? { status: '✓ Visível pro aluno', statusColor: '#4ade80' }
+          : { status: '🔒 Oculto — ainda não habilitado', statusColor: '#f59e0b' };
         const standaloneItens = standalone.map(tr => ({
           id: tr.id, nome: tr.nome,
           dias: (!tr.dias_semana || !tr.dias_semana.length) ? 'Sem dias definidos' : tr.dias_semana.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', '),
+          ...statusOf(tr.habilitado),
           onClick: () => this.openTaDetalhe(tr.id)
         }));
         const splitItens = splitIds.map(splitId => {
@@ -1058,7 +1063,8 @@ class Component extends DCLogic {
           return {
             id: splitId, nome: 'Divisão ' + letras,
             dias: grupo.length + ' treinos',
-            onClick: () => { window.location.href = 'montar-treino.html?split_id=' + splitId; }
+            ...statusOf(grupo.some(t => t.habilitado)),
+            onClick: () => { window.location.href = 'montar-treino.html?split_id=' + splitId + '&cliente_id=' + this.state.treinoAlunoClienteId + '&cliente_nome=' + encodeURIComponent(this.state.treinoAlunoClienteNome || ''); }
           };
         });
         return [...splitItens, ...standaloneItens];

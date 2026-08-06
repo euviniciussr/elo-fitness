@@ -87,8 +87,22 @@ textarea{resize:vertical;min-height:52px;}
 .dist-count{flex:0 0 60px;text-align:right;font-size:12px;color:#66707e;}
 
 .detalhe-treino{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:10px;}
-.detalhe-nome{font-size:13.5px;font-weight:700;display:flex;justify-content:space-between;}
+.detalhe-nome{font-size:13.5px;font-weight:700;display:flex;justify-content:space-between;cursor:pointer;}
 .detalhe-tags{font-size:12px;color:#66707e;margin-top:4px;}
+
+.toggle-switch{width:44px;height:26px;border-radius:999px;background:#1e2633;border:none;position:relative;flex-shrink:0;padding:0;}
+.toggle-switch.on{background:#f97316;}
+.toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;}
+.toggle-switch.on .toggle-knob{left:21px;}
+
+.quick-ex{background:#0a0d13;border:1px solid #171d29;border-radius:9px;padding:10px 12px;margin-top:8px;}
+.quick-ex-nome{font-size:12.5px;font-weight:700;margin-bottom:6px;}
+.quick-ex-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.quick-ex-fields label{margin-bottom:3px;}
+.quick-ex-fields input{font-size:12.5px;padding:7px 9px;}
+
+.template-item{width:100%;text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;color:#e5e9f0;font-size:13.5px;font-weight:700;margin-bottom:8px;}
+.template-item:hover{border-color:rgba(249,115,22,.45);}
 </style>
 </head>
 <body>
@@ -124,6 +138,8 @@ let clientes = [];
 let activeIndex = 0;
 let formMode = { type: 'add' };
 let splitId = splitIdParam;
+let templates = [];
+let expandedTreinos = new Set();
 
 function el(html) {
   const t = document.createElement('template');
@@ -154,8 +170,19 @@ async function init() {
     for (const tr of treinos) await loadExerciciosDoTreino(tr);
     renderMontar();
   } else {
+    if (clienteIdParam) await carregarTemplates();
     renderQuantidade();
   }
+}
+
+async function carregarTemplates() {
+  const { data } = await supabaseClient.from('treinos').select('*').eq('trainer_id', userId).is('cliente_id', null).order('ordem');
+  const bySplit = {};
+  (data || []).forEach(r => { if (!r.split_id) return; (bySplit[r.split_id] = bySplit[r.split_id] || []).push(r); });
+  templates = Object.entries(bySplit).map(([sid, trs]) => {
+    const ordenados = trs.sort((a, b) => a.ordem - b.ordem);
+    return { splitId: sid, nome: ordenados.map(t => t.nome.replace(/^Treino\s*/i, '')).join('/'), treinos: ordenados };
+  });
 }
 
 async function loadExerciciosDoTreino(treino) {
@@ -222,6 +249,20 @@ function renderQuantidade() {
   }
   app.appendChild(header);
   app.appendChild(grid);
+
+  if (clienteIdParam && templates.length) {
+    app.appendChild(el('<div class="sub" style="margin:24px 0 10px;">ou comece a partir de um treino predefinido</div>'));
+    const listWrap = el('<div></div>');
+    templates.forEach(t => {
+      const item = el(
+        '<button type="button" class="template-item"><span>Divisão ' + t.nome + '</span>' +
+        '<span class="sub" style="margin:0;">' + t.treinos.length + ' treinos ›</span></button>'
+      );
+      item.addEventListener('click', () => usarTemplate(t));
+      listWrap.appendChild(item);
+    });
+    app.appendChild(listWrap);
+  }
 }
 
 async function criarDivisao(n) {
@@ -231,7 +272,7 @@ async function criarDivisao(n) {
   for (let i = 0; i < n; i++) {
     rows.push({
       trainer_id: userId, cliente_id: clienteIdParam || null, nome: 'Treino ' + LETRAS[i],
-      dias_semana: [], habilitado: true, split_id: splitId, ordem: i
+      dias_semana: [], habilitado: !clienteIdParam, split_id: splitId, ordem: i
     });
   }
   const { data, error } = await supabaseClient.from('treinos').insert(rows).select();
@@ -247,11 +288,57 @@ async function criarDivisao(n) {
   renderMontar();
 }
 
+async function usarTemplate(template) {
+  app.innerHTML = '<div class="sub">Criando a partir do treino predefinido…</div>';
+  const novoSplitId = crypto.randomUUID();
+  const origem = template.treinos;
+
+  const novasRows = origem.map((t, i) => ({
+    trainer_id: userId, cliente_id: clienteIdParam, nome: t.nome,
+    dias_semana: t.dias_semana || [], habilitado: false, split_id: novoSplitId, ordem: i
+  }));
+  const { data: novos, error } = await supabaseClient.from('treinos').insert(novasRows).select();
+  if (error) {
+    app.innerHTML = '<div class="erro">Não foi possível criar: ' + error.message + '</div>';
+    return;
+  }
+  const novosOrdenados = novos.sort((a, b) => a.ordem - b.ordem);
+
+  for (let i = 0; i < origem.length; i++) {
+    const { data: exs } = await supabaseClient.from('treino_exercicios').select('*').eq('treino_id', origem[i].id).order('ordem');
+    const lista = exs || [];
+    if (!lista.length) continue;
+    const grupoMap = {};
+    await supabaseClient.from('treino_exercicios').insert(lista.map(te => {
+      let novoGrupoId = null;
+      if (te.grupo_id) {
+        if (!grupoMap[te.grupo_id]) grupoMap[te.grupo_id] = crypto.randomUUID();
+        novoGrupoId = grupoMap[te.grupo_id];
+      }
+      return {
+        treino_id: novosOrdenados[i].id, exercicio_id: te.exercicio_id, ordem: te.ordem,
+        series: te.series, intervalo_descanso: te.intervalo_descanso,
+        tecnica_avancada: te.tecnica_avancada, observacoes: te.observacoes, grupo_id: novoGrupoId
+      };
+    }));
+  }
+
+  treinos = novosOrdenados;
+  for (const tr of treinos) await loadExerciciosDoTreino(tr);
+  activeIndex = 0;
+  splitId = novoSplitId;
+  const novaUrl = 'montar-treino.html?split_id=' + splitId + '&cliente_id=' + clienteIdParam + '&cliente_nome=' + encodeURIComponent(clienteNomeParam || '');
+  history.replaceState(null, '', novaUrl);
+  renderMontar();
+}
+
 function renderMontar() {
   app.innerHTML = '';
 
   const header = el('<div><h1>Montar divisão de treino</h1><p class="sub">Escolha um treino na aba acima, defina os dias e adicione os exercícios.</p></div>');
   app.appendChild(header);
+
+  renderVisibilidadeToggle(app);
 
   const tabs = el('<div class="tabs"></div>');
   treinos.forEach((tr, i) => {
@@ -269,6 +356,29 @@ function renderMontar() {
   app.appendChild(aplicarBox);
 
   renderAnalise();
+}
+
+function renderVisibilidadeToggle(container) {
+  const clienteId = treinos[0] && treinos[0].cliente_id;
+  if (!clienteId) return;
+  const nomeCliente = (clientes.find(c => c.id === clienteId) || {}).nome || clienteNomeParam || 'aluno';
+  const habilitado = !!treinos[0].habilitado;
+  const box = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:20px;"></div>');
+  const label = el(
+    '<div><div style="font-size:13.5px;font-weight:700;">Visível para ' + nomeCliente + '</div>' +
+    '<div class="sub" style="margin:2px 0 0;">' + (habilitado ? 'O aluno já vê esse treino no app dele.' : 'Oculto — o aluno não vê esse treino até você habilitar.') + '</div></div>'
+  );
+  const toggleBtn = el('<button type="button" class="toggle-switch' + (habilitado ? ' on' : '') + '"><span class="toggle-knob"></span></button>');
+  toggleBtn.addEventListener('click', async () => {
+    const novo = !habilitado;
+    toggleBtn.disabled = true;
+    await supabaseClient.from('treinos').update({ habilitado: novo }).eq('split_id', splitId);
+    treinos.forEach(t => t.habilitado = novo);
+    renderMontar();
+  });
+  box.appendChild(label);
+  box.appendChild(toggleBtn);
+  container.appendChild(box);
 }
 
 function renderAnalise() {
@@ -318,18 +428,69 @@ function renderAnalise() {
     analise.appendChild(distWrap);
   }
 
-  analise.appendChild(el('<label>Detalhamento por treino</label>'));
+  analise.appendChild(el('<label>Detalhamento por treino — clique pra expandir e ajustar rápido</label>'));
   treinos.forEach(tr => {
     const grupos = gruposMusculares(tr);
     const tags = grupos.length ? grupos.map(([cat, n]) => cat + ' (' + n + ')').join(' · ') : 'sem exercícios categorizados';
-    const row = el(
-      '<div class="detalhe-treino">' +
-      '<div class="detalhe-nome"><span>' + tr.nome + '</span><span>' + (tr._exercicios || []).length + (((tr._exercicios || []).length === 1) ? ' exercício' : ' exercícios') + '</span></div>' +
-      '<div class="detalhe-tags">' + tags + '</div>' +
-      '</div>'
+    const exs = tr._exercicios || [];
+    const isOpen = expandedTreinos.has(tr.id);
+    const wrap = el('<div class="detalhe-treino"></div>');
+    const head = el(
+      '<div class="detalhe-nome"><span>' + (isOpen ? '▾ ' : '▸ ') + tr.nome + '</span>' +
+      '<span>' + exs.length + (exs.length === 1 ? ' exercício' : ' exercícios') + '</span></div>'
     );
-    analise.appendChild(row);
+    head.addEventListener('click', () => {
+      if (expandedTreinos.has(tr.id)) expandedTreinos.delete(tr.id); else expandedTreinos.add(tr.id);
+      renderAnalise();
+    });
+    wrap.appendChild(head);
+    wrap.appendChild(el('<div class="detalhe-tags">' + tags + '</div>'));
+
+    if (isOpen) {
+      if (!exs.length) {
+        wrap.appendChild(el('<div class="sub" style="margin:10px 0 0;">Nenhum exercício ainda.</div>'));
+      } else {
+        exs.forEach(te => wrap.appendChild(renderQuickEditItem(tr, te)));
+      }
+      const abrirBtn = el('<button type="button" class="btn btn-secondary" style="margin-top:10px;font-size:12px;padding:8px 14px;">Abrir treino completo</button>');
+      abrirBtn.addEventListener('click', () => {
+        activeIndex = treinos.indexOf(tr);
+        formMode = { type: 'add' };
+        renderMontar();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      wrap.appendChild(abrirBtn);
+    }
+
+    analise.appendChild(wrap);
   });
+}
+
+function renderQuickEditItem(treino, te) {
+  const row = el('<div class="quick-ex"></div>');
+  row.appendChild(el('<div class="quick-ex-nome">' + (te.exercicios || {}).nome + '</div>'));
+  const fields = el('<div class="quick-ex-fields"></div>');
+
+  const seriesWrap = el('<div><label>Séries</label></div>');
+  const seriesInput = el('<input value="' + (te.series || '').replace(/"/g, '&quot;') + '" placeholder="Ex: 3x12">');
+  seriesInput.addEventListener('change', async () => {
+    te.series = seriesInput.value.trim() || null;
+    await supabaseClient.from('treino_exercicios').update({ series: te.series }).eq('id', te.id);
+  });
+  seriesWrap.appendChild(seriesInput);
+
+  const descansoWrap = el('<div><label>Descanso</label></div>');
+  const descansoInput = el('<input value="' + (te.intervalo_descanso || '').replace(/"/g, '&quot;') + '" placeholder="Ex: 60s">');
+  descansoInput.addEventListener('change', async () => {
+    te.intervalo_descanso = descansoInput.value.trim() || null;
+    await supabaseClient.from('treino_exercicios').update({ intervalo_descanso: te.intervalo_descanso }).eq('id', te.id);
+  });
+  descansoWrap.appendChild(descansoInput);
+
+  fields.appendChild(seriesWrap);
+  fields.appendChild(descansoWrap);
+  row.appendChild(fields);
+  return row;
 }
 
 function renderTreinoBody(treino) {
