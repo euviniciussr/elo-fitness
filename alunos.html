@@ -699,7 +699,10 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="font-size:17px;font-weight:800;">Plano de treino — {{ treinoAlunoClienteNome }}</div>
         <button sc-camel-on-click="{{ closeTreinoAluno }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
       </div>
-      <div style="font-size:12.5px;color:#66707e;margin-bottom:18px;">Treinos vinculados a esse aluno.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div style="font-size:12.5px;color:#66707e;">Treinos vinculados a esse aluno.</div>
+        <button sc-camel-on-click="{{ notificarCliente }}" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-family:inherit;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;">📲 Notificar cliente</button>
+      </div>
 
       <sc-if value="{{ semTreinoAluno }}" hint-placeholder-val="{{ true }}">
         <div style="font-size:12.5px;color:#66707e;padding:16px 0;">Nenhum treino criado ainda pra esse aluno.</div>
@@ -835,7 +838,21 @@ class Component extends DCLogic {
   }
 
   openNovoTreinoAluno() {
-    this.setState({ taNovoOpen: true, taNome: '', taDiasSel: [], taErro: '' });
+    const id = this.state.treinoAlunoClienteId;
+    const nome = this.state.treinoAlunoClienteNome;
+    window.location.href = 'montar-treino.html?cliente_id=' + id + '&cliente_nome=' + encodeURIComponent(nome);
+  }
+
+  notificarCliente() {
+    const cliente = this.state.clientes.find(c => c.id === this.state.treinoAlunoClienteId);
+    if (!cliente || !cliente.telefone) {
+      alert('Esse aluno ainda não tem telefone cadastrado.');
+      return;
+    }
+    let digits = cliente.telefone.replace(/\D/g, '');
+    if (digits.length <= 11) digits = '55' + digits;
+    const msg = encodeURIComponent('Oi ' + cliente.nome + '! Seu treino já está pronto no Performa AI 💪');
+    window.open('https://wa.me/' + digits + '?text=' + msg, '_blank');
   }
 
   closeNovoTreinoAluno() {
@@ -1026,12 +1043,29 @@ class Component extends DCLogic {
       treinoAlunoOpen: !!this.state.treinoAlunoClienteId,
       treinoAlunoClienteNome: this.state.treinoAlunoClienteNome,
       closeTreinoAluno: () => this.closeTreinoAluno(),
-      treinoAlunoList: this.state.treinoAlunoList.map(tr => ({
-        id: tr.id, nome: tr.nome,
-        dias: (!tr.dias_semana || !tr.dias_semana.length) ? 'Sem dias definidos' : tr.dias_semana.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', '),
-        onClick: () => this.openTaDetalhe(tr.id)
-      })),
+      treinoAlunoList: (() => {
+        const list = this.state.treinoAlunoList;
+        const standalone = list.filter(tr => !tr.split_id);
+        const splitIds = Array.from(new Set(list.filter(tr => tr.split_id).map(tr => tr.split_id)));
+        const standaloneItens = standalone.map(tr => ({
+          id: tr.id, nome: tr.nome,
+          dias: (!tr.dias_semana || !tr.dias_semana.length) ? 'Sem dias definidos' : tr.dias_semana.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', '),
+          onClick: () => this.openTaDetalhe(tr.id)
+        }));
+        const splitItens = splitIds.map(splitId => {
+          const grupo = list.filter(tr => tr.split_id === splitId);
+          const letras = grupo.map(tr => tr.nome.replace(/^Treino\s*/i, '')).join('/');
+          return {
+            id: splitId, nome: 'Divisão ' + letras,
+            dias: grupo.length + ' treinos',
+            onClick: () => { window.location.href = 'montar-treino.html?split_id=' + splitId; }
+          };
+        });
+        return [...splitItens, ...standaloneItens];
+      })(),
       semTreinoAluno: this.state.treinoAlunoList.length === 0,
+
+      notificarCliente: () => this.notificarCliente(),
 
       openNovoTreinoAluno: () => this.openNovoTreinoAluno(),
       taNovoOpen: this.state.taNovoOpen,

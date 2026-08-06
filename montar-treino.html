@@ -98,7 +98,7 @@ textarea{resize:vertical;min-height:52px;}
     <div class="logo-badge">P</div>
     <div class="logo-text">Performa <span>AI</span></div>
   </div>
-  <a class="voltar" href="acervo.html">← Voltar pro acervo</a>
+  <a class="voltar" id="voltar-link" href="acervo.html">← Voltar pro acervo</a>
 </div>
 
 <div class="wrap">
@@ -109,6 +109,8 @@ textarea{resize:vertical;min-height:52px;}
 <script>
 const params = new URLSearchParams(window.location.search);
 const splitIdParam = params.get('split_id');
+const clienteIdParam = params.get('cliente_id');
+const clienteNomeParam = params.get('cliente_nome');
 const app = document.getElementById('app');
 const analise = document.getElementById('analise');
 
@@ -130,6 +132,12 @@ function el(html) {
 }
 
 async function init() {
+  if (clienteIdParam) {
+    const link = document.getElementById('voltar-link');
+    link.href = 'alunos.html';
+    link.textContent = '← Voltar pro aluno';
+  }
+
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return;
   userId = user.id;
@@ -204,7 +212,8 @@ async function duplicarTreino(treino) {
 
 function renderQuantidade() {
   app.innerHTML = '';
-  const header = el('<div><h1>Nova divisão de treino</h1><p class="sub">Quantos treinos essa divisão vai ter? (ex: A, B, C, D)</p></div>');
+  const titulo = clienteIdParam ? 'Novo treino para ' + (clienteNomeParam || 'aluno') : 'Nova divisão de treino';
+  const header = el('<div><h1>' + titulo + '</h1><p class="sub">Quantos treinos essa divisão vai ter? (ex: A, B, C, D)</p></div>');
   const grid = el('<div class="qtd-grid"></div>');
   for (let n = 1; n <= 6; n++) {
     const b = el('<button type="button" class="qtd-btn">' + n + '</button>');
@@ -221,7 +230,7 @@ async function criarDivisao(n) {
   const rows = [];
   for (let i = 0; i < n; i++) {
     rows.push({
-      trainer_id: userId, cliente_id: null, nome: 'Treino ' + LETRAS[i],
+      trainer_id: userId, cliente_id: clienteIdParam || null, nome: 'Treino ' + LETRAS[i],
       dias_semana: [], habilitado: true, split_id: splitId, ordem: i
     });
   }
@@ -233,7 +242,8 @@ async function criarDivisao(n) {
   treinos = data.sort((a, b) => a.ordem - b.ordem);
   treinos.forEach(t => t._exercicios = []);
   activeIndex = 0;
-  history.replaceState(null, '', 'montar-treino.html?split_id=' + splitId);
+  const novaUrl = 'montar-treino.html?split_id=' + splitId + (clienteIdParam ? '&cliente_id=' + clienteIdParam + '&cliente_nome=' + encodeURIComponent(clienteNomeParam || '') : '');
+  history.replaceState(null, '', novaUrl);
   renderMontar();
 }
 
