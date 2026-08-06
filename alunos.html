@@ -561,7 +561,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             </div>
           </sc-if>
           <sc-for list="{{ todos }}" as="t" hint-placeholder-count="6">
-            <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;" style-hover="background:#131a26;">
+            <div sc-camel-on-click="{{ t.onClick }}" style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;cursor:pointer;" style-hover="background:#131a26;">
               <div style="flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:12px;">
                 <div style="width:34px;height:34px;flex-shrink:0;border-radius:50%;background:{{ t.avatarBg }};color:{{ t.avatarColor }};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">{{ t.initials }}</div>
                 <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ t.nome }}</div><div style="font-size:11px;color:#66707e;">{{ t.email }}</div></div>
@@ -570,7 +570,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <div style="flex:0 0 130px;font-size:12px;color:#9aa4b2;">{{ t.plano }}</div>
               <div style="flex:0 0 110px;font-size:12px;color:#9aa4b2;">{{ t.entrada }}</div>
               <div style="flex:0 0 110px;font-size:12.5px;font-weight:700;">{{ t.ltv }}</div>
-              <a href="#" style="flex:0 0 90px;font-size:12px;font-weight:600;text-align:right;">abrir ›</a>
+              <span style="flex:0 0 90px;font-size:12px;font-weight:600;text-align:right;color:#f97316;">{{ t.abrirLabel }}</span>
             </div>
           </sc-for>
         </div>
@@ -990,10 +990,10 @@ class Component extends DCLogic {
     const clientesAtivos = this.state.clientes.filter(c => c.status === 'ativo');
 
     let todosBase = this.state.clientes.map(c => ({
-      nome: c.nome, email: c.email || '', initials: iniciais(c.nome),
+      id: c.id, nome: c.nome, email: c.email || '', initials: iniciais(c.nome),
       status: c.status === 'ativo' ? 'ATIVO' : 'INATIVO'
     })).concat(this.state.convites.map(cv => ({
-      nome: cv.email, email: cv.email, initials: iniciais(cv.email),
+      id: null, nome: cv.email, email: cv.email, initials: iniciais(cv.email),
       status: 'LEAD'
     })));
     const f = this.state.filtroTodos;
@@ -1145,7 +1145,9 @@ class Component extends DCLogic {
         statusColor: t.status === 'ATIVO' ? '#4ade80' : t.status === 'LEAD' ? '#3b82f6' : '#66707e',
         statusBg: t.status === 'ATIVO' ? 'rgba(74,222,128,.12)' : t.status === 'LEAD' ? 'rgba(59,130,246,.12)' : '#131a26',
         avatarBg: t.status === 'ATIVO' ? 'rgba(249,115,22,.15)' : '#131a26',
-        avatarColor: t.status === 'ATIVO' ? '#f97316' : '#66707e'
+        avatarColor: t.status === 'ATIVO' ? '#f97316' : '#66707e',
+        abrirLabel: t.id ? 'abrir ›' : '—',
+        onClick: () => { if (t.id) this.openTreinoAluno(t.id, t.nome); }
       })),
 
       prescricoes: [],
