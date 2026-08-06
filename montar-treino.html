@@ -26,7 +26,7 @@ textarea{font-family:inherit;}
 .wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px;}
 .card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
 h1{font-size:20px;font-weight:800;margin:0 0 6px;}
-p.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
+.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
 
 .qtd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:420px;}
 .qtd-btn{background:#0d1119;border:1px solid #1e2633;border-radius:12px;padding:22px 0;text-align:center;font-size:22px;font-weight:800;color:#e5e9f0;}
@@ -122,10 +122,53 @@ async function init() {
 async function loadExerciciosDoTreino(treino) {
   const { data } = await supabaseClient
     .from('treino_exercicios')
-    .select('*, exercicios(nome)')
+    .select('*, exercicios(nome, categoria)')
     .eq('treino_id', treino.id)
     .order('ordem');
   treino._exercicios = data || [];
+}
+
+function gruposMusculares(treino) {
+  const contagem = {};
+  (treino._exercicios || []).forEach(te => {
+    const cat = (te.exercicios || {}).categoria;
+    if (!cat) return;
+    contagem[cat] = (contagem[cat] || 0) + 1;
+  });
+  return Object.entries(contagem);
+}
+
+async function duplicarTreino(treino) {
+  const usados = new Set(treinos.map(t => t.nome));
+  let novoNome = null;
+  const m = treino.nome.match(/^Treino ([A-Z])$/);
+  if (m) {
+    const livre = LETRAS.find(l => !usados.has('Treino ' + l));
+    if (livre) novoNome = 'Treino ' + livre;
+  }
+  if (!novoNome) novoNome = treino.nome + ' (cópia)';
+
+  const { data: novo, error } = await supabaseClient.from('treinos').insert({
+    trainer_id: userId, cliente_id: treino.cliente_id, nome: novoNome,
+    dias_semana: treino.dias_semana || [], habilitado: true,
+    split_id: splitId, ordem: treinos.length
+  }).select().single();
+  if (error) { alert('Não foi possível duplicar: ' + error.message); return; }
+
+  const exs = treino._exercicios || [];
+  if (exs.length) {
+    await supabaseClient.from('treino_exercicios').insert(exs.map((te, i) => ({
+      treino_id: novo.id, exercicio_id: te.exercicio_id,
+      ordem: i, series: te.series, intervalo_descanso: te.intervalo_descanso,
+      tecnica_avancada: te.tecnica_avancada
+    })));
+  }
+
+  novo._exercicios = [];
+  await loadExerciciosDoTreino(novo);
+  treinos.push(novo);
+  activeIndex = treinos.length - 1;
+  renderMontar();
 }
 
 function renderQuantidade() {
@@ -188,6 +231,7 @@ function renderMontar() {
 function renderTreinoBody(treino) {
   const body = el('<div></div>');
 
+  const nomeRow = el('<div style="display:flex;gap:10px;align-items:flex-end;"><div style="flex:1;"></div></div>');
   const nomeLabel = el('<label>Nome do treino</label>');
   const nomeInput = el('<input value="' + treino.nome.replace(/"/g, '&quot;') + '">');
   nomeInput.addEventListener('change', async (e) => {
@@ -195,8 +239,12 @@ function renderTreinoBody(treino) {
     await supabaseClient.from('treinos').update({ nome: treino.nome }).eq('id', treino.id);
     renderMontar();
   });
-  body.appendChild(nomeLabel);
-  body.appendChild(nomeInput);
+  nomeRow.firstElementChild.appendChild(nomeLabel);
+  nomeRow.firstElementChild.appendChild(nomeInput);
+  const duplicarBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;">⎘ Duplicar treino</button>');
+  duplicarBtn.addEventListener('click', () => duplicarTreino(treino));
+  nomeRow.appendChild(duplicarBtn);
+  body.appendChild(nomeRow);
 
   const diasLabel = el('<label style="margin-top:16px;">Dias da semana</label>');
   body.appendChild(diasLabel);
@@ -217,6 +265,13 @@ function renderTreinoBody(treino) {
 
   const exLabel = el('<label>Exercícios</label>');
   body.appendChild(exLabel);
+
+  const grupos = gruposMusculares(treino);
+  if (grupos.length) {
+    const resumo = el('<div class="sub" style="margin:0 0 10px;"></div>');
+    resumo.textContent = grupos.map(([cat, n]) => cat + ' (' + n + ')').join(' · ');
+    body.appendChild(resumo);
+  }
 
   if (!treino._exercicios || treino._exercicios.length === 0) {
     body.appendChild(el('<div class="sub" style="margin:0 0 10px;">Nenhum exercício ainda.</div>'));
