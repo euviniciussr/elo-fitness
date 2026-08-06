@@ -61,6 +61,21 @@ textarea{resize:vertical;min-height:52px;}
 .aplicar-box{margin-top:28px;padding-top:24px;border-top:1px solid #171d29;}
 .erro{color:#f87171;font-size:12.5px;margin-top:8px;}
 .ok{color:#4ade80;font-size:12.5px;margin-top:8px;}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:24px;}
+.stat-box{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;}
+.stat-num{font-size:22px;font-weight:800;}
+.stat-label{font-size:11.5px;color:#66707e;margin-top:2px;}
+
+.dist-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.dist-label{flex:0 0 130px;font-size:12.5px;color:#e5e9f0;}
+.dist-bar-track{flex:1;height:8px;background:#0d1119;border-radius:999px;overflow:hidden;}
+.dist-bar-fill{height:100%;background:#f97316;border-radius:999px;}
+.dist-count{flex:0 0 60px;text-align:right;font-size:12px;color:#66707e;}
+
+.detalhe-treino{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.detalhe-nome{font-size:13.5px;font-weight:700;display:flex;justify-content:space-between;}
+.detalhe-tags{font-size:12px;color:#66707e;margin-top:4px;}
 </style>
 </head>
 <body>
@@ -75,12 +90,14 @@ textarea{resize:vertical;min-height:52px;}
 
 <div class="wrap">
   <div class="card" id="app">Carregando…</div>
+  <div class="card" id="analise" style="margin-top:20px;display:none;"></div>
 </div>
 
 <script>
 const params = new URLSearchParams(window.location.search);
 const splitIdParam = params.get('split_id');
 const app = document.getElementById('app');
+const analise = document.getElementById('analise');
 
 const DIAS = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
 const LETRAS = ['A','B','C','D','E','F'];
@@ -226,6 +243,69 @@ function renderMontar() {
   const aplicarBox = el('<div class="aplicar-box"></div>');
   renderAplicarBox(aplicarBox);
   app.appendChild(aplicarBox);
+
+  renderAnalise();
+}
+
+function renderAnalise() {
+  const todosExs = treinos.flatMap(t => t._exercicios || []);
+  if (todosExs.length === 0) { analise.style.display = 'none'; return; }
+  analise.style.display = '';
+  analise.innerHTML = '';
+
+  analise.appendChild(el('<h1>Análise do plano de treino</h1>'));
+  analise.appendChild(el('<p class="sub">Visão geral da divisão inteira.</p>'));
+
+  const contagem = {};
+  todosExs.forEach(te => {
+    const cat = (te.exercicios || {}).categoria;
+    if (!cat) return;
+    contagem[cat] = (contagem[cat] || 0) + 1;
+  });
+  const entradas = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+  const totalCategorizado = entradas.reduce((s, [, n]) => s + n, 0);
+
+  const stats = el('<div class="stat-grid"></div>');
+  [
+    [treinos.length, 'Treinos'],
+    [todosExs.length, 'Exercícios'],
+    [entradas.length, 'Agrupamentos'],
+    [Math.round(todosExs.length / treinos.length * 10) / 10, 'Exerc. por treino']
+  ].forEach(([num, label]) => {
+    stats.appendChild(el('<div class="stat-box"><div class="stat-num">' + num + '</div><div class="stat-label">' + label + '</div></div>'));
+  });
+  analise.appendChild(stats);
+
+  if (entradas.length) {
+    analise.appendChild(el('<label>Distribuição por grupamento muscular</label>'));
+    const distWrap = el('<div style="margin-bottom:24px;"></div>');
+    const max = entradas[0][1];
+    entradas.forEach(([cat, n]) => {
+      const pct = totalCategorizado ? Math.round(n / totalCategorizado * 100) : 0;
+      const row = el(
+        '<div class="dist-row">' +
+        '<div class="dist-label">' + cat + '</div>' +
+        '<div class="dist-bar-track"><div class="dist-bar-fill" style="width:' + (n / max * 100) + '%;"></div></div>' +
+        '<div class="dist-count">' + n + ' · ' + pct + '%</div>' +
+        '</div>'
+      );
+      distWrap.appendChild(row);
+    });
+    analise.appendChild(distWrap);
+  }
+
+  analise.appendChild(el('<label>Detalhamento por treino</label>'));
+  treinos.forEach(tr => {
+    const grupos = gruposMusculares(tr);
+    const tags = grupos.length ? grupos.map(([cat, n]) => cat + ' (' + n + ')').join(' · ') : 'sem exercícios categorizados';
+    const row = el(
+      '<div class="detalhe-treino">' +
+      '<div class="detalhe-nome"><span>' + tr.nome + '</span><span>' + (tr._exercicios || []).length + (((tr._exercicios || []).length === 1) ? ' exercício' : ' exercícios') + '</span></div>' +
+      '<div class="detalhe-tags">' + tags + '</div>' +
+      '</div>'
+    );
+    analise.appendChild(row);
+  });
 }
 
 function renderTreinoBody(treino) {
