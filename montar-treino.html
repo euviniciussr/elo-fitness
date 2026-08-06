@@ -47,9 +47,22 @@ textarea{resize:vertical;min-height:52px;}
 
 .ex-item{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
 .ex-nome{font-size:14px;font-weight:700;}
-.ex-meta{font-size:12px;color:#66707e;margin-top:3px;}
-.ex-remove{background:none;border:none;color:#66707e;font-size:13px;}
-.ex-remove:hover{color:#f87171;}
+.ex-meta{font-size:12px;color:#66707e;margin-top:3px;white-space:pre-line;}
+.ex-obs{font-size:11.5px;color:#4a5364;margin-top:5px;font-style:italic;}
+.ex-actions{display:flex;gap:2px;flex-shrink:0;}
+.ex-icon-btn{background:none;border:none;color:#66707e;font-size:13px;padding:4px 6px;line-height:1;border-radius:6px;}
+.ex-icon-btn:hover{color:#e5e9f0;background:#131a26;}
+.ex-icon-btn:disabled{opacity:.3;cursor:default;}
+.ex-icon-btn:disabled:hover{background:none;}
+.ex-remove{background:none;border:none;color:#66707e;font-size:13px;padding:4px 6px;}
+.ex-remove:hover{color:#f87171;background:#131a26;border-radius:6px;}
+
+.combo-box{border:1px solid rgba(168,85,247,.3);border-radius:12px;padding:12px;margin-bottom:10px;background:rgba(168,85,247,.04);}
+.combo-label{font-size:10.5px;font-weight:800;color:#a855f7;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+.combo-box .ex-item{margin-bottom:8px;}
+.combo-box .ex-item:last-child{margin-bottom:0;}
+.combinar-btn{background:none;border:none;color:#a855f7;font-size:12px;font-weight:700;padding:4px 0;}
+.combinar-btn:hover{text-decoration:underline;}
 
 .btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
 .btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
@@ -107,6 +120,7 @@ let treinos = [];
 let exerciciosLib = [];
 let clientes = [];
 let activeIndex = 0;
+let formMode = { type: 'add' };
 let splitId = splitIdParam;
 
 function el(html) {
@@ -232,7 +246,7 @@ function renderMontar() {
   const tabs = el('<div class="tabs"></div>');
   treinos.forEach((tr, i) => {
     const t = el('<div class="tab' + (i === activeIndex ? ' active' : '') + '">' + tr.nome + '</div>');
-    t.addEventListener('click', () => { activeIndex = i; renderMontar(); });
+    t.addEventListener('click', () => { activeIndex = i; formMode = { type: 'add' }; renderMontar(); });
     tabs.appendChild(t);
   });
   app.appendChild(tabs);
@@ -356,18 +370,29 @@ function renderTreinoBody(treino) {
   if (!treino._exercicios || treino._exercicios.length === 0) {
     body.appendChild(el('<div class="sub" style="margin:0 0 10px;">Nenhum exercício ainda.</div>'));
   } else {
-    treino._exercicios.forEach(te => {
-      const item = el(
-        '<div class="ex-item"><div><div class="ex-nome">' + (te.exercicios || {}).nome + '</div>' +
-        '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · descanso ' + (te.intervalo_descanso || '—') + '</div></div>' +
-        '<button type="button" class="ex-remove">remover</button></div>'
-      );
-      item.querySelector('.ex-remove').addEventListener('click', async () => {
-        await supabaseClient.from('treino_exercicios').delete().eq('id', te.id);
-        treino._exercicios = treino._exercicios.filter(x => x.id !== te.id);
-        renderMontar();
-      });
-      body.appendChild(item);
+    const list = treino._exercicios;
+    const rendered = new Set();
+    const TEC_LABEL = { super_set: 'Super set', drop_set: 'Drop set', bi_set: 'Bi-set', rest_pause: 'Rest-pause' };
+
+    list.forEach(te => {
+      if (rendered.has(te.id)) return;
+      if (te.grupo_id) {
+        const membros = list.filter(x => x.grupo_id === te.grupo_id);
+        membros.forEach(m => rendered.add(m.id));
+        const combo = el('<div class="combo-box"></div>');
+        combo.appendChild(el('<div class="combo-label">' + (TEC_LABEL[te.tecnica_avancada] || 'Combo') + '</div>'));
+        membros.forEach(m => combo.appendChild(renderExItem(treino, m)));
+        const combinarBtn = el('<button type="button" class="combinar-btn">+ adicionar exercício ao combo</button>');
+        combinarBtn.addEventListener('click', () => {
+          formMode = { type: 'combo', grupoId: te.grupo_id };
+          renderMontar();
+        });
+        combo.appendChild(combinarBtn);
+        body.appendChild(combo);
+      } else {
+        rendered.add(te.id);
+        body.appendChild(renderExItem(treino, te));
+      }
     });
   }
 
@@ -380,12 +405,77 @@ function renderTreinoBody(treino) {
   app.appendChild(body);
 }
 
+async function moverExercicio(treino, te, direcao) {
+  const list = treino._exercicios;
+  const idx = list.findIndex(x => x.id === te.id);
+  const alvo = idx + direcao;
+  if (alvo < 0 || alvo >= list.length) return;
+  const a = list[idx], b = list[alvo];
+  const ordemA = a.ordem, ordemB = b.ordem;
+  await Promise.all([
+    supabaseClient.from('treino_exercicios').update({ ordem: ordemB }).eq('id', a.id),
+    supabaseClient.from('treino_exercicios').update({ ordem: ordemA }).eq('id', b.id)
+  ]);
+  await loadExerciciosDoTreino(treino);
+  renderMontar();
+}
+
+function renderExItem(treino, te) {
+  const idx = treino._exercicios.findIndex(x => x.id === te.id);
+  const item = el('<div class="ex-item"></div>');
+
+  const info = el('<div style="min-width:0;"></div>');
+  info.appendChild(el('<div class="ex-nome">' + (te.exercicios || {}).nome + '</div>'));
+  info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ⏱️ descanso ' + (te.intervalo_descanso || '—') + '</div>'));
+  if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
+  item.appendChild(info);
+
+  const actions = el('<div class="ex-actions"></div>');
+  const upBtn = el('<button type="button" class="ex-icon-btn" title="Mover pra cima">↑</button>');
+  const downBtn = el('<button type="button" class="ex-icon-btn" title="Mover pra baixo">↓</button>');
+  if (idx <= 0) upBtn.disabled = true;
+  if (idx >= treino._exercicios.length - 1) downBtn.disabled = true;
+  upBtn.addEventListener('click', () => moverExercicio(treino, te, -1));
+  downBtn.addEventListener('click', () => moverExercicio(treino, te, 1));
+  const editBtn = el('<button type="button" class="ex-icon-btn" title="Editar">✎</button>');
+  editBtn.addEventListener('click', () => { formMode = { type: 'edit', te }; renderMontar(); });
+  const removeBtn = el('<button type="button" class="ex-remove">remover</button>');
+  removeBtn.addEventListener('click', async () => {
+    await supabaseClient.from('treino_exercicios').delete().eq('id', te.id);
+    treino._exercicios = treino._exercicios.filter(x => x.id !== te.id);
+    renderMontar();
+  });
+  actions.appendChild(upBtn);
+  actions.appendChild(downBtn);
+  actions.appendChild(editBtn);
+  if (!te.grupo_id) {
+    const combinarBtn = el('<button type="button" class="ex-icon-btn" title="Combinar com outro exercício (bi-set/super-set)">⛓</button>');
+    combinarBtn.addEventListener('click', () => {
+      formMode = { type: 'combo', grupoId: crypto.randomUUID(), anchorTe: te };
+      renderMontar();
+    });
+    actions.appendChild(combinarBtn);
+  }
+  actions.appendChild(removeBtn);
+  item.appendChild(actions);
+
+  return item;
+}
+
 function renderAddExForm(treino) {
+  const mode = formMode || { type: 'add' };
+  const editTe = mode.type === 'edit' ? mode.te : null;
+  const isCombo = mode.type === 'combo';
+
   const form = el('<div class="add-ex-form"></div>');
+
+  if (isCombo) form.appendChild(el('<div class="sub" style="margin:0;color:#a855f7;">Adicionando exercício combinado…</div>'));
+  if (editTe) form.appendChild(el('<div class="sub" style="margin:0;color:#f97316;">Editando exercício…</div>'));
 
   const exListId = 'ex-lib-' + treino.id;
   const selWrap = el('<div><label>Exercício</label></div>');
-  const sel = el('<input list="' + exListId + '" placeholder="Digite pra buscar…" autocomplete="off">');
+  const nomeAtual = editTe ? (editTe.exercicios || {}).nome || '' : '';
+  const sel = el('<input list="' + exListId + '" placeholder="Digite pra buscar…" autocomplete="off" value="' + nomeAtual.replace(/"/g, '&quot;') + '">');
   const datalist = el('<datalist id="' + exListId + '"></datalist>');
   exerciciosLib.forEach(e => datalist.appendChild(el('<option value="' + e.nome.replace(/"/g, '&quot;') + '">')));
   selWrap.appendChild(sel);
@@ -398,7 +488,8 @@ function renderAddExForm(treino) {
 
   const seriesWrap = el('<div><label>Séries</label></div>');
   const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 3x12, 4x8-10, 3x15"></textarea>');
-  const seriesCount = el('<div class="counter">0/250</div>');
+  seriesTa.value = editTe ? (editTe.series || '') : '';
+  const seriesCount = el('<div class="counter">' + seriesTa.value.length + '/250</div>');
   seriesTa.addEventListener('input', () => seriesCount.textContent = seriesTa.value.length + '/250');
   seriesWrap.appendChild(seriesTa);
   seriesWrap.appendChild(seriesCount);
@@ -406,7 +497,8 @@ function renderAddExForm(treino) {
 
   const descansoWrap = el('<div><label>Intervalo de descanso</label></div>');
   const descansoTa = el('<textarea maxlength="50" placeholder="Ex: 60s, 1-2min, 90 segundos"></textarea>');
-  const descansoCount = el('<div class="counter">0/50</div>');
+  descansoTa.value = editTe ? (editTe.intervalo_descanso || '') : '';
+  const descansoCount = el('<div class="counter">' + descansoTa.value.length + '/50</div>');
   descansoTa.addEventListener('input', () => descansoCount.textContent = descansoTa.value.length + '/50');
   descansoWrap.appendChild(descansoTa);
   descansoWrap.appendChild(descansoCount);
@@ -422,13 +514,22 @@ function renderAddExForm(treino) {
     '<option value="rest_pause">Rest-pause</option>' +
     '</select>'
   );
+  tecSel.value = editTe ? (editTe.tecnica_avancada || 'nenhuma') : (isCombo ? 'bi_set' : 'nenhuma');
   tecWrap.appendChild(tecSel);
   form.appendChild(tecWrap);
+
+  const obsWrap = el('<div><label>Observações (opcional)</label></div>');
+  const obsTa = el('<textarea maxlength="250" placeholder="Ex: cuidado com o joelho, ajustar banco no nível 4…"></textarea>');
+  obsTa.value = editTe ? (editTe.observacoes || '') : '';
+  obsWrap.appendChild(obsTa);
+  form.appendChild(obsWrap);
 
   const erro = el('<div class="erro" style="display:none;"></div>');
   form.appendChild(erro);
 
-  const addBtn = el('<button type="button" class="btn btn-primary">Adicionar exercício</button>');
+  const btnRow = el('<div style="display:flex;gap:10px;"></div>');
+  const submitLabel = editTe ? 'Salvar alterações' : (isCombo ? 'Adicionar ao combo' : 'Adicionar exercício');
+  const addBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">' + submitLabel + '</button>');
   addBtn.addEventListener('click', async () => {
     const escolhido = exercicioSelecionado();
     if (!escolhido) {
@@ -438,25 +539,54 @@ function renderAddExForm(treino) {
     }
     erro.style.display = 'none';
     addBtn.disabled = true;
-    addBtn.textContent = 'Adicionando…';
-    const { error } = await supabaseClient.from('treino_exercicios').insert({
-      treino_id: treino.id, exercicio_id: escolhido.id,
-      ordem: (treino._exercicios || []).length,
+    addBtn.textContent = 'Salvando…';
+
+    const payload = {
+      exercicio_id: escolhido.id,
       series: seriesTa.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
-      tecnica_avancada: tecSel.value
-    });
+      tecnica_avancada: tecSel.value,
+      observacoes: obsTa.value.trim() || null
+    };
+
+    let error;
+    if (editTe) {
+      ({ error } = await supabaseClient.from('treino_exercicios').update(payload).eq('id', editTe.id));
+    } else if (isCombo) {
+      if (mode.anchorTe) {
+        const tecAnchor = mode.anchorTe.tecnica_avancada === 'nenhuma' ? tecSel.value : mode.anchorTe.tecnica_avancada;
+        await supabaseClient.from('treino_exercicios').update({ grupo_id: mode.grupoId, tecnica_avancada: tecAnchor }).eq('id', mode.anchorTe.id);
+      }
+      payload.treino_id = treino.id;
+      payload.ordem = (treino._exercicios || []).length;
+      payload.grupo_id = mode.grupoId;
+      ({ error } = await supabaseClient.from('treino_exercicios').insert(payload));
+    } else {
+      payload.treino_id = treino.id;
+      payload.ordem = (treino._exercicios || []).length;
+      ({ error } = await supabaseClient.from('treino_exercicios').insert(payload));
+    }
+
     if (error) {
       erro.textContent = error.message;
       erro.style.display = '';
       addBtn.disabled = false;
-      addBtn.textContent = 'Adicionar exercício';
+      addBtn.textContent = submitLabel;
       return;
     }
+    formMode = { type: 'add' };
     await loadExerciciosDoTreino(treino);
     renderMontar();
   });
-  form.appendChild(addBtn);
+  btnRow.appendChild(addBtn);
+
+  if (editTe || isCombo) {
+    const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+    cancelBtn.addEventListener('click', () => { formMode = { type: 'add' }; renderMontar(); });
+    btnRow.appendChild(cancelBtn);
+  }
+
+  form.appendChild(btnRow);
 
   return form;
 }
