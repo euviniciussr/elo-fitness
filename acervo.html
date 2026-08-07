@@ -308,10 +308,10 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <button sc-camel-on-click="{{ onExportarExercicios }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="color:#e5e9f0;border-color:#2a3444;">Exportar exercícios</button>
         </sc-if>
         <sc-if value="{{ isNutricao }}" hint-placeholder-val="{{ true }}">
-          <button sc-camel-on-click="{{ openDietaModal }}" style="display:flex;align-items:center;gap:8px;background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13px;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="background:rgba(249,115,22,.12);">
+          <a href="montar-dieta.html" style="display:flex;align-items:center;gap:8px;background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13px;font-weight:700;padding:10px 16px;border-radius:10px;cursor:pointer;text-decoration:none;" style-hover="background:rgba(249,115,22,.12);">
             <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="16" y1="11" x2="22" y2="11"></line></svg>
             Criar nova dieta
-          </button>
+          </a>
         </sc-if>
         <button sc-camel-on-click="{{ onBotaoNovoClick }}" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:11px 20px;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(249,115,22,.25);" style-hover="filter:brightness(1.08);">
           <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -325,51 +325,6 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     </sc-if>
     <sc-if value="{{ importAlimentosMsg }}" hint-placeholder-val="{{ 'x' }}">
       <div style="background:#10151f;border:1px solid {{ importAlimentosColor }};color:{{ importAlimentosColor }};border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;margin-bottom:16px;">{{ importAlimentosMsg }}</div>
-    </sc-if>
-
-    <sc-if value="{{ dietaModalOpen }}" hint-placeholder-val="{{ true }}">
-      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-            <div style="font-size:17px;font-weight:800;">{{ dietaModalTitulo }}</div>
-            <button sc-camel-on-click="{{ closeDietaModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Aluno (opcional — sem escolher, fica como modelo na sua biblioteca)</label>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <sc-for list="{{ alunoOptions }}" as="o" hint-placeholder-count="5">
-                  <button sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12px;font-weight:700;padding:8px 13px;border-radius:8px;cursor:pointer;">{{ o.label }}</button>
-                </sc-for>
-              </div>
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome da dieta</label>
-              <input value="{{ dietaNome }}" sc-camel-on-change="{{ onDietaNomeChange }}" placeholder="Ex: Hipertrofia 2.800 kcal" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Meta calórica / macros</label>
-              <input value="{{ dietaMeta }}" sc-camel-on-change="{{ onDietaMetaChange }}" placeholder="Ex: 2.800 kcal · 180g PTN" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Café da manhã</label>
-              <input value="{{ dietaCafe }}" sc-camel-on-change="{{ onDietaCafeChange }}" placeholder="Ex: Aveia + whey + banana" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Almoço</label>
-              <input value="{{ dietaAlmoco }}" sc-camel-on-change="{{ onDietaAlmocoChange }}" placeholder="Ex: Arroz + frango grelhado + salada" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Jantar</label>
-              <input value="{{ dietaJantar }}" sc-camel-on-change="{{ onDietaJantarChange }}" placeholder="Ex: Batata doce + peixe + legumes" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            </div>
-          </div>
-          <button sc-camel-on-click="{{ criarDieta }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ dietaSalvarLabel }}</button>
-          <sc-if value="{{ dietaAviso }}" hint-placeholder-val="{{ true }}">
-            <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Dê um nome pra dieta.</div>
-          </sc-if>
-        </div>
-      </div>
     </sc-if>
 
     <sc-if value="{{ alimentoModalOpen }}" hint-placeholder-val="{{ true }}">
@@ -572,7 +527,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <section style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:8px;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:10px 15px;flex:1 1 280px;min-width:0;">
         <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#4a5364" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-        <input placeholder="Buscar em todo o acervo — exercício, treino, alimento, cardápio…" style="flex:1;background:transparent;border:none;outline:none;color:#e5e9f0;font-family:inherit;font-size:13px;min-width:0;">
+        <input value="{{ buscaGeral }}" sc-camel-on-input="{{ onBuscaGeralChange }}" placeholder="Buscar em todo o acervo — exercício, treino, alimento, cardápio…" style="flex:1;background:transparent;border:none;outline:none;color:#e5e9f0;font-family:inherit;font-size:13px;min-width:0;">
         <span style="font-size:11px;color:#4a5364;border:1px solid #1e2633;padding:2px 7px;border-radius:5px;">⌘K</span>
       </div>
       <div style="display:flex;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:3px;">
@@ -593,12 +548,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="flex:1 1 600px;min-width:0;">
         <!-- ALIMENTOS: tabela de macros -->
         <sc-if value="{{ isAlimentos }}" hint-placeholder-val="{{ true }}">
-          <input value="{{ buscaAlimentos }}" sc-camel-on-change="{{ onBuscaAlimentosChange }}" placeholder="Buscar alimento pelo nome…" style="width:100%;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:14px;">
+          <input value="{{ buscaAlimentos }}" sc-camel-on-input="{{ onBuscaAlimentosChange }}" placeholder="Buscar alimento pelo nome…" style="width:100%;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:14px;">
           <sc-if value="{{ alimentosVazio }}" hint-placeholder-val="{{ true }}">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
               <div style="font-size:30px;margin-bottom:10px;">🍎</div>
-              <div style="font-size:14.5px;font-weight:800;">Nenhum alimento cadastrado</div>
-              <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Importe a base TACO ou cadastre um alimento pra começar.</div>
+              <div style="font-size:14.5px;font-weight:800;">Nenhum alimento próprio cadastrado</div>
+              <div style="font-size:12.5px;color:#66707e;margin-top:6px;">A Tabela TACO já vem pronta na busca ao montar uma dieta — use esta lista só pra alimentos extras seus (suplementos, produtos específicos etc).</div>
             </div>
           </sc-if>
           <sc-if value="{{ isAlimentos }}" hint-placeholder-val="{{ true }}">
@@ -721,8 +676,8 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 
 class Component extends DCLogic {
   state = {
-    categoria: 'treino', tipo: 'exercicios',
-    dietaModalOpen: false, dietaEditId: '', dietaAlunoKey: '', dietaNome: '', dietaMeta: '', dietaCafe: '', dietaAlmoco: '', dietaJantar: '', dietaAviso: false, dietaSalvarLabel: 'Criar dieta',
+    categoria: new URLSearchParams(window.location.search).get('categoria') || 'treino',
+    tipo: new URLSearchParams(window.location.search).get('tipo') || 'exercicios',
     dietasDb: [],
 
     exerciciosDb: [], treinosDb: [], clientesDb: [],
@@ -733,7 +688,7 @@ class Component extends DCLogic {
 
     importBusy: false, importResultMsg: '', importResultColor: '#4ade80',
 
-    alimentosDb: [], buscaAlimentos: '',
+    alimentosDb: [], buscaAlimentos: '', buscaGeral: '',
     alimentoModalOpen: false, alimentoEditId: '', alimentoNome: '', alimentoCategoria: '', alimentoKcal: '', alimentoPtn: '', alimentoCho: '', alimentoLip: '', alimentoErro: '', alimentoSalvarLabel: 'Adicionar alimento',
     importAlimentosBusy: false, importAlimentosMsg: '', importAlimentosColor: '#4ade80',
 
@@ -752,7 +707,7 @@ class Component extends DCLogic {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
     const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes] = await Promise.all([
-      supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
+      supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
       supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id),
       supabaseClient.from('dietas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
@@ -773,7 +728,7 @@ class Component extends DCLogic {
     else if (tipo === 'alimentos') this.openAlimentoModal();
     else if (tipo === 'formulas') this.openFormulaModal();
     else if (tipo === 'refeicoes') this.openRefeicaoModal();
-    else if (tipo === 'cardapios' || tipo === 'minhasDietas') this.openDietaModal();
+    else if (tipo === 'cardapios' || tipo === 'minhasDietas') window.location.href = 'montar-dieta.html';
   }
 
   onEditarExercicio(ex) {
@@ -963,52 +918,9 @@ class Component extends DCLogic {
       flag: cliente ? ('com ' + cliente) : 'modelo',
       flagColor: cliente ? '#3b82f6' : '#9aa4b2',
       flagBg: cliente ? 'rgba(59,130,246,.12)' : '#131a26',
-      onClick: () => this.openDietaModal(d),
+      onClick: () => { window.location.href = 'montar-dieta.html?dieta_id=' + d.id; },
       onDelete: (e) => { e.stopPropagation(); this.onDeleteDieta(d.id, d.nome); }
     };
-  }
-
-  openDietaModal(dieta) {
-    const refeicoes = (dieta && dieta.refeicoes) || [];
-    const acharItens = (nome) => (refeicoes.find(r => r.nome === nome) || {}).itens || '';
-    this.setState({
-      dietaModalOpen: true, dietaEditId: dieta ? dieta.id : '',
-      dietaAlunoKey: (dieta && dieta.cliente_id) || '',
-      dietaNome: dieta ? dieta.nome : '', dietaMeta: dieta ? (dieta.meta_calorica || '') : '',
-      dietaCafe: acharItens('Café da manhã'), dietaAlmoco: acharItens('Almoço'), dietaJantar: acharItens('Jantar'),
-      dietaAviso: false, dietaSalvarLabel: dieta ? 'Salvar alterações' : 'Criar dieta'
-    });
-  }
-
-  closeDietaModal() {
-    this.setState({ dietaModalOpen: false });
-  }
-
-  async onCriarDieta() {
-    if (!this.state.dietaNome.trim()) { this.setState({ dietaAviso: true }); return; }
-    const editando = !!this.state.dietaEditId;
-    this.setState({ dietaSalvarLabel: 'Salvando…', dietaAviso: false });
-    const refeicoes = [
-      ['Café da manhã', this.state.dietaCafe],
-      ['Almoço', this.state.dietaAlmoco],
-      ['Jantar', this.state.dietaJantar]
-    ].filter(([, itens]) => itens.trim()).map(([nome, itens]) => ({ nome, itens: itens.trim() }));
-    const payload = {
-      nome: this.state.dietaNome.trim(),
-      cliente_id: this.state.dietaAlunoKey || null,
-      meta_calorica: this.state.dietaMeta.trim() || null,
-      refeicoes
-    };
-    let error;
-    if (editando) {
-      ({ error } = await supabaseClient.from('dietas').update(payload).eq('id', this.state.dietaEditId));
-    } else {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      ({ error } = await supabaseClient.from('dietas').insert({ ...payload, trainer_id: user.id }));
-    }
-    if (error) { this.setState({ dietaSalvarLabel: editando ? 'Salvar alterações' : 'Criar dieta', dietaAviso: true }); return; }
-    this.setState({ dietaModalOpen: false, dietaEditId: '', categoria: 'nutricao', tipo: 'minhasDietas' });
-    this.loadAcervo();
   }
 
   async onDeleteDieta(id, nome) {
@@ -1247,8 +1159,11 @@ class Component extends DCLogic {
 
     const diasLabel = (dias) => (!dias || !dias.length) ? 'Sem dias definidos' : dias.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', ');
 
+    const buscaGeralNorm = this.state.buscaGeral.trim().toLowerCase();
+    const combinaBusca = (nome) => !buscaGeralNorm || (nome || '').toLowerCase().includes(buscaGeralNorm);
+
     const dados = {
-      exercicios: this.state.exerciciosDb.map(ex => ({
+      exercicios: this.state.exerciciosDb.filter(ex => combinaBusca(ex.nome)).map(ex => ({
         icon: '🏋️', iconBg: 'rgba(249,115,22,.12)',
         nome: ex.nome, meta: ex.categoria || 'Sem categoria',
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
@@ -1259,7 +1174,7 @@ class Component extends DCLogic {
       tecnicas: [],
       treinos: (() => {
         const clienteNome = (id) => (this.state.clientesDb.find(c => c.id === id) || {}).nome;
-        const standalone = this.state.treinosDb.filter(tr => !tr.split_id);
+        const standalone = this.state.treinosDb.filter(tr => !tr.split_id && combinaBusca(tr.nome));
         const splitIds = Array.from(new Set(this.state.treinosDb.filter(tr => tr.split_id).map(tr => tr.split_id)));
 
         const standaloneItens = standalone.map(tr => {
@@ -1275,7 +1190,11 @@ class Component extends DCLogic {
           };
         });
 
-        const splitItens = splitIds.map(splitId => {
+        const splitItens = splitIds.filter(splitId => {
+          const grupo = this.state.treinosDb.filter(tr => tr.split_id === splitId);
+          const letras = grupo.map(tr => tr.nome.replace(/^Treino\s*/i, '')).join('/');
+          return combinaBusca('Divisão ' + letras);
+        }).map(splitId => {
           const grupo = this.state.treinosDb.filter(tr => tr.split_id === splitId).sort((a, b) => a.ordem - b.ordem);
           const letras = grupo.map(tr => tr.nome.replace(/^Treino\s*/i, '')).join('/');
           const cliente = grupo[0].cliente_id ? clienteNome(grupo[0].cliente_id) : null;
@@ -1294,22 +1213,22 @@ class Component extends DCLogic {
       })(),
       predefinidos: [],
       cardio: [],
-      formulas: this.state.formulasDb.map(f => ({
+      formulas: this.state.formulasDb.filter(f => combinaBusca(f.nome)).map(f => ({
         icon: '⚖️', iconBg: 'rgba(59,130,246,.12)',
         nome: f.nome, meta: f.descricao || 'Sem descrição', tags: [], uso: '', border: '#1a2130',
         mostrarUsar: false, temAcoesExercicio: false,
         onDelete: (e) => { e.stopPropagation(); this.onDeleteFormula(f.id, f.nome); },
         onClick: () => this.openFormulaModal(f)
       })),
-      cardapios: this.state.dietasDb.filter(d => !d.cliente_id).map(d => this.dietaParaCard(d)),
-      refeicoes: this.state.refeicoesPredefinidasDb.map(r => ({
+      cardapios: this.state.dietasDb.filter(d => !d.cliente_id && combinaBusca(d.nome)).map(d => this.dietaParaCard(d)),
+      refeicoes: this.state.refeicoesPredefinidasDb.filter(r => combinaBusca(r.nome)).map(r => ({
         icon: '🥗', iconBg: 'rgba(74,222,128,.12)',
         nome: r.nome, meta: (r.itens || []).map(i => i.descricao).join(', ') || 'Sem itens', tags: [], uso: '', border: '#1a2130',
         mostrarUsar: false, temAcoesExercicio: false,
         onDelete: (e) => { e.stopPropagation(); this.onDeleteRefeicao(r.id, r.nome); },
         onClick: () => this.openRefeicaoModal(r)
       })),
-      minhasDietas: this.state.dietasDb.map(d => this.dietaParaCard(d))
+      minhasDietas: this.state.dietasDb.filter(d => combinaBusca(d.nome)).map(d => this.dietaParaCard(d))
     };
 
     const buscaNorm = this.state.buscaAlimentos.trim().toLowerCase();
@@ -1346,31 +1265,8 @@ class Component extends DCLogic {
       nutricao: 'Nada pra limpar ainda — seu acervo de nutrição está vazio.'
     };
 
-    const alunoChip = (id, nome) => ({
-      label: nome,
-      onClick: () => this.setState({ dietaAlunoKey: id }),
-      bg: this.state.dietaAlunoKey === id ? 'rgba(249,115,22,.12)' : '#0d1119',
-      border: this.state.dietaAlunoKey === id ? 'rgba(249,115,22,.35)' : '#1e2633',
-      color: this.state.dietaAlunoKey === id ? '#f97316' : '#9aa4b2'
-    });
-
     return {
       isNutricao: cat === 'nutricao',
-      dietaModalOpen: this.state.dietaModalOpen,
-      dietaModalTitulo: this.state.dietaEditId ? 'Editar dieta' : 'Criar nova dieta',
-      dietaSalvarLabel: this.state.dietaSalvarLabel,
-      dietaNome: this.state.dietaNome, dietaMeta: this.state.dietaMeta,
-      dietaCafe: this.state.dietaCafe, dietaAlmoco: this.state.dietaAlmoco, dietaJantar: this.state.dietaJantar,
-      dietaAviso: this.state.dietaAviso,
-      alunoOptions: [alunoChip('', 'Sem aluno (modelo)'), ...this.state.clientesDb.map(c => alunoChip(c.id, c.nome))],
-      openDietaModal: () => this.openDietaModal(),
-      closeDietaModal: () => this.closeDietaModal(),
-      onDietaNomeChange: (e) => this.setState({ dietaNome: e.target.value }),
-      onDietaMetaChange: (e) => this.setState({ dietaMeta: e.target.value }),
-      onDietaCafeChange: (e) => this.setState({ dietaCafe: e.target.value }),
-      onDietaAlmocoChange: (e) => this.setState({ dietaAlmoco: e.target.value }),
-      onDietaJantarChange: (e) => this.setState({ dietaJantar: e.target.value }),
-      criarDieta: () => this.onCriarDieta(),
 
       alimentoModalOpen: this.state.alimentoModalOpen,
       alimentoModalTitulo: this.state.alimentoEditId ? 'Editar alimento' : 'Novo alimento',
@@ -1389,7 +1285,9 @@ class Component extends DCLogic {
       onSalvarAlimento: () => this.onSalvarAlimento(),
       buscaAlimentos: this.state.buscaAlimentos,
       onBuscaAlimentosChange: (e) => this.onBuscaAlimentosChange(e),
-      importAlimentosLabel: this.state.importAlimentosBusy ? 'Importando…' : 'Importar base TACO',
+      buscaGeral: this.state.buscaGeral,
+      onBuscaGeralChange: (e) => this.setState({ buscaGeral: e.target.value }),
+      importAlimentosLabel: this.state.importAlimentosBusy ? 'Importando…' : 'Importar meus alimentos',
       onImportarAlimentosChange: (e) => this.onImportarAlimentosChange(e),
       importAlimentosMsg: this.state.importAlimentosMsg,
       importAlimentosColor: this.state.importAlimentosColor,

@@ -94,6 +94,7 @@ textarea{resize:vertical;min-height:52px;}
 const params = new URLSearchParams(window.location.search);
 const clienteIdParam = params.get('cliente_id');
 const clienteNomeParam = params.get('cliente_nome');
+const tabParam = params.get('tab');
 const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 const app = document.getElementById('app');
 
@@ -120,10 +121,7 @@ let agendamentosList = [];
 let anamnese = null;
 let fotosList = [];
 let feedbacksList = [];
-let activeTab = 'treino';
-
-let dietaFormOpen = false;
-let dietaEditId = '';
+let activeTab = tabParam || 'treino';
 
 let taDetalheId = '';
 let taDetalheExercicios = [];
@@ -399,9 +397,21 @@ function renderTaDetalhe(container) {
 
 // ---------- DIETA ----------
 
-function renderDietaTab(container) {
-  if (dietaFormOpen) { renderDietaForm(container); return; }
+function montarDietaUrl(dietaId) {
+  let url = 'montar-dieta.html?cliente_id=' + clienteIdParam;
+  if (clienteNomeParam) url += '&cliente_nome=' + encodeURIComponent(clienteNomeParam);
+  if (dietaId) url += '&dieta_id=' + dietaId;
+  return url;
+}
 
+function resumoRefeicao(r) {
+  if (r.opcoes && r.opcoes.length) {
+    return r.opcoes[0].itens.map(it => it.nome + ' (' + it.quantidade_g + 'g)').join(', ') || 'Sem alimentos ainda';
+  }
+  return r.itens || '';
+}
+
+function renderDietaTab(container) {
   if (!dietaList.length) {
     container.appendChild(el('<div class="empty">Nenhuma dieta atribuída a esse aluno ainda.</div>'));
   }
@@ -414,11 +424,10 @@ function renderDietaTab(container) {
       '</div>'
     );
     (d.refeicoes || []).forEach(r => {
-      row.appendChild(el('<div class="ex-item"><div class="ex-nome">' + r.nome + '</div><div class="ex-meta">' + r.itens + '</div></div>'));
+      row.appendChild(el('<div class="ex-item"><div class="ex-nome">' + r.nome + '</div><div class="ex-meta">' + resumoRefeicao(r) + '</div></div>'));
     });
     const actions = el('<div class="list-row-actions"></div>');
-    const editBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">Editar</button>');
-    editBtn.addEventListener('click', () => { dietaEditId = d.id; dietaFormOpen = true; render(); });
+    const editBtn = el('<a class="btn-ghost" style="color:#9aa4b2;" href="' + montarDietaUrl(d.id) + '">Editar</a>');
     const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
     delBtn.addEventListener('click', async () => {
       if (!window.confirm('Excluir a dieta "' + d.nome + '"?')) return;
@@ -431,65 +440,8 @@ function renderDietaTab(container) {
     container.appendChild(row);
   });
 
-  const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Criar dieta</button>');
-  novoBtn.addEventListener('click', () => { dietaEditId = ''; dietaFormOpen = true; render(); });
+  const novoBtn = el('<a class="btn btn-outline btn-block" style="margin-top:6px;display:block;text-align:center;" href="' + montarDietaUrl() + '">+ Criar dieta</a>');
   container.appendChild(novoBtn);
-}
-
-function renderDietaForm(container) {
-  const editando = dietaList.find(d => d.id === dietaEditId);
-  const acharItens = (nome) => ((editando && editando.refeicoes) || []).find(r => r.nome === nome)?.itens || '';
-  const box = el('<div class="form-box"></div>');
-
-  const nome = el('<input type="text" placeholder="Ex: Hipertrofia 2.800 kcal">');
-  nome.value = editando ? editando.nome : '';
-  box.appendChild(el('<label>Nome da dieta</label>')); box.appendChild(nome);
-
-  const meta = el('<input type="text" placeholder="Ex: 2.800 kcal · 180g PTN" style="margin-top:14px;">');
-  meta.value = editando ? (editando.meta_calorica || '') : '';
-  box.appendChild(el('<label style="margin-top:14px;">Meta calórica / macros</label>')); box.appendChild(meta);
-
-  const cafe = el('<input type="text" placeholder="Ex: Aveia + whey + banana" style="margin-top:14px;">');
-  cafe.value = acharItens('Café da manhã');
-  box.appendChild(el('<label style="margin-top:14px;">Café da manhã</label>')); box.appendChild(cafe);
-
-  const almoco = el('<input type="text" placeholder="Ex: Arroz + frango grelhado + salada" style="margin-top:14px;">');
-  almoco.value = acharItens('Almoço');
-  box.appendChild(el('<label style="margin-top:14px;">Almoço</label>')); box.appendChild(almoco);
-
-  const jantar = el('<input type="text" placeholder="Ex: Batata doce + peixe + legumes" style="margin-top:14px;">');
-  jantar.value = acharItens('Jantar');
-  box.appendChild(el('<label style="margin-top:14px;">Jantar</label>')); box.appendChild(jantar);
-
-  const erro = el('<div class="erro" style="display:none;"></div>');
-  box.appendChild(erro);
-
-  const actions = el('<div class="actions-row"></div>');
-  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
-  cancelBtn.addEventListener('click', () => { dietaFormOpen = false; render(); });
-  const salvarBtn = el('<button type="button" class="btn btn-primary">' + (editando ? 'Salvar alterações' : 'Criar dieta') + '</button>');
-  salvarBtn.addEventListener('click', async () => {
-    if (!nome.value.trim()) { erro.textContent = 'Digite o nome da dieta.'; erro.style.display = ''; return; }
-    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
-    const refeicoes = [
-      ['Café da manhã', cafe.value], ['Almoço', almoco.value], ['Jantar', jantar.value]
-    ].filter(([, itens]) => itens.trim()).map(([n, itens]) => ({ nome: n, itens: itens.trim() }));
-    const payload = { nome: nome.value.trim(), meta_calorica: meta.value.trim() || null, refeicoes };
-    let error;
-    if (editando) {
-      ({ error } = await supabaseClient.from('dietas').update(payload).eq('id', editando.id));
-    } else {
-      ({ error } = await supabaseClient.from('dietas').insert({ ...payload, trainer_id: userId, cliente_id: clienteIdParam }));
-    }
-    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = editando ? 'Salvar alterações' : 'Criar dieta'; return; }
-    const { data } = await supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false });
-    dietaList = data || [];
-    dietaFormOpen = false;
-    render();
-  });
-  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
-  box.appendChild(actions);
-  container.appendChild(box);
 }
 
 // ---------- CARDIO ----------
@@ -510,6 +462,7 @@ function renderCardioTab(container) {
           c.intensidade ? 'intensidade ' + c.intensidade : null
         ].filter(Boolean).join(' · ') + '</div>' +
         (c.observacoes ? '<div class="list-row-meta" style="margin-top:6px;">' + c.observacoes + '</div>' : '') +
+        (c.cardio_opcional ? '<div class="list-row-meta" style="margin-top:6px;color:#f97316;">Cardio opcional: ' + c.cardio_opcional + '</div>' : '') +
       '</div>'
     );
     const actions = el('<div class="list-row-actions"></div>');
@@ -554,9 +507,15 @@ function renderCardioForm(container) {
   intensidade.value = editando ? (editando.intensidade || '') : '';
   box.appendChild(el('<label style="margin-top:14px;">Intensidade</label>')); box.appendChild(intensidade);
 
-  const obs = el('<textarea rows="3" placeholder="Observações" style="margin-top:14px;"></textarea>');
+  const obsRow = el('<div class="field-row" style="margin-top:14px;"></div>');
+  const obs = el('<textarea rows="3" placeholder="Observações"></textarea>');
   obs.value = editando ? (editando.observacoes || '') : '';
-  box.appendChild(el('<label style="margin-top:14px;">Observações</label>')); box.appendChild(obs);
+  const colObs = el('<div></div>'); colObs.appendChild(el('<label>Observações</label>')); colObs.appendChild(obs);
+  const cardioOpcional = el('<textarea rows="3" placeholder="Ex: HIIT extra aos sábados, caminhada complementar…"></textarea>');
+  cardioOpcional.value = editando ? (editando.cardio_opcional || '') : '';
+  const colCardioOpcional = el('<div></div>'); colCardioOpcional.appendChild(el('<label>Cardio opcional</label>')); colCardioOpcional.appendChild(cardioOpcional);
+  obsRow.appendChild(colObs); obsRow.appendChild(colCardioOpcional);
+  box.appendChild(obsRow);
 
   const erro = el('<div class="erro" style="display:none;"></div>');
   box.appendChild(erro);
@@ -573,7 +532,8 @@ function renderCardioForm(container) {
       duracao_min: duracao.value ? Number(duracao.value) : null,
       frequencia_semanal: freq.value ? Number(freq.value) : null,
       intensidade: intensidade.value.trim() || null,
-      observacoes: obs.value.trim() || null
+      observacoes: obs.value.trim() || null,
+      cardio_opcional: cardioOpcional.value.trim() || null
     };
     let error;
     if (editando) {

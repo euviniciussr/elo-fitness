@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Montar dieta — Performa AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+textarea{font-family:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.voltar{font-size:13px;font-weight:700;color:#9aa4b2;}
+.voltar:hover{color:#e5e9f0;}
+
+.wrap{max-width:760px;margin:0 auto;padding:32px 20px 120px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
+
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-size:13.5px;outline:none;}
+.field{margin-bottom:14px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;}
+.chip{background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-size:12px;font-weight:700;padding:8px 13px;border-radius:8px;}
+.chip.sel{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:#f97316;}
+
+.meal{background:#0d1119;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;margin-bottom:14px;}
+.meal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.meal-nome{font-size:15px;font-weight:800;}
+.meal-remove{background:none;border:none;color:#66707e;font-size:12px;font-weight:700;}
+.meal-remove:hover{color:#f87171;}
+.add-meal-btn{width:100%;background:none;border:1px dashed #1e2633;color:#66707e;font-size:12.5px;font-weight:700;padding:12px;border-radius:12px;margin-bottom:14px;}
+.add-meal-btn:hover{border-color:rgba(249,115,22,.4);color:#f97316;}
+
+.opcao{background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:12px 14px;margin-bottom:10px;}
+.opcao:last-child{margin-bottom:0;}
+.opcao-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.opcao-nome{font-size:12.5px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.03em;}
+.opcao-remove{background:none;border:none;color:#4a5364;font-size:11.5px;font-weight:700;}
+.opcao-remove:hover{color:#f87171;}
+
+.item-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #1a2130;}
+.item-row:last-of-type{border-bottom:none;}
+.item-nome{font-size:13px;font-weight:600;}
+.item-qtd{font-size:11.5px;color:#66707e;margin-top:1px;}
+.item-macros{font-size:11px;color:#66707e;text-align:right;white-space:nowrap;}
+.item-remove{background:none;border:none;color:#4a5364;font-size:14px;padding:2px 6px;line-height:1;}
+.item-remove:hover{color:#f87171;}
+
+.add-item-row{display:flex;gap:8px;margin-top:10px;}
+.add-item-row input:first-child{flex:1;}
+.add-item-row input:nth-child(2){width:80px;flex:0 0 80px;}
+.add-item-btn{flex:0 0 auto;background:#1e2633;border:none;color:#e5e9f0;font-size:12.5px;font-weight:700;padding:0 14px;border-radius:8px;}
+.add-item-btn:hover{background:#2a3444;}
+
+.add-opcao-btn{background:none;border:none;color:#66707e;font-size:12px;font-weight:700;padding:4px 0;margin-top:6px;}
+.add-opcao-btn:hover{color:#f97316;}
+
+.totais-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed #2a3444;}
+.totais-row .t{font-size:11px;color:#66707e;}
+.totais-row .t b{color:#e5e9f0;font-size:12.5px;}
+
+.daily-card{position:sticky;bottom:16px;background:#10151f;border:1px solid rgba(249,115,22,.35);border-radius:14px;padding:16px 20px;margin-top:20px;box-shadow:0 8px 28px rgba(0,0,0,.35);}
+.daily-title{font-size:12px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;}
+.daily-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+.daily-num{font-size:17px;font-weight:800;}
+.daily-label{font-size:10.5px;color:#66707e;margin-top:2px;}
+
+.btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:#1e2633;color:#e5e9f0;}
+.btn:disabled{opacity:.55;cursor:default;}
+.btn-block{width:100%;}
+.erro{color:#f87171;font-size:12.5px;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">P</div>
+    <div class="logo-text">Performa <span>AI</span></div>
+  </div>
+  <a class="voltar" id="voltar-link" href="acervo.html">← Voltar pro acervo</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="app">Carregando…</div>
+</div>
+
+<datalist id="food-lib"></datalist>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const dietaIdParam = params.get('dieta_id');
+const clienteIdParam = params.get('cliente_id');
+const clienteNomeParam = params.get('cliente_nome');
+const app = document.getElementById('app');
+const foodDatalist = document.getElementById('food-lib');
+
+const MEAL_DEFS = [
+  { key: 'cafe', nome: 'Café da manhã', opcional: false },
+  { key: 'lanche_manha', nome: 'Lanche da manhã', opcional: true },
+  { key: 'almoco', nome: 'Almoço', opcional: false },
+  { key: 'lanche_tarde', nome: 'Lanche da tarde', opcional: true },
+  { key: 'jantar', nome: 'Jantar', opcional: false },
+  { key: 'ceia', nome: 'Ceia', opcional: true }
+];
+
+let userId = null;
+let clientes = [];
+let foodLib = []; // { nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g }
+let foodByNome = new Map();
+let dietaId = dietaIdParam || null;
+let dietaNome = '';
+let dietaMeta = '';
+let dietaClienteId = clienteIdParam || '';
+let refeicoes = {}; // key -> { nome, opcoes: [{ nome, itens: [] }] }
+let salvando = false;
+let erroMsg = '';
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function round1(n) { return Math.round(n * 10) / 10; }
+
+function novaRefeicao(nome) {
+  return { nome, opcoes: [{ nome: 'Opção 1', itens: [] }] };
+}
+
+async function init() {
+  if (clienteIdParam) {
+    const link = document.getElementById('voltar-link');
+    link.href = 'aluno-detalhe.html?cliente_id=' + clienteIdParam + (clienteNomeParam ? '&cliente_nome=' + encodeURIComponent(clienteNomeParam) : '');
+    link.textContent = '← Voltar pro aluno';
+  }
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  userId = user.id;
+
+  const [clsRes, alimentosRes, tacoRes] = await Promise.all([
+    supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome'),
+    supabaseClient.from('alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').eq('trainer_id', userId),
+    supabaseClient.from('taco_alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').order('nome')
+  ]);
+  clientes = clsRes.data || [];
+
+  foodLib = [...(alimentosRes.data || []), ...(tacoRes.data || [])];
+  foodByNome = new Map();
+  foodLib.forEach(f => { if (!foodByNome.has(f.nome)) foodByNome.set(f.nome, f); });
+  foodDatalist.innerHTML = '';
+  foodLib.forEach(f => foodDatalist.appendChild(el('<option value="' + f.nome.replace(/"/g, '&quot;') + '">')));
+
+  if (dietaId) {
+    const { data: dieta } = await supabaseClient.from('dietas').select('*').eq('id', dietaId).single();
+    if (dieta) {
+      dietaNome = dieta.nome || '';
+      dietaMeta = dieta.meta_calorica || '';
+      dietaClienteId = dieta.cliente_id || '';
+      (dieta.refeicoes || []).forEach(r => {
+        const def = MEAL_DEFS.find(m => m.nome === r.nome);
+        const key = def ? def.key : r.nome;
+        refeicoes[key] = { nome: r.nome, opcoes: (r.opcoes && r.opcoes.length) ? r.opcoes : [{ nome: 'Opção 1', itens: [] }] };
+      });
+    }
+  }
+
+  MEAL_DEFS.forEach(def => {
+    if (!def.opcional && !refeicoes[def.key]) refeicoes[def.key] = novaRefeicao(def.nome);
+  });
+
+  render();
+}
+
+function computeItem(food, grams) {
+  const f = grams / 100;
+  return {
+    nome: food.nome,
+    quantidade_g: grams,
+    kcal: round1((food.kcal || 0) * f),
+    proteina_g: round1((food.proteina_g || 0) * f),
+    carboidrato_g: round1((food.carboidrato_g || 0) * f),
+    gordura_g: round1((food.gordura_g || 0) * f),
+    fibra_g: round1((food.fibra_g || 0) * f)
+  };
+}
+
+function somaItens(itens) {
+  return itens.reduce((acc, it) => {
+    acc.kcal += it.kcal || 0; acc.proteina_g += it.proteina_g || 0;
+    acc.carboidrato_g += it.carboidrato_g || 0; acc.gordura_g += it.gordura_g || 0;
+    acc.fibra_g += it.fibra_g || 0;
+    return acc;
+  }, { kcal: 0, proteina_g: 0, carboidrato_g: 0, gordura_g: 0, fibra_g: 0 });
+}
+
+function somaDiaria() {
+  const total = { kcal: 0, proteina_g: 0, carboidrato_g: 0, gordura_g: 0, fibra_g: 0 };
+  MEAL_DEFS.forEach(def => {
+    const r = refeicoes[def.key];
+    if (!r || !r.opcoes.length) return;
+    const s = somaItens(r.opcoes[0].itens);
+    total.kcal += s.kcal; total.proteina_g += s.proteina_g;
+    total.carboidrato_g += s.carboidrato_g; total.gordura_g += s.gordura_g; total.fibra_g += s.fibra_g;
+  });
+  return total;
+}
+
+function render() {
+  app.innerHTML = '';
+
+  const h = el('<div></div>');
+  h.appendChild(el('<h1>' + (dietaId ? 'Editar dieta' : 'Criar nova dieta') + '</h1>'));
+  h.appendChild(el('<div class="sub">Pesquise alimentos da Tabela TACO (ou dos seus próprios cadastrados), informe a quantidade em gramas e os macros são calculados automaticamente.</div>'));
+  app.appendChild(h);
+
+  const fieldRow = el('<div class="field-row"></div>');
+  const nomeField = el('<div class="field"></div>');
+  nomeField.appendChild(el('<label>Nome da dieta</label>'));
+  const nomeInput = el('<input placeholder="Ex: Hipertrofia 2.800 kcal">');
+  nomeInput.value = dietaNome;
+  nomeInput.addEventListener('input', () => dietaNome = nomeInput.value);
+  nomeField.appendChild(nomeInput);
+  const metaField = el('<div class="field"></div>');
+  metaField.appendChild(el('<label>Meta calórica / macros (opcional)</label>'));
+  const metaInput = el('<input placeholder="Ex: 2.800 kcal · 180g PTN">');
+  metaInput.value = dietaMeta;
+  metaInput.addEventListener('input', () => dietaMeta = metaInput.value);
+  metaField.appendChild(metaInput);
+  fieldRow.appendChild(nomeField); fieldRow.appendChild(metaField);
+  app.appendChild(fieldRow);
+
+  if (!clienteIdParam) {
+    const alunoField = el('<div class="field"></div>');
+    alunoField.appendChild(el('<label>Aluno (opcional — sem escolher, fica como modelo na sua biblioteca)</label>'));
+    const chipRow = el('<div class="chip-row"></div>');
+    const semAluno = el('<button type="button" class="chip' + (!dietaClienteId ? ' sel' : '') + '">Sem aluno (modelo)</button>');
+    semAluno.addEventListener('click', () => { dietaClienteId = ''; render(); });
+    chipRow.appendChild(semAluno);
+    clientes.forEach(c => {
+      const chip = el('<button type="button" class="chip' + (dietaClienteId === c.id ? ' sel' : '') + '">' + c.nome + '</button>');
+      chip.addEventListener('click', () => { dietaClienteId = c.id; render(); });
+      chipRow.appendChild(chip);
+    });
+    alunoField.appendChild(chipRow);
+    app.appendChild(alunoField);
+  }
+
+  MEAL_DEFS.forEach(def => renderMeal(def));
+
+  const addMealRow = el('<div style="display:flex;gap:8px;flex-wrap:wrap;"></div>');
+  MEAL_DEFS.filter(def => def.opcional && !refeicoes[def.key]).forEach(def => {
+    const btn = el('<button type="button" class="add-meal-btn" style="flex:1;min-width:160px;">+ Adicionar ' + def.nome.toLowerCase() + '</button>');
+    btn.addEventListener('click', () => { refeicoes[def.key] = novaRefeicao(def.nome); render(); });
+    addMealRow.appendChild(btn);
+  });
+  if (addMealRow.children.length) app.appendChild(addMealRow);
+
+  const daily = somaDiaria();
+  const dailyCard = el('<div class="daily-card"></div>');
+  dailyCard.appendChild(el('<div class="daily-title">Total diário (opção 1 de cada refeição)</div>'));
+  const dailyGrid = el('<div class="daily-grid"></div>');
+  [
+    ['kcal', 'Kcal', daily.kcal],
+    ['ptn', 'Proteínas (g)', daily.proteina_g],
+    ['cho', 'Carboidratos (g)', daily.carboidrato_g],
+    ['lip', 'Gorduras (g)', daily.gordura_g],
+    ['fib', 'Fibras (g)', daily.fibra_g]
+  ].forEach(([k, label, val]) => {
+    const box = el('<div></div>');
+    box.appendChild(el('<div class="daily-num">' + round1(val) + '</div>'));
+    box.appendChild(el('<div class="daily-label">' + label + '</div>'));
+    dailyGrid.appendChild(box);
+  });
+  dailyCard.appendChild(dailyGrid);
+  app.appendChild(dailyCard);
+
+  if (erroMsg) app.appendChild(el('<div class="erro">' + erroMsg + '</div>'));
+
+  const salvarBtn = el('<button type="button" class="btn btn-primary btn-block" style="margin-top:16px;">' + (salvando ? 'Salvando…' : (dietaId ? 'Salvar alterações' : 'Criar dieta')) + '</button>');
+  salvarBtn.disabled = salvando;
+  salvarBtn.addEventListener('click', salvarDieta);
+  app.appendChild(salvarBtn);
+}
+
+function renderMeal(def) {
+  const r = refeicoes[def.key];
+  if (!r) return;
+
+  const meal = el('<div class="meal"></div>');
+  const head = el('<div class="meal-head"></div>');
+  head.appendChild(el('<div class="meal-nome">' + r.nome + '</div>'));
+  if (def.opcional) {
+    const rm = el('<button type="button" class="meal-remove">Remover refeição</button>');
+    rm.addEventListener('click', () => { delete refeicoes[def.key]; render(); });
+    head.appendChild(rm);
+  }
+  meal.appendChild(head);
+
+  r.opcoes.forEach((opcao, oi) => meal.appendChild(renderOpcao(def.key, r, opcao, oi)));
+
+  const addOpcaoBtn = el('<button type="button" class="add-opcao-btn">+ Adicionar opção (' + (r.opcoes.length + 1) + ')</button>');
+  addOpcaoBtn.addEventListener('click', () => {
+    r.opcoes.push({ nome: 'Opção ' + (r.opcoes.length + 1), itens: [] });
+    render();
+  });
+  meal.appendChild(addOpcaoBtn);
+
+  app.appendChild(meal);
+}
+
+function renderOpcao(mealKey, refeicao, opcao, oi) {
+  const box = el('<div class="opcao"></div>');
+  const head = el('<div class="opcao-head"></div>');
+  head.appendChild(el('<div class="opcao-nome">' + opcao.nome + '</div>'));
+  if (refeicao.opcoes.length > 1) {
+    const rm = el('<button type="button" class="opcao-remove">Remover</button>');
+    rm.addEventListener('click', () => { refeicao.opcoes.splice(oi, 1); render(); });
+    head.appendChild(rm);
+  }
+  box.appendChild(head);
+
+  opcao.itens.forEach((it, ii) => {
+    const row = el('<div class="item-row"></div>');
+    const left = el('<div></div>');
+    left.appendChild(el('<div class="item-nome">' + it.nome + '</div>'));
+    left.appendChild(el('<div class="item-qtd">' + it.quantidade_g + 'g</div>'));
+    row.appendChild(left);
+    const right = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
+    right.appendChild(el('<div class="item-macros">' + it.kcal + ' kcal · P ' + it.proteina_g + 'g · C ' + it.carboidrato_g + 'g · G ' + it.gordura_g + 'g · F ' + it.fibra_g + 'g</div>'));
+    const rmBtn = el('<button type="button" class="item-remove">×</button>');
+    rmBtn.addEventListener('click', () => { opcao.itens.splice(ii, 1); render(); });
+    right.appendChild(rmBtn);
+    row.appendChild(right);
+    box.appendChild(row);
+  });
+
+  const addRow = el('<div class="add-item-row"></div>');
+  const nomeInput = el('<input list="food-lib" placeholder="Buscar alimento…" autocomplete="off">');
+  const qtdInput = el('<input type="number" min="1" placeholder="g" value="100">');
+  const addBtn = el('<button type="button" class="add-item-btn">Adicionar</button>');
+  addBtn.addEventListener('click', () => {
+    const food = foodByNome.get(nomeInput.value.trim());
+    const grams = Number(qtdInput.value);
+    if (!food) { erroMsg = 'Escolha um alimento da lista de busca.'; render(); return; }
+    if (!grams || grams <= 0) { erroMsg = 'Informe a quantidade em gramas.'; render(); return; }
+    erroMsg = '';
+    opcao.itens.push(computeItem(food, grams));
+    render();
+  });
+  addRow.appendChild(nomeInput); addRow.appendChild(qtdInput); addRow.appendChild(addBtn);
+  box.appendChild(addRow);
+
+  if (opcao.itens.length) {
+    const s = somaItens(opcao.itens);
+    const totRow = el('<div class="totais-row"></div>');
+    [['Kcal', s.kcal], ['Proteínas', s.proteina_g], ['Carboidratos', s.carboidrato_g], ['Gorduras', s.gordura_g], ['Fibras', s.fibra_g]].forEach(([label, val]) => {
+      const t = el('<div class="t">' + label + ': <b>' + round1(val) + (label === 'Kcal' ? '' : 'g') + '</b></div>');
+      totRow.appendChild(t);
+    });
+    box.appendChild(totRow);
+  }
+
+  return box;
+}
+
+async function salvarDieta() {
+  if (!dietaNome.trim()) { erroMsg = 'Dê um nome pra dieta.'; render(); return; }
+  salvando = true; erroMsg = ''; render();
+
+  const refeicoesArr = MEAL_DEFS
+    .filter(def => refeicoes[def.key])
+    .map(def => ({
+      nome: refeicoes[def.key].nome,
+      opcoes: refeicoes[def.key].opcoes.map(o => ({ nome: o.nome, itens: o.itens }))
+    }));
+
+  const payload = {
+    nome: dietaNome.trim(),
+    cliente_id: dietaClienteId || null,
+    meta_calorica: dietaMeta.trim() || null,
+    refeicoes: refeicoesArr
+  };
+
+  let error, saved;
+  if (dietaId) {
+    ({ error } = await supabaseClient.from('dietas').update(payload).eq('id', dietaId));
+    saved = { id: dietaId };
+  } else {
+    ({ data: saved, error } = await supabaseClient.from('dietas').insert({ ...payload, trainer_id: userId }).select().single());
+  }
+
+  if (error) { salvando = false; erroMsg = error.message; render(); return; }
+
+  if (clienteIdParam) {
+    window.location.href = 'aluno-detalhe.html?cliente_id=' + clienteIdParam + (clienteNomeParam ? '&cliente_nome=' + encodeURIComponent(clienteNomeParam) : '') + '&tab=dieta';
+  } else {
+    window.location.href = 'acervo.html?categoria=nutricao&tipo=minhasDietas';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

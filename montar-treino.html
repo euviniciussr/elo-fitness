@@ -70,6 +70,7 @@ textarea{resize:vertical;min-height:52px;}
 .btn:disabled{opacity:.55;cursor:default;}
 
 .add-ex-form{background:#0d1119;border:1px dashed #1e2633;border-radius:12px;padding:18px;margin-top:14px;display:flex;flex-direction:column;gap:12px;}
+.add-ex-form-inline{border:1px solid rgba(249,115,22,.35);border-top:none;border-radius:0 0 12px 12px;margin-top:-10px;margin-bottom:10px;}
 
 .aplicar-box{margin-top:28px;padding-top:24px;border-top:1px solid #171d29;}
 .erro{color:#f87171;font-size:12.5px;margin-top:8px;}
@@ -545,6 +546,13 @@ function renderTreinoBody(treino) {
     const rendered = new Set();
     const TEC_LABEL = { super_set: 'Super set', drop_set: 'Drop set', bi_set: 'Bi-set', rest_pause: 'Rest-pause' };
 
+    const apendarComEdicaoInline = (container, m) => {
+      container.appendChild(renderExItem(treino, m));
+      if (formMode.type === 'edit' && formMode.te.id === m.id) {
+        container.appendChild(renderAddExForm(treino));
+      }
+    };
+
     list.forEach(te => {
       if (rendered.has(te.id)) return;
       if (te.grupo_id) {
@@ -552,7 +560,7 @@ function renderTreinoBody(treino) {
         membros.forEach(m => rendered.add(m.id));
         const combo = el('<div class="combo-box"></div>');
         combo.appendChild(el('<div class="combo-label">' + (TEC_LABEL[te.tecnica_avancada] || 'Combo') + '</div>'));
-        membros.forEach(m => combo.appendChild(renderExItem(treino, m)));
+        membros.forEach(m => apendarComEdicaoInline(combo, m));
         const combinarBtn = el('<button type="button" class="combinar-btn">+ adicionar exercício ao combo</button>');
         combinarBtn.addEventListener('click', () => {
           formMode = { type: 'combo', grupoId: te.grupo_id };
@@ -562,14 +570,14 @@ function renderTreinoBody(treino) {
         body.appendChild(combo);
       } else {
         rendered.add(te.id);
-        body.appendChild(renderExItem(treino, te));
+        apendarComEdicaoInline(body, te);
       }
     });
   }
 
   if (exerciciosLib.length === 0) {
     body.appendChild(el('<div class="sub" style="margin-top:10px;">Você ainda não tem exercícios no acervo. <a href="acervo.html">Crie um primeiro</a> e volte aqui.</div>'));
-  } else {
+  } else if (formMode.type !== 'edit') {
     body.appendChild(renderAddExForm(treino));
   }
 
@@ -597,7 +605,7 @@ function renderExItem(treino, te) {
 
   const info = el('<div style="min-width:0;"></div>');
   info.appendChild(el('<div class="ex-nome">' + (te.exercicios || {}).nome + '</div>'));
-  info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ⏱️ descanso ' + (te.intervalo_descanso || '—') + '</div>'));
+  info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + (te.carga ? ' · 🏋️ ' + te.carga : '') + ' · ⏱️ descanso ' + (te.intervalo_descanso || '—') + '</div>'));
   if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
   item.appendChild(info);
 
@@ -638,7 +646,7 @@ function renderAddExForm(treino) {
   const editTe = mode.type === 'edit' ? mode.te : null;
   const isCombo = mode.type === 'combo';
 
-  const form = el('<div class="add-ex-form"></div>');
+  const form = el('<div class="add-ex-form' + (editTe ? ' add-ex-form-inline' : '') + '"></div>');
 
   if (isCombo) form.appendChild(el('<div class="sub" style="margin:0;color:#a855f7;">Adicionando exercício combinado…</div>'));
   if (editTe) form.appendChild(el('<div class="sub" style="margin:0;color:#f97316;">Editando exercício…</div>'));
@@ -665,6 +673,12 @@ function renderAddExForm(treino) {
   seriesWrap.appendChild(seriesTa);
   seriesWrap.appendChild(seriesCount);
   form.appendChild(seriesWrap);
+
+  const cargaWrap = el('<div><label>Carga (opcional)</label></div>');
+  const cargaInput = el('<input maxlength="60" placeholder="Ex: 20kg, barra livre, progressivo">');
+  cargaInput.value = editTe ? (editTe.carga || '') : '';
+  cargaWrap.appendChild(cargaInput);
+  form.appendChild(cargaWrap);
 
   const descansoWrap = el('<div><label>Intervalo de descanso</label></div>');
   const descansoTa = el('<textarea maxlength="50" placeholder="Ex: 60s, 1-2min, 90 segundos"></textarea>');
@@ -715,6 +729,7 @@ function renderAddExForm(treino) {
     const payload = {
       exercicio_id: escolhido.id,
       series: seriesTa.value.trim() || null,
+      carga: cargaInput.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
       tecnica_avancada: tecSel.value,
       observacoes: obsTa.value.trim() || null
