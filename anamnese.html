@@ -285,6 +285,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <sc-if value="{{ mostrarAviso }}" hint-placeholder-val="{{ true }}">
           <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Preencha seu nome e as 3 fotos pra conseguir enviar.</div>
         </sc-if>
+        <div style="{{ erroDisplay }}font-size:12px;color:#f87171;margin-top:10px;text-align:center;">{{ erro }}</div>
       </div>
     </sc-if>
   </div>
@@ -293,16 +294,80 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:480},&quot;trainerNome&quot;:{&quot;editor&quot;:&quot;string&quot;,&quot;default&quot;:&quot;Marcos Costa&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Conteúdo&quot;}}">
 class Component extends DCLogic {
   state = {
-    enviado: false,
+    enviado: false, enviando: false, erro: '',
+    clienteId: '', trainerId: '', trainerNome: '',
     nome: '', idade: '', altura: '', peso: '',
     objetivo: 'emagrecimento', nivel: 'iniciante',
     lesoes: '', medicamentos: '', restricoes: '',
-    fotoFrente: null, fotoLado: null, fotoCostas: null,
+    fotoFrente: null, fotoFrenteFile: null,
+    fotoLado: null, fotoLadoFile: null,
+    fotoCostas: null, fotoCostasFile: null,
     tentouEnviar: false
   };
 
+  async componentDidMount() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    const { data: cliente } = await supabaseClient
+      .from('clientes')
+      .select('id, nome, trainer_id, trainers(nome)')
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+    if (!cliente) return;
+    this.setState({
+      clienteId: cliente.id, trainerId: cliente.trainer_id,
+      trainerNome: (cliente.trainers || {}).nome || this.props.trainerNome || '',
+      nome: cliente.nome || ''
+    });
+  }
+
+  async onEnviar() {
+    const completo = !!(this.state.nome.trim() && this.state.fotoFrenteFile && this.state.fotoLadoFile && this.state.fotoCostasFile);
+    if (!completo) { this.setState({ tentouEnviar: true }); return; }
+    this.setState({ enviando: true, erro: '' });
+
+    const upload = async (file, tipo) => {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = this.state.clienteId + '/' + tipo + '-' + Date.now() + '.' + ext;
+      const { error: upErr } = await supabaseClient.storage.from('fotos-evolucao').upload(path, file);
+      if (upErr) throw upErr;
+      return path;
+    };
+
+    try {
+      const [pathFrente, pathLado, pathCostas] = await Promise.all([
+        upload(this.state.fotoFrenteFile, 'inicial-frente'),
+        upload(this.state.fotoLadoFile, 'inicial-lado'),
+        upload(this.state.fotoCostasFile, 'inicial-costas')
+      ]);
+
+      await supabaseClient.from('fotos_evolucao').insert([
+        { cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: pathFrente, tipo: 'inicial' },
+        { cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: pathLado, tipo: 'inicial' },
+        { cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: pathCostas, tipo: 'inicial' }
+      ]);
+
+      const { error: anamneseErr } = await supabaseClient.from('anamnese_respostas').upsert({
+        cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
+        objetivo: this.state.objetivo, nivel: this.state.nivel,
+        idade: this.state.idade ? Number(this.state.idade) : null,
+        altura_cm: this.state.altura ? Number(this.state.altura) : null,
+        peso_kg: this.state.peso ? Number(this.state.peso) : null,
+        lesoes: this.state.lesoes.trim() || null,
+        medicamentos: this.state.medicamentos.trim() || null,
+        restricoes: this.state.restricoes.trim() || null,
+        respondido_em: new Date().toISOString()
+      }, { onConflict: 'cliente_id' });
+      if (anamneseErr) throw anamneseErr;
+
+      this.setState({ enviando: false, enviado: true });
+    } catch (err) {
+      this.setState({ enviando: false, erro: 'Não foi possível enviar. Tente novamente. (' + (err.message || 'erro desconhecido') + ')' });
+    }
+  }
+
   renderVals() {
-    const trainerNome = this.props.trainerNome || 'Marcos Costa';
+    const trainerNome = this.state.trainerNome || this.props.trainerNome || 'seu treinador';
     const chip = (stateKey, key, label) => ({
       label,
       onClick: () => this.setState({ [stateKey]: key }),
@@ -318,7 +383,7 @@ class Component extends DCLogic {
       border: this.state[key] ? 'rgba(74,222,128,.4)' : (this.state.tentouEnviar && !this.state[key] ? 'rgba(248,113,113,.5)' : '#1e2633'),
       onChange: (e) => {
         const file = e.target.files && e.target.files[0];
-        if (file) this.setState({ [key]: URL.createObjectURL(file) });
+        if (file) this.setState({ [key]: URL.createObjectURL(file), [key + 'File']: file });
       }
     });
 
@@ -355,12 +420,10 @@ class Component extends DCLogic {
       ],
       btnBg: completo ? 'linear-gradient(135deg,#f97316,#ea580c)' : '#131a26',
       btnColor: completo ? '#fff' : '#66707e',
-      btnLabel: 'Enviar anamnese e fotos',
+      btnLabel: this.state.enviando ? 'Enviando…' : 'Enviar anamnese e fotos',
       mostrarAviso: this.state.tentouEnviar && !completo,
-      enviar: () => {
-        if (!completo) { this.setState({ tentouEnviar: true }); return; }
-        this.setState({ enviado: true });
-      }
+      erro: this.state.erro, erroDisplay: this.state.erro ? '' : 'display:none;',
+      enviar: () => this.onEnviar()
     };
   }
 }

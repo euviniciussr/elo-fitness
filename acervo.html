@@ -294,7 +294,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Tudo que você monta uma vez e reaproveita: exercícios, treinos, alimentos e cardápios</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="color:#e5e9f0;border-color:#2a3444;">Importar base TACO</button>
+        <sc-if value="{{ isAlimentos }}" hint-placeholder-val="{{ true }}">
+          <div style="position:relative;display:inline-flex;">
+            <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="color:#e5e9f0;border-color:#2a3444;">{{ importAlimentosLabel }}</button>
+            <input type="file" accept=".xlsx,.xls,.csv" sc-camel-on-change="{{ onImportarAlimentosChange }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;">
+          </div>
+        </sc-if>
         <sc-if value="{{ isExercicios }}" hint-placeholder-val="{{ true }}">
           <div style="position:relative;display:inline-flex;">
             <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="color:#e5e9f0;border-color:#2a3444;">{{ importLabel }}</button>
@@ -318,17 +323,20 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <sc-if value="{{ importResultMsg }}" hint-placeholder-val="{{ 'x' }}">
       <div style="background:#10151f;border:1px solid {{ importResultColor }};color:{{ importResultColor }};border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;margin-bottom:16px;">{{ importResultMsg }}</div>
     </sc-if>
+    <sc-if value="{{ importAlimentosMsg }}" hint-placeholder-val="{{ 'x' }}">
+      <div style="background:#10151f;border:1px solid {{ importAlimentosColor }};color:{{ importAlimentosColor }};border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;margin-bottom:16px;">{{ importAlimentosMsg }}</div>
+    </sc-if>
 
     <sc-if value="{{ dietaModalOpen }}" hint-placeholder-val="{{ true }}">
       <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
         <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-            <div style="font-size:17px;font-weight:800;">Criar nova dieta</div>
+            <div style="font-size:17px;font-weight:800;">{{ dietaModalTitulo }}</div>
             <button sc-camel-on-click="{{ closeDietaModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:14px;">
             <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Aluno</label>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Aluno (opcional — sem escolher, fica como modelo na sua biblioteca)</label>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <sc-for list="{{ alunoOptions }}" as="o" hint-placeholder-count="5">
                   <button sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12px;font-weight:700;padding:8px 13px;border-radius:8px;cursor:pointer;">{{ o.label }}</button>
@@ -356,10 +364,99 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <input value="{{ dietaJantar }}" sc-camel-on-change="{{ onDietaJantarChange }}" placeholder="Ex: Batata doce + peixe + legumes" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
             </div>
           </div>
-          <button sc-camel-on-click="{{ criarDieta }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">Criar dieta</button>
+          <button sc-camel-on-click="{{ criarDieta }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ dietaSalvarLabel }}</button>
           <sc-if value="{{ dietaAviso }}" hint-placeholder-val="{{ true }}">
-            <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Escolha o aluno e dê um nome pra dieta.</div>
+            <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Dê um nome pra dieta.</div>
           </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ alimentoModalOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:800;">{{ alimentoModalTitulo }}</div>
+            <button sc-camel-on-click="{{ closeAlimentoModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
+              <input value="{{ alimentoNome }}" sc-camel-on-change="{{ onAlimentoNomeChange }}" placeholder="Ex: Arroz branco cozido" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Categoria</label>
+              <input value="{{ alimentoCategoria }}" sc-camel-on-change="{{ onAlimentoCategoriaChange }}" placeholder="Ex: Cereais" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Kcal (100g)</label>
+                <input type="number" value="{{ alimentoKcal }}" sc-camel-on-change="{{ onAlimentoKcalChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Proteína (g)</label>
+                <input type="number" value="{{ alimentoPtn }}" sc-camel-on-change="{{ onAlimentoPtnChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <div style="flex:1;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Carboidrato (g)</label>
+                <input type="number" value="{{ alimentoCho }}" sc-camel-on-change="{{ onAlimentoChoChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              </div>
+              <div style="flex:1;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Gordura (g)</label>
+                <input type="number" value="{{ alimentoLip }}" sc-camel-on-change="{{ onAlimentoLipChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              </div>
+            </div>
+          </div>
+          <div style="{{ alimentoErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ alimentoErro }}</div>
+          <button sc-camel-on-click="{{ onSalvarAlimento }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ alimentoSalvarLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ formulaModalOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:440px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:800;">{{ formulaModalTitulo }}</div>
+            <button sc-camel-on-click="{{ closeFormulaModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
+              <input value="{{ formulaNome }}" sc-camel-on-change="{{ onFormulaNomeChange }}" placeholder="Ex: Harris-Benedict" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Descrição</label>
+              <textarea rows="3" value="{{ formulaDescricao }}" sc-camel-on-change="{{ onFormulaDescricaoChange }}" placeholder="Como calcular / quando usar" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="{{ formulaErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ formulaErro }}</div>
+          <button sc-camel-on-click="{{ onSalvarFormula }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ formulaSalvarLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ refeicaoModalOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:440px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:800;">{{ refeicaoModalTitulo }}</div>
+            <button sc-camel-on-click="{{ closeRefeicaoModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
+              <input value="{{ refeicaoNome }}" sc-camel-on-change="{{ onRefeicaoNomeChange }}" placeholder="Ex: Café pré-treino" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Itens (separados por vírgula)</label>
+              <textarea rows="3" value="{{ refeicaoDescricao }}" sc-camel-on-change="{{ onRefeicaoDescricaoChange }}" placeholder="Ex: Aveia, whey, banana" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="{{ refeicaoErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ refeicaoErro }}</div>
+          <button sc-camel-on-click="{{ onSalvarRefeicao }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ refeicaoSalvarLabel }}</button>
         </div>
       </div>
     </sc-if>
@@ -369,7 +466,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
         <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:440px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-            <div style="font-size:17px;font-weight:800;">Novo exercício</div>
+            <div style="font-size:17px;font-weight:800;">{{ exModalTitulo }}</div>
             <button sc-camel-on-click="{{ closeExModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:14px;">
@@ -496,6 +593,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="flex:1 1 600px;min-width:0;">
         <!-- ALIMENTOS: tabela de macros -->
         <sc-if value="{{ isAlimentos }}" hint-placeholder-val="{{ true }}">
+          <input value="{{ buscaAlimentos }}" sc-camel-on-change="{{ onBuscaAlimentosChange }}" placeholder="Buscar alimento pelo nome…" style="width:100%;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:14px;">
           <sc-if value="{{ alimentosVazio }}" hint-placeholder-val="{{ true }}">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
               <div style="font-size:30px;margin-bottom:10px;">🍎</div>
@@ -559,8 +657,18 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                   </sc-for>
                 </div>
                 <div style="border-top:1px solid #171d29;padding-top:11px;display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:11.5px;color:#66707e;">{{ i.uso }}</span>
-                  <span style="font-size:11.5px;font-weight:700;color:#f97316;">usar ›</span>
+                  <sc-if value="{{ i.mostrarUsar }}" hint-placeholder-val="{{ true }}">
+                    <span style="font-size:11.5px;color:#66707e;">{{ i.uso }}</span>
+                    <span style="font-size:11.5px;font-weight:700;color:#f97316;">usar ›</span>
+                  </sc-if>
+                  <sc-if value="{{ i.temAcoesExercicio }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:16px;">
+                      <sc-if value="{{ i.temVideo }}" hint-placeholder-val="{{ false }}">
+                        <span sc-camel-on-click="{{ i.onVerVideo }}" style="font-size:11.5px;font-weight:700;color:#9aa4b2;cursor:pointer;">▶ Ver vídeo</span>
+                      </sc-if>
+                      <span sc-camel-on-click="{{ i.onEditar }}" style="font-size:11.5px;font-weight:700;color:#f97316;cursor:pointer;">✎ Editar</span>
+                    </div>
+                  </sc-if>
                 </div>
               </div>
             </sc-for>
@@ -614,16 +722,26 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 class Component extends DCLogic {
   state = {
     categoria: 'treino', tipo: 'exercicios',
-    dietaModalOpen: false, dietaAlunoKey: '', dietaNome: '', dietaMeta: '', dietaCafe: '', dietaAlmoco: '', dietaJantar: '', dietaAviso: false,
-    dietasCriadas: [],
+    dietaModalOpen: false, dietaEditId: '', dietaAlunoKey: '', dietaNome: '', dietaMeta: '', dietaCafe: '', dietaAlmoco: '', dietaJantar: '', dietaAviso: false, dietaSalvarLabel: 'Criar dieta',
+    dietasDb: [],
 
     exerciciosDb: [], treinosDb: [], clientesDb: [],
-    exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício',
+    exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exEditId: '',
 
     treinoDetalheId: '', treinoDetalheExercicios: [],
     addExOpen: false, addExExercicioId: '', addExSeries: '', addExDescanso: '', addExTecnica: 'nenhuma', addExErro: '', salvarExLabel: 'Adicionar',
 
-    importBusy: false, importResultMsg: '', importResultColor: '#4ade80'
+    importBusy: false, importResultMsg: '', importResultColor: '#4ade80',
+
+    alimentosDb: [], buscaAlimentos: '',
+    alimentoModalOpen: false, alimentoEditId: '', alimentoNome: '', alimentoCategoria: '', alimentoKcal: '', alimentoPtn: '', alimentoCho: '', alimentoLip: '', alimentoErro: '', alimentoSalvarLabel: 'Adicionar alimento',
+    importAlimentosBusy: false, importAlimentosMsg: '', importAlimentosColor: '#4ade80',
+
+    formulasDb: [],
+    formulaModalOpen: false, formulaEditId: '', formulaNome: '', formulaDescricao: '', formulaErro: '', formulaSalvarLabel: 'Criar fórmula',
+
+    refeicoesPredefinidasDb: [],
+    refeicaoModalOpen: false, refeicaoEditId: '', refeicaoNome: '', refeicaoDescricao: '', refeicaoErro: '', refeicaoSalvarLabel: 'Criar refeição'
   };
 
   componentDidMount() {
@@ -633,29 +751,58 @@ class Component extends DCLogic {
   async loadAcervo() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const [exRes, trRes, clRes] = await Promise.all([
+    const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes] = await Promise.all([
       supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id)
+      supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id),
+      supabaseClient.from('dietas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
+      supabaseClient.from('alimentos').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
+      supabaseClient.from('formulas_alimentares').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
+      supabaseClient.from('refeicoes_predefinidas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false })
     ]);
-    this.setState({ exerciciosDb: exRes.data || [], treinosDb: trRes.data || [], clientesDb: clRes.data || [] });
+    this.setState({
+      exerciciosDb: exRes.data || [], treinosDb: trRes.data || [], clientesDb: clRes.data || [],
+      dietasDb: dietasRes.data || [], alimentosDb: alimentosRes.data || [],
+      formulasDb: formulasRes.data || [], refeicoesPredefinidasDb: refeicoesRes.data || []
+    });
   }
 
   onBotaoNovoClick(tipo) {
-    if (tipo === 'exercicios') this.setState({ exModalOpen: true, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '' });
+    if (tipo === 'exercicios') this.setState({ exModalOpen: true, exEditId: '', exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício' });
     else if (tipo === 'treinos') window.location.href = 'montar-treino.html';
+    else if (tipo === 'alimentos') this.openAlimentoModal();
+    else if (tipo === 'formulas') this.openFormulaModal();
+    else if (tipo === 'refeicoes') this.openRefeicaoModal();
+    else if (tipo === 'cardapios' || tipo === 'minhasDietas') this.openDietaModal();
+  }
+
+  onEditarExercicio(ex) {
+    this.setState({
+      exModalOpen: true, exEditId: ex.id,
+      exNome: ex.nome, exCategoria: ex.categoria || '', exVideoUrl: ex.video_url || '',
+      exErro: '', criarExLabel: 'Salvar alterações'
+    });
+  }
+
+  onVerVideo(url) {
+    window.open(url, '_blank', 'noopener');
   }
 
   async onCriarExercicio() {
     const nome = this.state.exNome.trim();
     if (!nome) { this.setState({ exErro: 'Digite o nome do exercício.' }); return; }
-    this.setState({ criarExLabel: 'Criando…', exErro: '' });
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error } = await supabaseClient.from('exercicios').insert({
-      trainer_id: user.id, nome, categoria: this.state.exCategoria.trim() || null, video_url: this.state.exVideoUrl.trim() || null
-    });
-    if (error) { this.setState({ criarExLabel: 'Criar exercício', exErro: error.message }); return; }
-    this.setState({ exModalOpen: false, criarExLabel: 'Criar exercício' });
+    const editando = !!this.state.exEditId;
+    this.setState({ criarExLabel: editando ? 'Salvando…' : 'Criando…', exErro: '' });
+    const payload = { nome, categoria: this.state.exCategoria.trim() || null, video_url: this.state.exVideoUrl.trim() || null };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('exercicios').update(payload).eq('id', this.state.exEditId));
+    } else {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      ({ error } = await supabaseClient.from('exercicios').insert({ trainer_id: user.id, ...payload }));
+    }
+    if (error) { this.setState({ criarExLabel: editando ? 'Salvar alterações' : 'Criar exercício', exErro: error.message }); return; }
+    this.setState({ exModalOpen: false, exEditId: '', criarExLabel: 'Criar exercício' });
     this.loadAcervo();
   }
 
@@ -806,6 +953,275 @@ class Component extends DCLogic {
     this.openTreinoDetalhe(this.state.treinoDetalheId);
   }
 
+  dietaParaCard(d) {
+    const cliente = d.cliente_id ? (this.state.clientesDb.find(c => c.id === d.cliente_id) || {}).nome : null;
+    return {
+      icon: '🍽️', iconBg: 'rgba(74,222,128,.12)',
+      nome: d.nome, meta: d.meta_calorica || 'Meta calórica não definida',
+      tags: [(d.refeicoes || []).length + ' refeições'], uso: '', border: '#1a2130',
+      mostrarUsar: false, temAcoesExercicio: false,
+      flag: cliente ? ('com ' + cliente) : 'modelo',
+      flagColor: cliente ? '#3b82f6' : '#9aa4b2',
+      flagBg: cliente ? 'rgba(59,130,246,.12)' : '#131a26',
+      onClick: () => this.openDietaModal(d),
+      onDelete: (e) => { e.stopPropagation(); this.onDeleteDieta(d.id, d.nome); }
+    };
+  }
+
+  openDietaModal(dieta) {
+    const refeicoes = (dieta && dieta.refeicoes) || [];
+    const acharItens = (nome) => (refeicoes.find(r => r.nome === nome) || {}).itens || '';
+    this.setState({
+      dietaModalOpen: true, dietaEditId: dieta ? dieta.id : '',
+      dietaAlunoKey: (dieta && dieta.cliente_id) || '',
+      dietaNome: dieta ? dieta.nome : '', dietaMeta: dieta ? (dieta.meta_calorica || '') : '',
+      dietaCafe: acharItens('Café da manhã'), dietaAlmoco: acharItens('Almoço'), dietaJantar: acharItens('Jantar'),
+      dietaAviso: false, dietaSalvarLabel: dieta ? 'Salvar alterações' : 'Criar dieta'
+    });
+  }
+
+  closeDietaModal() {
+    this.setState({ dietaModalOpen: false });
+  }
+
+  async onCriarDieta() {
+    if (!this.state.dietaNome.trim()) { this.setState({ dietaAviso: true }); return; }
+    const editando = !!this.state.dietaEditId;
+    this.setState({ dietaSalvarLabel: 'Salvando…', dietaAviso: false });
+    const refeicoes = [
+      ['Café da manhã', this.state.dietaCafe],
+      ['Almoço', this.state.dietaAlmoco],
+      ['Jantar', this.state.dietaJantar]
+    ].filter(([, itens]) => itens.trim()).map(([nome, itens]) => ({ nome, itens: itens.trim() }));
+    const payload = {
+      nome: this.state.dietaNome.trim(),
+      cliente_id: this.state.dietaAlunoKey || null,
+      meta_calorica: this.state.dietaMeta.trim() || null,
+      refeicoes
+    };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('dietas').update(payload).eq('id', this.state.dietaEditId));
+    } else {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      ({ error } = await supabaseClient.from('dietas').insert({ ...payload, trainer_id: user.id }));
+    }
+    if (error) { this.setState({ dietaSalvarLabel: editando ? 'Salvar alterações' : 'Criar dieta', dietaAviso: true }); return; }
+    this.setState({ dietaModalOpen: false, dietaEditId: '', categoria: 'nutricao', tipo: 'minhasDietas' });
+    this.loadAcervo();
+  }
+
+  async onDeleteDieta(id, nome) {
+    if (!window.confirm('Excluir "' + nome + '"?')) return;
+    await supabaseClient.from('dietas').delete().eq('id', id);
+    this.loadAcervo();
+  }
+
+  openAlimentoModal(alimento) {
+    this.setState({
+      alimentoModalOpen: true, alimentoEditId: alimento ? alimento.id : '',
+      alimentoNome: alimento ? alimento.nome : '', alimentoCategoria: alimento ? (alimento.categoria || '') : '',
+      alimentoKcal: alimento && alimento.kcal != null ? String(alimento.kcal) : '',
+      alimentoPtn: alimento && alimento.proteina_g != null ? String(alimento.proteina_g) : '',
+      alimentoCho: alimento && alimento.carboidrato_g != null ? String(alimento.carboidrato_g) : '',
+      alimentoLip: alimento && alimento.gordura_g != null ? String(alimento.gordura_g) : '',
+      alimentoErro: '', alimentoSalvarLabel: alimento ? 'Salvar alterações' : 'Adicionar alimento'
+    });
+  }
+
+  closeAlimentoModal() {
+    this.setState({ alimentoModalOpen: false });
+  }
+
+  async onSalvarAlimento() {
+    const nome = this.state.alimentoNome.trim();
+    if (!nome) { this.setState({ alimentoErro: 'Digite o nome do alimento.' }); return; }
+    const editando = !!this.state.alimentoEditId;
+    this.setState({ alimentoSalvarLabel: 'Salvando…', alimentoErro: '' });
+    const num = (v) => v.trim() === '' ? null : Number(v);
+    const payload = {
+      nome, categoria: this.state.alimentoCategoria.trim() || null,
+      kcal: num(this.state.alimentoKcal), proteina_g: num(this.state.alimentoPtn),
+      carboidrato_g: num(this.state.alimentoCho), gordura_g: num(this.state.alimentoLip)
+    };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('alimentos').update(payload).eq('id', this.state.alimentoEditId));
+    } else {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      ({ error } = await supabaseClient.from('alimentos').insert({ ...payload, trainer_id: user.id }));
+    }
+    if (error) { this.setState({ alimentoSalvarLabel: editando ? 'Salvar alterações' : 'Adicionar alimento', alimentoErro: error.message }); return; }
+    this.setState({ alimentoModalOpen: false, alimentoEditId: '' });
+    this.loadAcervo();
+  }
+
+  onBuscaAlimentosChange(e) {
+    this.setState({ buscaAlimentos: e.target.value });
+  }
+
+  async onImportarAlimentosChange(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+
+    const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+    const NOME_KEYS = ['nome', 'descricao', 'alimento', 'name'];
+    const CAT_KEYS = ['categoria', 'grupo', 'category'];
+    const KCAL_KEYS = ['kcal', 'energia', 'calorias'];
+    const PTN_KEYS = ['proteina', 'ptn'];
+    const CHO_KEYS = ['carboidrato', 'cho'];
+    const LIP_KEYS = ['lipideos', 'gordura', 'lip'];
+    const FIB_KEYS = ['fibra', 'fib'];
+    const SODIO_KEYS = ['sodio', 'na'];
+    const pickKey = (row, keys) => {
+      const rowKeys = Object.keys(row);
+      for (const wanted of keys) {
+        const found = rowKeys.find(k => norm(k) === wanted || norm(k).includes(wanted));
+        if (found) return found;
+      }
+      return null;
+    };
+
+    this.setState({ importAlimentosBusy: true, importAlimentosMsg: '' });
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      if (!rows.length) {
+        this.setState({ importAlimentosBusy: false, importAlimentosMsg: 'Arquivo vazio ou formato não reconhecido.', importAlimentosColor: '#f87171' });
+        return;
+      }
+
+      const nomeKey = pickKey(rows[0], NOME_KEYS);
+      if (!nomeKey) {
+        this.setState({ importAlimentosBusy: false, importAlimentosMsg: 'Não encontrei uma coluna com o nome do alimento.', importAlimentosColor: '#f87171' });
+        return;
+      }
+      const catKey = pickKey(rows[0], CAT_KEYS);
+      const kcalKey = pickKey(rows[0], KCAL_KEYS);
+      const ptnKey = pickKey(rows[0], PTN_KEYS);
+      const choKey = pickKey(rows[0], CHO_KEYS);
+      const lipKey = pickKey(rows[0], LIP_KEYS);
+      const fibKey = pickKey(rows[0], FIB_KEYS);
+      const sodioKey = pickKey(rows[0], SODIO_KEYS);
+
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      const existentes = new Set(this.state.alimentosDb.map(a => norm(a.nome)));
+      const vistos = new Set();
+      const num = (row, key) => { if (!key) return null; const v = Number(String(row[key]).replace(',', '.')); return Number.isFinite(v) ? v : null; };
+      const paraInserir = [];
+      let ignorados = 0;
+      rows.forEach(row => {
+        const nome = String(row[nomeKey] || '').trim();
+        if (!nome) return;
+        const chave = norm(nome);
+        if (existentes.has(chave) || vistos.has(chave)) { ignorados++; return; }
+        vistos.add(chave);
+        paraInserir.push({
+          trainer_id: user.id, nome,
+          categoria: catKey ? (String(row[catKey] || '').trim() || null) : null,
+          kcal: num(row, kcalKey), proteina_g: num(row, ptnKey), carboidrato_g: num(row, choKey),
+          gordura_g: num(row, lipKey), fibra_g: num(row, fibKey), sodio_mg: num(row, sodioKey)
+        });
+      });
+
+      if (!paraInserir.length) {
+        this.setState({ importAlimentosBusy: false, importAlimentosMsg: 'Nenhum alimento novo pra importar' + (ignorados ? ' (' + ignorados + ' já existiam).' : '.'), importAlimentosColor: '#9aa4b2' });
+        return;
+      }
+
+      const { error } = await supabaseClient.from('alimentos').insert(paraInserir);
+      if (error) {
+        this.setState({ importAlimentosBusy: false, importAlimentosMsg: 'Erro ao importar: ' + error.message, importAlimentosColor: '#f87171' });
+        return;
+      }
+      this.setState({
+        importAlimentosBusy: false,
+        importAlimentosMsg: paraInserir.length + ' alimento' + (paraInserir.length > 1 ? 's' : '') + ' importado' + (paraInserir.length > 1 ? 's' : '') + (ignorados ? ' · ' + ignorados + ' já existiam e foram ignorados' : '') + '.',
+        importAlimentosColor: '#4ade80'
+      });
+      this.loadAcervo();
+    } catch (err) {
+      this.setState({ importAlimentosBusy: false, importAlimentosMsg: 'Não consegui ler esse arquivo. Confira se é .xlsx ou .csv válido.', importAlimentosColor: '#f87171' });
+    }
+  }
+
+  openFormulaModal(formula) {
+    this.setState({
+      formulaModalOpen: true, formulaEditId: formula ? formula.id : '',
+      formulaNome: formula ? formula.nome : '', formulaDescricao: formula ? (formula.descricao || '') : '',
+      formulaErro: '', formulaSalvarLabel: formula ? 'Salvar alterações' : 'Criar fórmula'
+    });
+  }
+
+  closeFormulaModal() {
+    this.setState({ formulaModalOpen: false });
+  }
+
+  async onSalvarFormula() {
+    const nome = this.state.formulaNome.trim();
+    if (!nome) { this.setState({ formulaErro: 'Digite o nome da fórmula.' }); return; }
+    const editando = !!this.state.formulaEditId;
+    this.setState({ formulaSalvarLabel: 'Salvando…', formulaErro: '' });
+    const payload = { nome, descricao: this.state.formulaDescricao.trim() || null };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('formulas_alimentares').update(payload).eq('id', this.state.formulaEditId));
+    } else {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      ({ error } = await supabaseClient.from('formulas_alimentares').insert({ ...payload, trainer_id: user.id }));
+    }
+    if (error) { this.setState({ formulaSalvarLabel: editando ? 'Salvar alterações' : 'Criar fórmula', formulaErro: error.message }); return; }
+    this.setState({ formulaModalOpen: false, formulaEditId: '' });
+    this.loadAcervo();
+  }
+
+  async onDeleteFormula(id, nome) {
+    if (!window.confirm('Excluir "' + nome + '"?')) return;
+    await supabaseClient.from('formulas_alimentares').delete().eq('id', id);
+    this.loadAcervo();
+  }
+
+  openRefeicaoModal(refeicao) {
+    this.setState({
+      refeicaoModalOpen: true, refeicaoEditId: refeicao ? refeicao.id : '',
+      refeicaoNome: refeicao ? refeicao.nome : '',
+      refeicaoDescricao: refeicao ? (refeicao.itens || []).map(i => i.descricao).join(', ') : '',
+      refeicaoErro: '', refeicaoSalvarLabel: refeicao ? 'Salvar alterações' : 'Criar refeição'
+    });
+  }
+
+  closeRefeicaoModal() {
+    this.setState({ refeicaoModalOpen: false });
+  }
+
+  async onSalvarRefeicao() {
+    const nome = this.state.refeicaoNome.trim();
+    if (!nome) { this.setState({ refeicaoErro: 'Digite o nome da refeição.' }); return; }
+    const editando = !!this.state.refeicaoEditId;
+    this.setState({ refeicaoSalvarLabel: 'Salvando…', refeicaoErro: '' });
+    const itens = this.state.refeicaoDescricao.split(',').map(s => s.trim()).filter(Boolean).map(descricao => ({ descricao }));
+    const payload = { nome, itens };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('refeicoes_predefinidas').update(payload).eq('id', this.state.refeicaoEditId));
+    } else {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      ({ error } = await supabaseClient.from('refeicoes_predefinidas').insert({ ...payload, trainer_id: user.id }));
+    }
+    if (error) { this.setState({ refeicaoSalvarLabel: editando ? 'Salvar alterações' : 'Criar refeição', refeicaoErro: error.message }); return; }
+    this.setState({ refeicaoModalOpen: false, refeicaoEditId: '' });
+    this.loadAcervo();
+  }
+
+  async onDeleteRefeicao(id, nome) {
+    if (!window.confirm('Excluir "' + nome + '"?')) return;
+    await supabaseClient.from('refeicoes_predefinidas').delete().eq('id', id);
+    this.loadAcervo();
+  }
+
   renderVals() {
     const cat = this.state.categoria;
     const treinosCardCount = this.state.treinosDb.filter(tr => !tr.split_id).length + new Set(this.state.treinosDb.filter(tr => tr.split_id).map(tr => tr.split_id)).size;
@@ -818,10 +1234,11 @@ class Component extends DCLogic {
         ['cardio', '❤️', 'Planos de cardio', 0]
       ],
       nutricao: [
-        ['alimentos', '🍎', 'Alimentos', 0],
-        ['formulas', '⚖️', 'Fórmulas', 0],
-        ['cardapios', '🍽️', 'Cardápios', this.state.dietasCriadas.length],
-        ['refeicoes', '🥗', 'Refeições predefinidas', 0]
+        ['alimentos', '🍎', 'Alimentos', this.state.alimentosDb.length],
+        ['formulas', '⚖️', 'Fórmulas', this.state.formulasDb.length],
+        ['cardapios', '🍽️', 'Cardápios', this.state.dietasDb.filter(d => !d.cliente_id).length],
+        ['refeicoes', '🥗', 'Refeições predefinidas', this.state.refeicoesPredefinidasDb.length],
+        ['minhasDietas', '📒', 'Minhas Dietas', this.state.dietasDb.length]
       ]
     };
     const lista = TIPOS[cat];
@@ -834,7 +1251,10 @@ class Component extends DCLogic {
       exercicios: this.state.exerciciosDb.map(ex => ({
         icon: '🏋️', iconBg: 'rgba(249,115,22,.12)',
         nome: ex.nome, meta: ex.categoria || 'Sem categoria',
-        tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130'
+        tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
+        mostrarUsar: false, temAcoesExercicio: true, temVideo: !!ex.video_url,
+        onVerVideo: (e) => { e.stopPropagation(); this.onVerVideo(ex.video_url); },
+        onEditar: (e) => { e.stopPropagation(); this.onEditarExercicio(ex); }
       })),
       tecnicas: [],
       treinos: (() => {
@@ -848,6 +1268,7 @@ class Component extends DCLogic {
             icon: '📋', iconBg: 'rgba(249,115,22,.12)',
             nome: tr.nome, meta: diasLabel(tr.dias_semana),
             tags: [], uso: '', border: '#1a2130',
+            mostrarUsar: true, temAcoesExercicio: false,
             flag: cliente ? ('com ' + cliente) : '', flagColor: '#3b82f6', flagBg: 'rgba(59,130,246,.12)',
             onClick: () => { if (cliente) { window.location.href = 'alunos.html'; } else { this.openTreinoDetalhe(tr.id); } },
             onDelete: (e) => { e.stopPropagation(); this.onDeleteTreino(tr.id, tr.nome); }
@@ -862,6 +1283,7 @@ class Component extends DCLogic {
             icon: '📋', iconBg: 'rgba(249,115,22,.12)',
             nome: 'Divisão ' + letras, meta: grupo.length + ' treinos',
             tags: [], uso: '', border: '#1a2130',
+            mostrarUsar: true, temAcoesExercicio: false,
             flag: cliente ? ('com ' + cliente) : '', flagColor: '#3b82f6', flagBg: 'rgba(59,130,246,.12)',
             onClick: () => { window.location.href = 'montar-treino.html?split_id=' + splitId; },
             onDelete: (e) => { e.stopPropagation(); this.onDeleteSplit(splitId, 'Divisão ' + letras); }
@@ -872,12 +1294,36 @@ class Component extends DCLogic {
       })(),
       predefinidos: [],
       cardio: [],
-      formulas: [],
-      cardapios: [...this.state.dietasCriadas],
-      refeicoes: []
+      formulas: this.state.formulasDb.map(f => ({
+        icon: '⚖️', iconBg: 'rgba(59,130,246,.12)',
+        nome: f.nome, meta: f.descricao || 'Sem descrição', tags: [], uso: '', border: '#1a2130',
+        mostrarUsar: false, temAcoesExercicio: false,
+        onDelete: (e) => { e.stopPropagation(); this.onDeleteFormula(f.id, f.nome); },
+        onClick: () => this.openFormulaModal(f)
+      })),
+      cardapios: this.state.dietasDb.filter(d => !d.cliente_id).map(d => this.dietaParaCard(d)),
+      refeicoes: this.state.refeicoesPredefinidasDb.map(r => ({
+        icon: '🥗', iconBg: 'rgba(74,222,128,.12)',
+        nome: r.nome, meta: (r.itens || []).map(i => i.descricao).join(', ') || 'Sem itens', tags: [], uso: '', border: '#1a2130',
+        mostrarUsar: false, temAcoesExercicio: false,
+        onDelete: (e) => { e.stopPropagation(); this.onDeleteRefeicao(r.id, r.nome); },
+        onClick: () => this.openRefeicaoModal(r)
+      })),
+      minhasDietas: this.state.dietasDb.map(d => this.dietaParaCard(d))
     };
 
-    const alimentos = [];
+    const buscaNorm = this.state.buscaAlimentos.trim().toLowerCase();
+    const alimentos = this.state.alimentosDb
+      .filter(a => !buscaNorm || a.nome.toLowerCase().includes(buscaNorm))
+      .map(a => ({
+        nome: a.nome, grupo: a.categoria || 'Sem categoria', porcao: '100 g',
+        cho: a.carboidrato_g != null ? a.carboidrato_g : '—',
+        ptn: a.proteina_g != null ? a.proteina_g : '—',
+        lip: a.gordura_g != null ? a.gordura_g : '—',
+        fib: a.fibra_g != null ? a.fibra_g : '—',
+        cal: a.kcal != null ? a.kcal : '—',
+        uso: '—'
+      }));
 
     const chip = ([key, icon, label, count]) => ({
       icon, label, count,
@@ -900,54 +1346,76 @@ class Component extends DCLogic {
       nutricao: 'Nada pra limpar ainda — seu acervo de nutrição está vazio.'
     };
 
-    const alunosNomes = ['João Aluno', 'Ana Lima', 'Pedro Souza', 'Carla Dias', 'Rafael Martins'];
-    const alunoChip = (nome) => ({
+    const alunoChip = (id, nome) => ({
       label: nome,
-      onClick: () => this.setState({ dietaAlunoKey: nome }),
-      bg: this.state.dietaAlunoKey === nome ? 'rgba(249,115,22,.12)' : '#0d1119',
-      border: this.state.dietaAlunoKey === nome ? 'rgba(249,115,22,.35)' : '#1e2633',
-      color: this.state.dietaAlunoKey === nome ? '#f97316' : '#9aa4b2'
+      onClick: () => this.setState({ dietaAlunoKey: id }),
+      bg: this.state.dietaAlunoKey === id ? 'rgba(249,115,22,.12)' : '#0d1119',
+      border: this.state.dietaAlunoKey === id ? 'rgba(249,115,22,.35)' : '#1e2633',
+      color: this.state.dietaAlunoKey === id ? '#f97316' : '#9aa4b2'
     });
 
     return {
       isNutricao: cat === 'nutricao',
       dietaModalOpen: this.state.dietaModalOpen,
+      dietaModalTitulo: this.state.dietaEditId ? 'Editar dieta' : 'Criar nova dieta',
+      dietaSalvarLabel: this.state.dietaSalvarLabel,
       dietaNome: this.state.dietaNome, dietaMeta: this.state.dietaMeta,
       dietaCafe: this.state.dietaCafe, dietaAlmoco: this.state.dietaAlmoco, dietaJantar: this.state.dietaJantar,
       dietaAviso: this.state.dietaAviso,
-      alunoOptions: alunosNomes.map(alunoChip),
-      openDietaModal: () => this.setState({
-        dietaModalOpen: true, dietaAlunoKey: '', dietaNome: '', dietaMeta: '',
-        dietaCafe: '', dietaAlmoco: '', dietaJantar: '', dietaAviso: false
-      }),
-      closeDietaModal: () => this.setState({ dietaModalOpen: false }),
+      alunoOptions: [alunoChip('', 'Sem aluno (modelo)'), ...this.state.clientesDb.map(c => alunoChip(c.id, c.nome))],
+      openDietaModal: () => this.openDietaModal(),
+      closeDietaModal: () => this.closeDietaModal(),
       onDietaNomeChange: (e) => this.setState({ dietaNome: e.target.value }),
       onDietaMetaChange: (e) => this.setState({ dietaMeta: e.target.value }),
       onDietaCafeChange: (e) => this.setState({ dietaCafe: e.target.value }),
       onDietaAlmocoChange: (e) => this.setState({ dietaAlmoco: e.target.value }),
       onDietaJantarChange: (e) => this.setState({ dietaJantar: e.target.value }),
-      criarDieta: () => {
-        if (!this.state.dietaAlunoKey || !this.state.dietaNome.trim()) {
-          this.setState({ dietaAviso: true });
-          return;
-        }
-        const partes = [this.state.dietaCafe, this.state.dietaAlmoco, this.state.dietaJantar].filter(Boolean);
-        const nova = {
-          nome: this.state.dietaNome,
-          meta: (this.state.dietaMeta || 'Meta calórica não definida') + ' · ' + partes.length + ' refeições',
-          tags: [this.state.dietaAlunoKey],
-          uso: 'em 1 aluno', icon: '🍽️', iconBg: 'rgba(74,222,128,.12)',
-          flag: 'NOVA', flagColor: '#4ade80', flagBg: 'rgba(74,222,128,.12)', border: 'rgba(74,222,128,.3)'
-        };
-        this.setState(s => ({
-          dietasCriadas: [...s.dietasCriadas, nova],
-          dietaModalOpen: false,
-          categoria: 'nutricao', tipo: 'cardapios'
-        }));
-      },
+      criarDieta: () => this.onCriarDieta(),
+
+      alimentoModalOpen: this.state.alimentoModalOpen,
+      alimentoModalTitulo: this.state.alimentoEditId ? 'Editar alimento' : 'Novo alimento',
+      alimentoNome: this.state.alimentoNome, alimentoCategoria: this.state.alimentoCategoria,
+      alimentoKcal: this.state.alimentoKcal, alimentoPtn: this.state.alimentoPtn,
+      alimentoCho: this.state.alimentoCho, alimentoLip: this.state.alimentoLip,
+      onAlimentoNomeChange: (e) => this.setState({ alimentoNome: e.target.value }),
+      onAlimentoCategoriaChange: (e) => this.setState({ alimentoCategoria: e.target.value }),
+      onAlimentoKcalChange: (e) => this.setState({ alimentoKcal: e.target.value }),
+      onAlimentoPtnChange: (e) => this.setState({ alimentoPtn: e.target.value }),
+      onAlimentoChoChange: (e) => this.setState({ alimentoCho: e.target.value }),
+      onAlimentoLipChange: (e) => this.setState({ alimentoLip: e.target.value }),
+      alimentoErro: this.state.alimentoErro, alimentoErroDisplay: this.state.alimentoErro ? '' : 'display:none;',
+      alimentoSalvarLabel: this.state.alimentoSalvarLabel,
+      closeAlimentoModal: () => this.closeAlimentoModal(),
+      onSalvarAlimento: () => this.onSalvarAlimento(),
+      buscaAlimentos: this.state.buscaAlimentos,
+      onBuscaAlimentosChange: (e) => this.onBuscaAlimentosChange(e),
+      importAlimentosLabel: this.state.importAlimentosBusy ? 'Importando…' : 'Importar base TACO',
+      onImportarAlimentosChange: (e) => this.onImportarAlimentosChange(e),
+      importAlimentosMsg: this.state.importAlimentosMsg,
+      importAlimentosColor: this.state.importAlimentosColor,
+
+      formulaModalOpen: this.state.formulaModalOpen,
+      formulaModalTitulo: this.state.formulaEditId ? 'Editar fórmula' : 'Nova fórmula',
+      formulaNome: this.state.formulaNome, formulaDescricao: this.state.formulaDescricao,
+      onFormulaNomeChange: (e) => this.setState({ formulaNome: e.target.value }),
+      onFormulaDescricaoChange: (e) => this.setState({ formulaDescricao: e.target.value }),
+      formulaErro: this.state.formulaErro, formulaErroDisplay: this.state.formulaErro ? '' : 'display:none;',
+      formulaSalvarLabel: this.state.formulaSalvarLabel,
+      closeFormulaModal: () => this.closeFormulaModal(),
+      onSalvarFormula: () => this.onSalvarFormula(),
+
+      refeicaoModalOpen: this.state.refeicaoModalOpen,
+      refeicaoModalTitulo: this.state.refeicaoEditId ? 'Editar refeição' : 'Nova refeição',
+      refeicaoNome: this.state.refeicaoNome, refeicaoDescricao: this.state.refeicaoDescricao,
+      onRefeicaoNomeChange: (e) => this.setState({ refeicaoNome: e.target.value }),
+      onRefeicaoDescricaoChange: (e) => this.setState({ refeicaoDescricao: e.target.value }),
+      refeicaoErro: this.state.refeicaoErro, refeicaoErroDisplay: this.state.refeicaoErro ? '' : 'display:none;',
+      refeicaoSalvarLabel: this.state.refeicaoSalvarLabel,
+      closeRefeicaoModal: () => this.closeRefeicaoModal(),
+      onSalvarRefeicao: () => this.onSalvarRefeicao(),
       subnav: [
         { label: 'Treino', count: String(dados.exercicios.length + dados.tecnicas.length + dados.treinos.length + dados.predefinidos.length + dados.cardio.length), onClick: () => this.setState({ categoria: 'treino', tipo: 'exercicios' }), weight: cat === 'treino' ? '700' : '600', color: cat === 'treino' ? '#f97316' : '#66707e', bg: cat === 'treino' ? 'rgba(249,115,22,.1)' : 'transparent' },
-        { label: 'Nutrição', count: String(alimentos.length + dados.formulas.length + dados.cardapios.length + dados.refeicoes.length), onClick: () => this.setState({ categoria: 'nutricao', tipo: 'alimentos' }), weight: cat === 'nutricao' ? '700' : '600', color: cat === 'nutricao' ? '#f97316' : '#66707e', bg: cat === 'nutricao' ? 'rgba(249,115,22,.1)' : 'transparent' }
+        { label: 'Nutrição', count: String(this.state.alimentosDb.length + dados.formulas.length + dados.cardapios.length + dados.refeicoes.length), onClick: () => this.setState({ categoria: 'nutricao', tipo: 'alimentos' }), weight: cat === 'nutricao' ? '700' : '600', color: cat === 'nutricao' ? '#f97316' : '#66707e', bg: cat === 'nutricao' ? 'rgba(249,115,22,.1)' : 'transparent' }
       ],
       catTreino: () => this.setState({ categoria: 'treino', tipo: 'exercicios' }),
       catNutricao: () => this.setState({ categoria: 'nutricao', tipo: 'alimentos' }),
@@ -958,6 +1426,7 @@ class Component extends DCLogic {
       onBotaoNovoClick: () => this.onBotaoNovoClick(tipo),
 
       exModalOpen: this.state.exModalOpen,
+      exModalTitulo: this.state.exEditId ? 'Editar exercício' : 'Novo exercício',
       exNome: this.state.exNome, exCategoria: this.state.exCategoria, exVideoUrl: this.state.exVideoUrl,
       onExNomeChange: (e) => this.setState({ exNome: e.target.value }),
       onExCategoriaChange: (e) => this.setState({ exCategoria: e.target.value }),

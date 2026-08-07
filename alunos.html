@@ -368,7 +368,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <span style="flex:1 1 200px;">ALUNO</span><span style="flex:0 0 130px;">PLANO</span><span style="flex:0 0 150px;">ADERÊNCIA</span><span style="flex:0 0 120px;">ÚLTIMO TREINO</span><span style="flex:0 0 110px;">VENCIMENTO</span><span style="flex:0 0 90px;"></span>
             </div>
             <sc-for list="{{ ativos }}" as="a" hint-placeholder-count="5">
-              <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;" style-hover="background:#131a26;">
+              <div sc-camel-on-click="{{ a.onClick }}" style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;cursor:pointer;" style-hover="background:#131a26;">
                 <div style="flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:12px;">
                   <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">{{ a.initials }}</div>
                   <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ a.nome }}</div><div style="font-size:11px;color:#66707e;">{{ a.objetivo }}</div></div>
@@ -380,7 +380,26 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 </div>
                 <div style="flex:0 0 120px;font-size:12px;color:{{ a.ultimoColor }};">{{ a.ultimo }}</div>
                 <div style="flex:0 0 110px;font-size:12px;color:#9aa4b2;">{{ a.vencimento }}</div>
-                <button sc-camel-on-click="{{ a.onAbrirTreino }}" style="flex:0 0 90px;font-size:12px;font-weight:600;text-align:right;background:none;border:none;color:#f97316;cursor:pointer;font-family:inherit;">abrir treino ›</button>
+                <span style="flex:0 0 90px;font-size:12px;font-weight:600;text-align:right;color:#f97316;">abrir perfil ›</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <div style="font-size:13px;font-weight:800;color:#9aa4b2;margin:24px 0 12px;">Alunos inativos</div>
+        <sc-if value="{{ semInativos }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:24px 20px;text-align:center;font-size:12.5px;color:#66707e;">Nenhum aluno inativo no momento.</div>
+        </sc-if>
+        <sc-if value="{{ temInativos }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;overflow-x:auto;">
+            <sc-for list="{{ inativos }}" as="a" hint-placeholder-count="3">
+              <div sc-camel-on-click="{{ a.onClick }}" style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;cursor:pointer;" style-hover="background:#131a26;">
+                <div style="flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:12px;">
+                  <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#131a26;color:#66707e;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">{{ a.initials }}</div>
+                  <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ a.nome }}</div><div style="font-size:11px;color:#66707e;">{{ a.objetivo }}</div></div>
+                </div>
+                <div style="flex:0 0 130px;font-size:12px;color:#9aa4b2;">{{ a.plano }}</div>
+                <span style="flex:1;font-size:12px;font-weight:600;text-align:right;color:#f97316;">abrir perfil ›</span>
               </div>
             </sc-for>
           </div>
@@ -691,112 +710,6 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
   </div>
 </sc-if>
 
-<!-- PLANO DE TREINO DO ALUNO -->
-<sc-if value="{{ treinoAlunoOpen }}" hint-placeholder-val="{{ true }}">
-  <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;">
-    <div style="width:100%;max-width:560px;max-height:85vh;overflow-y:auto;background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <div style="font-size:17px;font-weight:800;">Plano de treino — {{ treinoAlunoClienteNome }}</div>
-        <button sc-camel-on-click="{{ closeTreinoAluno }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-        <div style="font-size:12.5px;color:#66707e;">Treinos vinculados a esse aluno.</div>
-        <button sc-camel-on-click="{{ notificarCliente }}" style="background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-family:inherit;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;">📲 Notificar cliente</button>
-      </div>
-
-      <sc-if value="{{ semTreinoAluno }}" hint-placeholder-val="{{ true }}">
-        <div style="font-size:12.5px;color:#66707e;padding:16px 0;">Nenhum treino criado ainda pra esse aluno.</div>
-      </sc-if>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-        <sc-for list="{{ treinoAlunoList }}" as="t" hint-placeholder-count="3">
-          <div sc-camel-on-click="{{ t.onClick }}" style="background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:12px 14px;cursor:pointer;">
-            <div style="font-size:13.5px;font-weight:700;">{{ t.nome }}</div>
-            <div style="font-size:11.5px;color:#66707e;margin-top:2px;">{{ t.dias }}</div>
-            <div style="font-size:11px;font-weight:700;margin-top:4px;color:{{ t.statusColor }};">{{ t.status }}</div>
-          </div>
-        </sc-for>
-      </div>
-
-      <sc-if value="{{ taNovoOpen }}" hint-placeholder-val="{{ true }}">
-        <div style="border-top:1px solid #1a2130;padding-top:16px;">
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome do treino</label>
-          <input value="{{ taNome }}" sc-camel-on-change="{{ onTaNomeChange }}" placeholder="Ex: Treino A — Peito e Tríceps" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:16px;">
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:8px;">Dias da semana</label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <sc-for list="{{ taDiasSemanaOptions }}" as="d" hint-placeholder-count="7">
-              <button sc-camel-on-click="{{ d.onClick }}" style="display:flex;align-items:center;justify-content:space-between;background:{{ d.bg }};border:1px solid {{ d.border }};color:{{ d.color }};font-family:inherit;font-size:13px;font-weight:600;padding:9px 12px;border-radius:8px;cursor:pointer;">
-                {{ d.label }}<span>{{ d.check }}</span>
-              </button>
-            </sc-for>
-          </div>
-          <div style="{{ taErroDisplay }}color:#f87171;font-size:12px;margin-top:12px;">{{ taErro }}</div>
-          <div style="display:flex;gap:10px;margin-top:16px;">
-            <button sc-camel-on-click="{{ closeNovoTreinoAluno }}" style="flex:1;background:#1e2633;border:none;color:#e5e9f0;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">Cancelar</button>
-            <button sc-camel-on-click="{{ onCriarTreinoAluno }}" style="flex:1;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">{{ taCriarLabel }}</button>
-          </div>
-        </div>
-      </sc-if>
-      <sc-if value="{{ mostrarBotaoNovoTreinoAluno }}" hint-placeholder-val="{{ true }}">
-        <button sc-camel-on-click="{{ openNovoTreinoAluno }}" style="width:100%;background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">+ Adicionar treino</button>
-      </sc-if>
-    </div>
-  </div>
-</sc-if>
-
-<!-- DETALHE DO TREINO DO ALUNO -->
-<sc-if value="{{ taDetalheOpen }}" hint-placeholder-val="{{ true }}">
-  <div style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2100;display:flex;align-items:center;justify-content:center;padding:16px;">
-    <div style="width:100%;max-width:520px;max-height:85vh;overflow-y:auto;background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:24px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-        <div style="font-size:17px;font-weight:800;">{{ taDetalheNome }}</div>
-        <button sc-camel-on-click="{{ closeTaDetalhe }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
-      </div>
-
-      <sc-if value="{{ taDetalheSemExercicios }}" hint-placeholder-val="{{ true }}">
-        <div style="font-size:12.5px;color:#66707e;padding:16px 0;">Nenhum exercício adicionado ainda.</div>
-      </sc-if>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;">
-        <sc-for list="{{ taDetalheExercicios }}" as="te" hint-placeholder-count="4">
-          <div style="background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:13.5px;font-weight:700;">{{ te.nome }}</div>
-            <div style="font-size:11.5px;color:#66707e;margin-top:2px;">{{ te.series }} · {{ te.descanso }} · {{ te.tecnica }}</div>
-          </div>
-        </sc-for>
-      </div>
-
-      <sc-if value="{{ taAddExOpen }}" hint-placeholder-val="{{ true }}">
-        <div style="border-top:1px solid #1a2130;padding-top:16px;">
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Exercício</label>
-          <select sc-camel-on-change="{{ onTaAddExIdChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:12px;">
-            <option value="">Selecione…</option>
-            <sc-for list="{{ taExercicioOptions }}" as="eo" hint-placeholder-count="5">
-              <option value="{{ eo.id }}">{{ eo.nome }}</option>
-            </sc-for>
-          </select>
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Séries</label>
-          <textarea value="{{ taAddExSeries }}" maxlength="250" rows="3" sc-camel-on-change="{{ onTaAddExSeriesChange }}" placeholder="Ex: 3x12, 4x8-10, 3x15" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;resize:vertical;"></textarea>
-          <div style="text-align:right;font-size:10.5px;color:#4a5364;margin:2px 0 12px;">{{ taAddExSeriesCount }}/250</div>
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Intervalo de descanso</label>
-          <textarea value="{{ taAddExDescanso }}" maxlength="50" rows="2" sc-camel-on-change="{{ onTaAddExDescansoChange }}" placeholder="Ex: 60s, 1-2min, 90 segundos" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;resize:vertical;"></textarea>
-          <div style="text-align:right;font-size:10.5px;color:#4a5364;margin:2px 0 12px;">{{ taAddExDescansoCount }}/50</div>
-          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Técnica avançada</label>
-          <select sc-camel-on-change="{{ onTaAddExTecnicaChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            <option value="nenhuma">Nenhuma técnica avançada</option>
-            <option value="super_set">Super set</option>
-          </select>
-          <div style="{{ taAddExErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ taAddExErro }}</div>
-          <div style="display:flex;gap:10px;margin-top:16px;">
-            <button sc-camel-on-click="{{ closeTaAddEx }}" style="flex:1;background:#1e2633;border:none;color:#e5e9f0;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">Cancelar</button>
-            <button sc-camel-on-click="{{ onSalvarTaExercicio }}" style="flex:1;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">{{ taSalvarLabel }}</button>
-          </div>
-        </div>
-      </sc-if>
-      <sc-if value="{{ mostrarBotaoTaAddEx }}" hint-placeholder-val="{{ true }}">
-        <button sc-camel-on-click="{{ openTaAddEx }}" style="width:100%;background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">+ Adicionar Exercício</button>
-      </sc-if>
-    </div>
-  </div>
-</sc-if>
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ativos&quot;,&quot;options&quot;:[&quot;ativos&quot;,&quot;feedbacks&quot;,&quot;diario&quot;,&quot;mensagens&quot;,&quot;todos&quot;,&quot;prescricoes&quot;,&quot;renovacoes&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -805,12 +718,7 @@ class Component extends DCLogic {
   state = {
     tab: 'ativos', chat: 'ana', filtroTodos: 'todos', notifOpen: false,
     clientes: [], convites: [], exerciciosDb: [],
-    convidarOpen: false, convidarEmail: '', convidarErro: '', convidarCarregando: false, convidarLink: '', copiarLabel: 'Copiar', gerarLabel: 'Gerar convite',
-
-    treinoAlunoClienteId: '', treinoAlunoClienteNome: '', treinoAlunoList: [],
-    taNovoOpen: false, taNome: '', taDiasSel: [], taErro: '', taCriarLabel: 'Criar treino',
-    taDetalheId: '', taDetalheExercicios: [],
-    taAddExOpen: false, taAddExId: '', taAddExSeries: '', taAddExDescanso: '', taAddExTecnica: 'nenhuma', taAddExErro: '', taSalvarLabel: 'Adicionar'
+    convidarOpen: false, convidarEmail: '', convidarErro: '', convidarCarregando: false, convidarLink: '', copiarLabel: 'Copiar', gerarLabel: 'Gerar convite'
   };
 
   componentDidMount() {
@@ -828,92 +736,8 @@ class Component extends DCLogic {
     this.setState({ clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: exerciciosRes.data || [] });
   }
 
-  async openTreinoAluno(clienteId, clienteNome) {
-    this.setState({ treinoAlunoClienteId: clienteId, treinoAlunoClienteNome: clienteNome, taDetalheId: '', taNovoOpen: false });
-    const { data } = await supabaseClient.from('treinos').select('*').eq('cliente_id', clienteId).order('created_at', { ascending: false });
-    this.setState({ treinoAlunoList: data || [] });
-  }
-
-  closeTreinoAluno() {
-    this.setState({ treinoAlunoClienteId: '' });
-  }
-
-  openNovoTreinoAluno() {
-    const id = this.state.treinoAlunoClienteId;
-    const nome = this.state.treinoAlunoClienteNome;
-    window.location.href = 'montar-treino.html?cliente_id=' + id + '&cliente_nome=' + encodeURIComponent(nome);
-  }
-
-  notificarCliente() {
-    const cliente = this.state.clientes.find(c => c.id === this.state.treinoAlunoClienteId);
-    if (!cliente || !cliente.telefone) {
-      alert('Esse aluno ainda não tem telefone cadastrado.');
-      return;
-    }
-    let digits = cliente.telefone.replace(/\D/g, '');
-    if (digits.length <= 11) digits = '55' + digits;
-    const msg = encodeURIComponent('Oi ' + cliente.nome + '! Seu treino já está pronto no Performa AI 💪');
-    window.open('https://wa.me/' + digits + '?text=' + msg, '_blank');
-  }
-
-  closeNovoTreinoAluno() {
-    this.setState({ taNovoOpen: false });
-  }
-
-  toggleTaDia(idx) {
-    const sel = this.state.taDiasSel;
-    const next = sel.includes(idx) ? sel.filter(d => d !== idx) : [...sel, idx];
-    this.setState({ taDiasSel: next });
-  }
-
-  async onCriarTreinoAluno() {
-    const nome = this.state.taNome.trim();
-    if (!nome) { this.setState({ taErro: 'Digite o nome do treino.' }); return; }
-    this.setState({ taCriarLabel: 'Criando…', taErro: '' });
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const { error } = await supabaseClient.from('treinos').insert({
-      trainer_id: user.id, cliente_id: this.state.treinoAlunoClienteId, nome, dias_semana: this.state.taDiasSel
-    });
-    if (error) { this.setState({ taCriarLabel: 'Criar treino', taErro: error.message }); return; }
-    this.setState({ taNovoOpen: false, taCriarLabel: 'Criar treino' });
-    this.openTreinoAluno(this.state.treinoAlunoClienteId, this.state.treinoAlunoClienteNome);
-  }
-
-  async openTaDetalhe(treinoId) {
-    this.setState({ taDetalheId: treinoId, taAddExOpen: false });
-    const { data } = await supabaseClient
-      .from('treino_exercicios')
-      .select('*, exercicios(nome)')
-      .eq('treino_id', treinoId)
-      .order('ordem', { ascending: true });
-    this.setState({ taDetalheExercicios: data || [] });
-  }
-
-  closeTaDetalhe() {
-    this.setState({ taDetalheId: '' });
-  }
-
-  openTaAddEx() {
-    this.setState({ taAddExOpen: true, taAddExId: '', taAddExSeries: '', taAddExDescanso: '', taAddExTecnica: 'nenhuma', taAddExErro: '' });
-  }
-
-  closeTaAddEx() {
-    this.setState({ taAddExOpen: false });
-  }
-
-  async onSalvarTaExercicio() {
-    if (!this.state.taAddExId) { this.setState({ taAddExErro: 'Escolha um exercício.' }); return; }
-    this.setState({ taSalvarLabel: 'Salvando…', taAddExErro: '' });
-    const { error } = await supabaseClient.from('treino_exercicios').insert({
-      treino_id: this.state.taDetalheId,
-      exercicio_id: this.state.taAddExId,
-      series: this.state.taAddExSeries.trim() || null,
-      intervalo_descanso: this.state.taAddExDescanso.trim() || null,
-      tecnica_avancada: this.state.taAddExTecnica
-    });
-    if (error) { this.setState({ taSalvarLabel: 'Adicionar', taAddExErro: error.message }); return; }
-    this.setState({ taSalvarLabel: 'Adicionar', taAddExOpen: false });
-    this.openTaDetalhe(this.state.taDetalheId);
+  abrirAluno(clienteId, clienteNome) {
+    window.location.href = 'aluno-detalhe.html?cliente_id=' + clienteId + '&cliente_nome=' + encodeURIComponent(clienteNome || '');
   }
 
   onConvidarClick() {
@@ -989,6 +813,7 @@ class Component extends DCLogic {
 
     const iniciais = (nome) => (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
     const clientesAtivos = this.state.clientes.filter(c => c.status === 'ativo');
+    const clientesInativos = this.state.clientes.filter(c => c.status !== 'ativo');
 
     let todosBase = this.state.clientes.map(c => ({
       id: c.id, nome: c.nome, email: c.email || '', initials: iniciais(c.nome),
@@ -1023,9 +848,16 @@ class Component extends DCLogic {
         plano: c.plano || '—',
         aderenciaW: '0%', aderenciaColor: '#66707e', aderencia: '—',
         ultimo: '—', ultimoColor: '#66707e', vencimento: '—',
-        onAbrirTreino: () => this.openTreinoAluno(c.id, c.nome)
+        onClick: () => this.abrirAluno(c.id, c.nome)
       })),
       semAtivos: clientesAtivos.length === 0, temAtivos: clientesAtivos.length > 0,
+
+      inativos: clientesInativos.map(c => ({
+        initials: iniciais(c.nome), nome: c.nome, objetivo: c.plano || '',
+        plano: c.plano || '—',
+        onClick: () => this.abrirAluno(c.id, c.nome)
+      })),
+      semInativos: clientesInativos.length === 0, temInativos: clientesInativos.length > 0,
 
       onConvidarClick: () => this.onConvidarClick(),
       convidarOpen: this.state.convidarOpen,
@@ -1040,86 +872,6 @@ class Component extends DCLogic {
       onGerarConvite: () => this.onGerarConvite(),
       onCopiarLink: () => this.onCopiarLink(),
       onFecharConvidar: () => this.onFecharConvidar(),
-
-      treinoAlunoOpen: !!this.state.treinoAlunoClienteId,
-      treinoAlunoClienteNome: this.state.treinoAlunoClienteNome,
-      closeTreinoAluno: () => this.closeTreinoAluno(),
-      treinoAlunoList: (() => {
-        const list = this.state.treinoAlunoList;
-        const standalone = list.filter(tr => !tr.split_id);
-        const splitIds = Array.from(new Set(list.filter(tr => tr.split_id).map(tr => tr.split_id)));
-        const statusOf = (habilitado) => habilitado
-          ? { status: '✓ Visível pro aluno', statusColor: '#4ade80' }
-          : { status: '🔒 Oculto — ainda não habilitado', statusColor: '#f59e0b' };
-        const standaloneItens = standalone.map(tr => ({
-          id: tr.id, nome: tr.nome,
-          dias: (!tr.dias_semana || !tr.dias_semana.length) ? 'Sem dias definidos' : tr.dias_semana.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', '),
-          ...statusOf(tr.habilitado),
-          onClick: () => this.openTaDetalhe(tr.id)
-        }));
-        const splitItens = splitIds.map(splitId => {
-          const grupo = list.filter(tr => tr.split_id === splitId);
-          const letras = grupo.map(tr => tr.nome.replace(/^Treino\s*/i, '')).join('/');
-          return {
-            id: splitId, nome: 'Divisão ' + letras,
-            dias: grupo.length + ' treinos',
-            ...statusOf(grupo.some(t => t.habilitado)),
-            onClick: () => { window.location.href = 'montar-treino.html?split_id=' + splitId + '&cliente_id=' + this.state.treinoAlunoClienteId + '&cliente_nome=' + encodeURIComponent(this.state.treinoAlunoClienteNome || ''); }
-          };
-        });
-        return [...splitItens, ...standaloneItens];
-      })(),
-      semTreinoAluno: this.state.treinoAlunoList.length === 0,
-
-      notificarCliente: () => this.notificarCliente(),
-
-      openNovoTreinoAluno: () => this.openNovoTreinoAluno(),
-      taNovoOpen: this.state.taNovoOpen,
-      mostrarBotaoNovoTreinoAluno: !this.state.taNovoOpen,
-      closeNovoTreinoAluno: () => this.closeNovoTreinoAluno(),
-      taNome: this.state.taNome,
-      onTaNomeChange: (e) => this.setState({ taNome: e.target.value }),
-      taErro: this.state.taErro, taErroDisplay: this.state.taErro ? '' : 'display:none;',
-      taCriarLabel: this.state.taCriarLabel,
-      onCriarTreinoAluno: () => this.onCriarTreinoAluno(),
-      taDiasSemanaOptions: DIAS_SEMANA.map((label, idx) => {
-        const sel = this.state.taDiasSel.includes(idx);
-        return {
-          label, check: sel ? '✓' : '',
-          bg: sel ? 'rgba(249,115,22,.12)' : '#0d1119',
-          border: sel ? 'rgba(249,115,22,.35)' : '#1e2633',
-          color: sel ? '#f97316' : '#9aa4b2',
-          onClick: () => this.toggleTaDia(idx)
-        };
-      }),
-
-      taDetalheOpen: !!this.state.taDetalheId,
-      taDetalheNome: (this.state.treinoAlunoList.find(t => t.id === this.state.taDetalheId) || {}).nome || '',
-      closeTaDetalhe: () => this.closeTaDetalhe(),
-      taDetalheExercicios: this.state.taDetalheExercicios.map(te => ({
-        nome: (te.exercicios || {}).nome || 'Exercício',
-        series: te.series || 'sem séries definidas',
-        descanso: te.intervalo_descanso || 'sem descanso definido',
-        tecnica: te.tecnica_avancada === 'super_set' ? 'Super set' : 'Técnica padrão'
-      })),
-      taDetalheSemExercicios: this.state.taDetalheExercicios.length === 0,
-
-      taAddExOpen: this.state.taAddExOpen,
-      mostrarBotaoTaAddEx: !this.state.taAddExOpen,
-      openTaAddEx: () => this.openTaAddEx(),
-      closeTaAddEx: () => this.closeTaAddEx(),
-      taExercicioOptions: this.state.exerciciosDb.map(ex => ({ id: ex.id, nome: ex.nome })),
-      onTaAddExIdChange: (e) => this.setState({ taAddExId: e.target.value }),
-      taAddExSeries: this.state.taAddExSeries,
-      taAddExSeriesCount: String(this.state.taAddExSeries.length),
-      onTaAddExSeriesChange: (e) => this.setState({ taAddExSeries: e.target.value.slice(0, 250) }),
-      taAddExDescanso: this.state.taAddExDescanso,
-      taAddExDescansoCount: String(this.state.taAddExDescanso.length),
-      onTaAddExDescansoChange: (e) => this.setState({ taAddExDescanso: e.target.value.slice(0, 50) }),
-      onTaAddExTecnicaChange: (e) => this.setState({ taAddExTecnica: e.target.value }),
-      taAddExErro: this.state.taAddExErro, taAddExErroDisplay: this.state.taAddExErro ? '' : 'display:none;',
-      taSalvarLabel: this.state.taSalvarLabel,
-      onSalvarTaExercicio: () => this.onSalvarTaExercicio(),
 
       feedbacks: [],
       semFeedbacks: true,
@@ -1153,7 +905,7 @@ class Component extends DCLogic {
         avatarBg: t.status === 'ATIVO' ? 'rgba(249,115,22,.15)' : '#131a26',
         avatarColor: t.status === 'ATIVO' ? '#f97316' : '#66707e',
         abrirLabel: t.id ? 'abrir ›' : '—',
-        onClick: () => { if (t.id) this.openTreinoAluno(t.id, t.nome); }
+        onClick: () => { if (t.id) this.abrirAluno(t.id, t.nome); }
       })),
 
       prescricoes: [],

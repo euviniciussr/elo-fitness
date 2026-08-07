@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aluno — Performa AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+textarea{font-family:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.voltar{font-size:13px;font-weight:700;color:#9aa4b2;}
+.voltar:hover{color:#e5e9f0;}
+
+.wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
+
+.aluno-header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:22px;}
+.aluno-avatar{width:44px;height:44px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;}
+.badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;display:inline-block;}
+.badge-ativo{color:#4ade80;background:rgba(74,222,128,.12);}
+.badge-inativo{color:#66707e;background:#131a26;}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid #171d29;padding-bottom:0;}
+.tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:#9aa4b2;border-bottom:2px solid transparent;cursor:pointer;}
+.tab.active{color:#f97316;border-color:#f97316;}
+
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-size:13.5px;outline:none;}
+textarea{resize:vertical;min-height:52px;}
+.counter{font-size:11px;color:#66707e;text-align:right;margin-top:3px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.field{margin-bottom:14px;}
+
+.dias-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.dia-btn{display:flex;align-items:center;justify-content:space-between;background:#0d1119;border:1px solid #1e2633;color:#9aa4b2;font-size:12.5px;font-weight:600;padding:9px 11px;border-radius:8px;}
+.dia-btn.sel{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:#f97316;}
+
+.list-row{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.list-row.clickable:hover{border-color:rgba(249,115,22,.45);}
+.list-row-nome{font-size:14px;font-weight:700;}
+.list-row-meta{font-size:12px;color:#66707e;margin-top:3px;}
+.list-row-actions{display:flex;gap:6px;margin-top:10px;}
+
+.ex-item{background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+.ex-nome{font-size:13.5px;font-weight:700;}
+.ex-meta{font-size:11.5px;color:#66707e;margin-top:2px;}
+
+.btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:#1e2633;color:#e5e9f0;}
+.btn-outline{background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;}
+.btn-ghost{background:none;border:none;color:#66707e;font-size:12.5px;font-weight:600;padding:4px 8px;}
+.btn-ghost:hover{color:#f87171;}
+.btn-wa{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap;}
+.btn:disabled{opacity:.55;cursor:default;}
+.btn-block{width:100%;}
+
+.empty{font-size:12.5px;color:#66707e;padding:20px 0;text-align:center;}
+.erro{color:#f87171;font-size:12.5px;margin-top:8px;}
+.form-box{background:#0d1119;border:1px dashed #1e2633;border-radius:12px;padding:18px;margin-top:14px;}
+.actions-row{display:flex;gap:10px;margin-top:16px;}
+.actions-row .btn{flex:1;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">P</div>
+    <div class="logo-text">Performa <span>AI</span></div>
+  </div>
+  <a class="voltar" href="alunos.html">← Voltar pros alunos</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="app">Carregando…</div>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const clienteIdParam = params.get('cliente_id');
+const clienteNomeParam = params.get('cliente_nome');
+const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+const app = document.getElementById('app');
+
+const TABS = [
+  ['treino', 'Treino'],
+  ['dieta', 'Dieta'],
+  ['cardio', 'Cardio'],
+  ['anamnese', 'Anamnese'],
+  ['fotos', 'Fotos'],
+  ['feedback', 'Feedback'],
+  ['agendamentos', 'Agendamentos']
+];
+
+const OBJETIVO_LABEL = { emagrecimento: 'Emagrecimento', hipertrofia: 'Hipertrofia', condicionamento: 'Condicionamento', saude: 'Saúde geral' };
+const NIVEL_LABEL = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
+
+let userId = null;
+let cliente = null;
+let exerciciosLib = [];
+let treinos = [];
+let dietaList = [];
+let cardioList = [];
+let agendamentosList = [];
+let anamnese = null;
+let fotosList = [];
+let feedbacksList = [];
+let activeTab = 'treino';
+
+let dietaFormOpen = false;
+let dietaEditId = '';
+
+let taDetalheId = '';
+let taDetalheExercicios = [];
+let taAddExOpen = false;
+
+let cardioFormOpen = false;
+let cardioEditId = '';
+
+let agFormOpen = false;
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function iniciais(nome) {
+  return (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+}
+
+function diasLabel(dias) {
+  if (!dias || !dias.length) return 'Sem dias definidos';
+  return dias.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', ');
+}
+
+async function init() {
+  if (!clienteIdParam) { window.location.href = 'alunos.html'; return; }
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  userId = user.id;
+
+  const { data: cl } = await supabaseClient.from('clientes').select('*').eq('id', clienteIdParam).eq('trainer_id', userId).maybeSingle();
+  if (!cl) { window.location.href = 'alunos.html'; return; }
+  cliente = cl;
+
+  const [exsRes, trRes, dietaRes, cardioRes, anamneseRes, fotosRes, feedbacksRes, agRes] = await Promise.all([
+    supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
+    supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
+    supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
+    supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
+    supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle(),
+    supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
+    supabaseClient.from('feedbacks_treino').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
+    supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true })
+  ]);
+  exerciciosLib = exsRes.data || [];
+  treinos = trRes.data || [];
+  dietaList = dietaRes.data || [];
+  cardioList = cardioRes.data || [];
+  anamnese = anamneseRes.data || null;
+  const fotosRaw = fotosRes.data || [];
+  if (fotosRaw.length) {
+    const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosRaw.map(f => f.url), 60 * 60 * 24 * 7);
+    fotosList = fotosRaw.map((f, i) => ({ ...f, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
+  } else {
+    fotosList = [];
+  }
+  feedbacksList = feedbacksRes.data || [];
+  agendamentosList = agRes.data || [];
+
+  render();
+}
+
+function render() {
+  app.innerHTML = '';
+  app.appendChild(renderHeader());
+  app.appendChild(renderTabs());
+  const body = el('<div></div>');
+  if (activeTab === 'treino') renderTreinoTab(body);
+  else if (activeTab === 'dieta') renderDietaTab(body);
+  else if (activeTab === 'cardio') renderCardioTab(body);
+  else if (activeTab === 'anamnese') renderAnamneseTab(body);
+  else if (activeTab === 'fotos') renderFotosTab(body);
+  else if (activeTab === 'feedback') renderFeedbackTab(body);
+  else if (activeTab === 'agendamentos') renderAgendamentosTab(body);
+  app.appendChild(body);
+}
+
+function renderAnamneseTab(container) {
+  if (!anamnese) {
+    container.appendChild(el('<div class="empty">Aguardando resposta do aluno. Assim que ele preencher a anamnese, as respostas aparecem aqui.</div>'));
+    return;
+  }
+  const linha = (label, valor) => el(
+    '<div class="list-row"><div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;">' + label + '</div>' +
+    '<div class="list-row-nome" style="margin-top:4px;">' + (valor || '—') + '</div></div>'
+  );
+  container.appendChild(linha('Objetivo', OBJETIVO_LABEL[anamnese.objetivo] || anamnese.objetivo));
+  container.appendChild(linha('Nível de atividade', NIVEL_LABEL[anamnese.nivel] || anamnese.nivel));
+  container.appendChild(linha('Idade / Altura / Peso', [
+    anamnese.idade ? anamnese.idade + ' anos' : null,
+    anamnese.altura_cm ? anamnese.altura_cm + ' cm' : null,
+    anamnese.peso_kg ? anamnese.peso_kg + ' kg' : null
+  ].filter(Boolean).join(' · ') || null));
+  container.appendChild(linha('Lesões / condições médicas', anamnese.lesoes));
+  container.appendChild(linha('Medicamentos em uso', anamnese.medicamentos));
+  container.appendChild(linha('Restrições alimentares', anamnese.restricoes));
+  container.appendChild(el('<div class="sub" style="margin-top:6px;">Respondido em ' + new Date(anamnese.respondido_em).toLocaleDateString('pt-BR') + '</div>'));
+}
+
+function renderHeader() {
+  const nome = cliente.nome || clienteNomeParam || 'Aluno';
+  const badge = cliente.status === 'ativo'
+    ? '<span class="badge badge-ativo">ATIVO</span>'
+    : '<span class="badge badge-inativo">INATIVO</span>';
+  const header = el(
+    '<div class="aluno-header">' +
+      '<div style="display:flex;align-items:center;gap:14px;">' +
+        '<div class="aluno-avatar">' + iniciais(nome) + '</div>' +
+        '<div><div style="font-size:18px;font-weight:800;">' + nome + '</div>' +
+        '<div style="margin-top:4px;">' + badge + '</div></div>' +
+      '</div>' +
+    '</div>'
+  );
+  const wsBtn = el('<button type="button" class="btn-wa">📲 Notificar cliente</button>');
+  wsBtn.addEventListener('click', notificarCliente);
+  header.appendChild(wsBtn);
+  return header;
+}
+
+function notificarCliente() {
+  if (!cliente.telefone) { alert('Esse aluno ainda não tem telefone cadastrado.'); return; }
+  let digits = cliente.telefone.replace(/\D/g, '');
+  if (digits.length <= 11) digits = '55' + digits;
+  const msg = encodeURIComponent('Oi ' + cliente.nome + '! Seu treino já está pronto no Performa AI 💪');
+  window.open('https://wa.me/' + digits + '?text=' + msg, '_blank');
+}
+
+function renderTabs() {
+  const bar = el('<div class="tabs"></div>');
+  TABS.forEach(([key, label]) => {
+    const t = el('<div class="tab' + (activeTab === key ? ' active' : '') + '">' + label + '</div>');
+    t.addEventListener('click', () => { activeTab = key; taDetalheId = ''; render(); });
+    bar.appendChild(t);
+  });
+  return bar;
+}
+
+// ---------- TREINO ----------
+
+function renderTreinoTab(container) {
+  const standalone = treinos.filter(t => !t.split_id);
+  const splitIds = Array.from(new Set(treinos.filter(t => t.split_id).map(t => t.split_id)));
+
+  if (taDetalheId) { renderTaDetalhe(container); return; }
+
+  if (!treinos.length) {
+    container.appendChild(el('<div class="empty">Nenhum treino criado ainda pra esse aluno.</div>'));
+  }
+
+  splitIds.forEach(splitId => {
+    const grupo = treinos.filter(t => t.split_id === splitId).sort((a, b) => a.ordem - b.ordem);
+    const letras = grupo.map(t => t.nome.replace(/^Treino\s*/i, '')).join('/');
+    const habilitado = grupo.some(t => t.habilitado);
+    const row = el(
+      '<div class="list-row clickable">' +
+        '<div class="list-row-nome">Divisão ' + letras + '</div>' +
+        '<div class="list-row-meta">' + grupo.length + ' treinos</div>' +
+        '<div class="list-row-meta" style="color:' + (habilitado ? '#4ade80' : '#f59e0b') + ';margin-top:6px;">' +
+          (habilitado ? '✓ Visível pro aluno' : '🔒 Oculto — ainda não habilitado') +
+        '</div>' +
+      '</div>'
+    );
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => {
+      window.location.href = 'montar-treino.html?split_id=' + splitId + '&cliente_id=' + clienteIdParam + '&cliente_nome=' + encodeURIComponent(clienteNomeParam || cliente.nome || '');
+    });
+    container.appendChild(row);
+  });
+
+  standalone.forEach(tr => {
+    const row = el(
+      '<div class="list-row clickable">' +
+        '<div class="list-row-nome">' + tr.nome + '</div>' +
+        '<div class="list-row-meta">' + diasLabel(tr.dias_semana) + '</div>' +
+        '<div class="list-row-meta" style="color:' + (tr.habilitado ? '#4ade80' : '#f59e0b') + ';margin-top:6px;">' +
+          (tr.habilitado ? '✓ Visível pro aluno' : '🔒 Oculto — ainda não habilitado') +
+        '</div>' +
+      '</div>'
+    );
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', () => openTaDetalhe(tr.id));
+    container.appendChild(row);
+  });
+
+  const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Adicionar treino</button>');
+  novoBtn.addEventListener('click', () => {
+    window.location.href = 'montar-treino.html?cliente_id=' + clienteIdParam + '&cliente_nome=' + encodeURIComponent(clienteNomeParam || cliente.nome || '');
+  });
+  container.appendChild(novoBtn);
+}
+
+async function openTaDetalhe(treinoId) {
+  taDetalheId = treinoId;
+  taAddExOpen = false;
+  const { data } = await supabaseClient
+    .from('treino_exercicios')
+    .select('*, exercicios(nome)')
+    .eq('treino_id', treinoId)
+    .order('ordem', { ascending: true });
+  taDetalheExercicios = data || [];
+  render();
+}
+
+function renderTaDetalhe(container) {
+  const treino = treinos.find(t => t.id === taDetalheId) || {};
+  const head = el('<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;"><div style="font-size:15px;font-weight:800;">' + (treino.nome || '') + '</div></div>');
+  const back = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">← Voltar aos treinos</button>');
+  back.addEventListener('click', () => { taDetalheId = ''; render(); });
+  head.appendChild(back);
+  container.appendChild(head);
+
+  if (!taDetalheExercicios.length) {
+    container.appendChild(el('<div class="empty">Nenhum exercício adicionado ainda.</div>'));
+  }
+  taDetalheExercicios.forEach(te => {
+    container.appendChild(el(
+      '<div class="ex-item">' +
+        '<div class="ex-nome">' + ((te.exercicios || {}).nome || 'Exercício') + '</div>' +
+        '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (te.tecnica_avancada === 'super_set' ? 'Super set' : 'Técnica padrão') + '</div>' +
+      '</div>'
+    ));
+  });
+
+  if (taAddExOpen) {
+    const box = el('<div class="form-box"></div>');
+    const select = el('<select><option value="">Selecione…</option></select>');
+    exerciciosLib.forEach(ex => select.appendChild(el('<option value="' + ex.id + '">' + ex.nome + '</option>')));
+    box.appendChild(el('<label>Exercício</label>'));
+    box.appendChild(select);
+
+    const series = el('<textarea rows="2" placeholder="Ex: 3x12, 4x8-10, 3x15" maxlength="250" style="margin-top:14px;"></textarea>');
+    box.appendChild(el('<label style="margin-top:14px;">Séries</label>'));
+    box.appendChild(series);
+
+    const descanso = el('<textarea rows="2" placeholder="Ex: 60s, 1-2min" maxlength="50" style="margin-top:14px;"></textarea>');
+    box.appendChild(el('<label style="margin-top:14px;">Intervalo de descanso</label>'));
+    box.appendChild(descanso);
+
+    const tecnica = el('<select style="margin-top:14px;"><option value="nenhuma">Nenhuma técnica avançada</option><option value="super_set">Super set</option></select>');
+    box.appendChild(el('<label style="margin-top:14px;">Técnica avançada</label>'));
+    box.appendChild(tecnica);
+
+    const erro = el('<div class="erro" style="display:none;"></div>');
+    box.appendChild(erro);
+
+    const actions = el('<div class="actions-row"></div>');
+    const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+    cancelBtn.addEventListener('click', () => { taAddExOpen = false; render(); });
+    const salvarBtn = el('<button type="button" class="btn btn-primary">Adicionar</button>');
+    salvarBtn.addEventListener('click', async () => {
+      if (!select.value) { erro.textContent = 'Escolha um exercício.'; erro.style.display = ''; return; }
+      salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+      const { error } = await supabaseClient.from('treino_exercicios').insert({
+        treino_id: taDetalheId, exercicio_id: select.value,
+        series: series.value.trim() || null, intervalo_descanso: descanso.value.trim() || null,
+        tecnica_avancada: tecnica.value
+      });
+      if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = 'Adicionar'; return; }
+      taAddExOpen = false;
+      await openTaDetalhe(taDetalheId);
+    });
+    actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+    box.appendChild(actions);
+    container.appendChild(box);
+  } else {
+    const addBtn = el('<button type="button" class="btn btn-outline btn-block">+ Adicionar Exercício</button>');
+    addBtn.addEventListener('click', () => { taAddExOpen = true; render(); });
+    container.appendChild(addBtn);
+  }
+}
+
+// ---------- DIETA ----------
+
+function renderDietaTab(container) {
+  if (dietaFormOpen) { renderDietaForm(container); return; }
+
+  if (!dietaList.length) {
+    container.appendChild(el('<div class="empty">Nenhuma dieta atribuída a esse aluno ainda.</div>'));
+  }
+  dietaList.forEach(d => {
+    const row = el(
+      '<div class="list-row">' +
+        '<div class="list-row-nome">' + d.nome + '</div>' +
+        '<div class="list-row-meta">' + (d.meta_calorica || 'Meta calórica não definida') + '</div>' +
+        (d.observacoes ? '<div class="list-row-meta" style="margin-top:6px;">' + d.observacoes + '</div>' : '') +
+      '</div>'
+    );
+    (d.refeicoes || []).forEach(r => {
+      row.appendChild(el('<div class="ex-item"><div class="ex-nome">' + r.nome + '</div><div class="ex-meta">' + r.itens + '</div></div>'));
+    });
+    const actions = el('<div class="list-row-actions"></div>');
+    const editBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">Editar</button>');
+    editBtn.addEventListener('click', () => { dietaEditId = d.id; dietaFormOpen = true; render(); });
+    const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
+    delBtn.addEventListener('click', async () => {
+      if (!window.confirm('Excluir a dieta "' + d.nome + '"?')) return;
+      await supabaseClient.from('dietas').delete().eq('id', d.id);
+      dietaList = dietaList.filter(x => x.id !== d.id);
+      render();
+    });
+    actions.appendChild(editBtn); actions.appendChild(delBtn);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+
+  const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Criar dieta</button>');
+  novoBtn.addEventListener('click', () => { dietaEditId = ''; dietaFormOpen = true; render(); });
+  container.appendChild(novoBtn);
+}
+
+function renderDietaForm(container) {
+  const editando = dietaList.find(d => d.id === dietaEditId);
+  const acharItens = (nome) => ((editando && editando.refeicoes) || []).find(r => r.nome === nome)?.itens || '';
+  const box = el('<div class="form-box"></div>');
+
+  const nome = el('<input type="text" placeholder="Ex: Hipertrofia 2.800 kcal">');
+  nome.value = editando ? editando.nome : '';
+  box.appendChild(el('<label>Nome da dieta</label>')); box.appendChild(nome);
+
+  const meta = el('<input type="text" placeholder="Ex: 2.800 kcal · 180g PTN" style="margin-top:14px;">');
+  meta.value = editando ? (editando.meta_calorica || '') : '';
+  box.appendChild(el('<label style="margin-top:14px;">Meta calórica / macros</label>')); box.appendChild(meta);
+
+  const cafe = el('<input type="text" placeholder="Ex: Aveia + whey + banana" style="margin-top:14px;">');
+  cafe.value = acharItens('Café da manhã');
+  box.appendChild(el('<label style="margin-top:14px;">Café da manhã</label>')); box.appendChild(cafe);
+
+  const almoco = el('<input type="text" placeholder="Ex: Arroz + frango grelhado + salada" style="margin-top:14px;">');
+  almoco.value = acharItens('Almoço');
+  box.appendChild(el('<label style="margin-top:14px;">Almoço</label>')); box.appendChild(almoco);
+
+  const jantar = el('<input type="text" placeholder="Ex: Batata doce + peixe + legumes" style="margin-top:14px;">');
+  jantar.value = acharItens('Jantar');
+  box.appendChild(el('<label style="margin-top:14px;">Jantar</label>')); box.appendChild(jantar);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { dietaFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">' + (editando ? 'Salvar alterações' : 'Criar dieta') + '</button>');
+  salvarBtn.addEventListener('click', async () => {
+    if (!nome.value.trim()) { erro.textContent = 'Digite o nome da dieta.'; erro.style.display = ''; return; }
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const refeicoes = [
+      ['Café da manhã', cafe.value], ['Almoço', almoco.value], ['Jantar', jantar.value]
+    ].filter(([, itens]) => itens.trim()).map(([n, itens]) => ({ nome: n, itens: itens.trim() }));
+    const payload = { nome: nome.value.trim(), meta_calorica: meta.value.trim() || null, refeicoes };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('dietas').update(payload).eq('id', editando.id));
+    } else {
+      ({ error } = await supabaseClient.from('dietas').insert({ ...payload, trainer_id: userId, cliente_id: clienteIdParam }));
+    }
+    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = editando ? 'Salvar alterações' : 'Criar dieta'; return; }
+    const { data } = await supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false });
+    dietaList = data || [];
+    dietaFormOpen = false;
+    render();
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
+}
+
+// ---------- CARDIO ----------
+
+function renderCardioTab(container) {
+  if (cardioFormOpen) { renderCardioForm(container); return; }
+
+  if (!cardioList.length) {
+    container.appendChild(el('<div class="empty">Nenhum protocolo de cardio cadastrado ainda.</div>'));
+  }
+  cardioList.forEach(c => {
+    const row = el(
+      '<div class="list-row">' +
+        '<div class="list-row-nome">' + (c.tipo || 'Cardio') + '</div>' +
+        '<div class="list-row-meta">' + [
+          c.duracao_min ? c.duracao_min + ' min' : null,
+          c.frequencia_semanal ? c.frequencia_semanal + 'x por semana' : null,
+          c.intensidade ? 'intensidade ' + c.intensidade : null
+        ].filter(Boolean).join(' · ') + '</div>' +
+        (c.observacoes ? '<div class="list-row-meta" style="margin-top:6px;">' + c.observacoes + '</div>' : '') +
+      '</div>'
+    );
+    const actions = el('<div class="list-row-actions"></div>');
+    const editBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">Editar</button>');
+    editBtn.addEventListener('click', () => { cardioEditId = c.id; cardioFormOpen = true; render(); });
+    const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
+    delBtn.addEventListener('click', async () => {
+      if (!window.confirm('Excluir esse protocolo de cardio?')) return;
+      await supabaseClient.from('cardio_protocolos').delete().eq('id', c.id);
+      cardioList = cardioList.filter(x => x.id !== c.id);
+      render();
+    });
+    actions.appendChild(editBtn); actions.appendChild(delBtn);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+
+  const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Novo protocolo de cardio</button>');
+  novoBtn.addEventListener('click', () => { cardioEditId = ''; cardioFormOpen = true; render(); });
+  container.appendChild(novoBtn);
+}
+
+function renderCardioForm(container) {
+  const editando = cardioList.find(c => c.id === cardioEditId);
+  const box = el('<div class="form-box"></div>');
+
+  const tipo = el('<input type="text" placeholder="Ex: Esteira, bike, HIIT">');
+  tipo.value = editando ? (editando.tipo || '') : '';
+  box.appendChild(el('<label>Tipo</label>')); box.appendChild(tipo);
+
+  const row = el('<div class="field-row" style="margin-top:14px;"></div>');
+  const duracao = el('<input type="number" min="0" placeholder="Ex: 30">');
+  duracao.value = editando && editando.duracao_min != null ? editando.duracao_min : '';
+  const freq = el('<input type="number" min="0" placeholder="Ex: 3">');
+  freq.value = editando && editando.frequencia_semanal != null ? editando.frequencia_semanal : '';
+  const colA = el('<div></div>'); colA.appendChild(el('<label>Duração (min)</label>')); colA.appendChild(duracao);
+  const colB = el('<div></div>'); colB.appendChild(el('<label>Frequência semanal</label>')); colB.appendChild(freq);
+  row.appendChild(colA); row.appendChild(colB);
+  box.appendChild(row);
+
+  const intensidade = el('<input type="text" placeholder="Ex: leve, moderada, intensa" style="margin-top:14px;">');
+  intensidade.value = editando ? (editando.intensidade || '') : '';
+  box.appendChild(el('<label style="margin-top:14px;">Intensidade</label>')); box.appendChild(intensidade);
+
+  const obs = el('<textarea rows="3" placeholder="Observações" style="margin-top:14px;"></textarea>');
+  obs.value = editando ? (editando.observacoes || '') : '';
+  box.appendChild(el('<label style="margin-top:14px;">Observações</label>')); box.appendChild(obs);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { cardioFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">' + (editando ? 'Salvar alterações' : 'Criar protocolo') + '</button>');
+  salvarBtn.addEventListener('click', async () => {
+    if (!tipo.value.trim()) { erro.textContent = 'Digite o tipo de cardio.'; erro.style.display = ''; return; }
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const payload = {
+      tipo: tipo.value.trim(),
+      duracao_min: duracao.value ? Number(duracao.value) : null,
+      frequencia_semanal: freq.value ? Number(freq.value) : null,
+      intensidade: intensidade.value.trim() || null,
+      observacoes: obs.value.trim() || null
+    };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('cardio_protocolos').update(payload).eq('id', editando.id));
+    } else {
+      ({ error } = await supabaseClient.from('cardio_protocolos').insert({ ...payload, trainer_id: userId, cliente_id: clienteIdParam }));
+    }
+    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = editando ? 'Salvar alterações' : 'Criar protocolo'; return; }
+    const { data } = await supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false });
+    cardioList = data || [];
+    cardioFormOpen = false;
+    render();
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
+}
+
+// ---------- FOTOS ----------
+
+function renderFotosTab(container) {
+  const inicial = fotosList.filter(f => f.tipo === 'inicial');
+  const evolucao = fotosList.filter(f => f.tipo === 'evolucao');
+
+  if (!fotosList.length) {
+    container.appendChild(el('<div class="empty">Nenhuma foto enviada ainda. As fotos aparecem aqui assim que o aluno enviar pela anamnese ou pelo app.</div>'));
+    return;
+  }
+
+  const galeria = (titulo, lista) => {
+    if (!lista.length) return;
+    container.appendChild(el('<div class="sub" style="margin:0 0 10px;font-weight:700;color:#e5e9f0;">' + titulo + '</div>'));
+    const grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:22px;"></div>');
+    lista.forEach(f => {
+      grid.appendChild(el('<img src="' + f.url + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid #1e2633;">'));
+    });
+    container.appendChild(grid);
+  };
+
+  galeria('Fotos iniciais (anamnese)', inicial);
+  galeria('Evolução', evolucao);
+}
+
+// ---------- FEEDBACK ----------
+
+function renderFeedbackTab(container) {
+  if (!feedbacksList.length) {
+    container.appendChild(el('<div class="empty">Nenhum feedback enviado ainda.</div>'));
+    return;
+  }
+  feedbacksList.forEach(f => {
+    container.appendChild(el(
+      '<div class="list-row">' +
+        '<div class="list-row-nome">' + (f.humor || 'Sem humor registrado') + (f.rpe ? ' · RPE ' + f.rpe : '') + '</div>' +
+        '<div class="list-row-meta">' + new Date(f.created_at).toLocaleDateString('pt-BR') + '</div>' +
+        (f.comentario ? '<div class="list-row-meta" style="margin-top:6px;">' + f.comentario + '</div>' : '') +
+      '</div>'
+    ));
+  });
+}
+
+// ---------- AGENDAMENTOS ----------
+
+const TIPOS_AGENDAMENTO = [
+  ['revisao_treino', 'Revisão de treino'],
+  ['revisao_dieta', 'Revisão de dieta'],
+  ['reavaliacao', 'Reavaliação'],
+  ['outro', 'Outro']
+];
+
+function renderAgendamentosTab(container) {
+  container.appendChild(el('<div class="sub" style="margin-bottom:16px;">Lembretes só visíveis pra você — o aluno não vê essa aba.</div>'));
+
+  if (agFormOpen) { renderAgendamentoForm(container); return; }
+
+  if (!agendamentosList.length) {
+    container.appendChild(el('<div class="empty">Nenhum agendamento criado ainda.</div>'));
+  }
+  agendamentosList.forEach(ag => {
+    const tipoLabel = (TIPOS_AGENDAMENTO.find(t => t[0] === ag.tipo) || [, ag.tipo || ''])[1];
+    const row = el(
+      '<div class="list-row" style="opacity:' + (ag.concluido ? '.55' : '1') + ';">' +
+        '<div class="list-row-nome">' + ag.titulo + (ag.concluido ? ' ✓' : '') + '</div>' +
+        '<div class="list-row-meta">' + tipoLabel + ' · ' + new Date(ag.data_lembrete + 'T00:00:00').toLocaleDateString('pt-BR') + '</div>' +
+        (ag.observacoes ? '<div class="list-row-meta" style="margin-top:6px;">' + ag.observacoes + '</div>' : '') +
+      '</div>'
+    );
+    const actions = el('<div class="list-row-actions"></div>');
+    const toggleBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">' + (ag.concluido ? 'Reabrir' : 'Concluir') + '</button>');
+    toggleBtn.addEventListener('click', async () => {
+      await supabaseClient.from('agendamentos').update({ concluido: !ag.concluido }).eq('id', ag.id);
+      ag.concluido = !ag.concluido;
+      render();
+    });
+    const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
+    delBtn.addEventListener('click', async () => {
+      if (!window.confirm('Excluir esse agendamento?')) return;
+      await supabaseClient.from('agendamentos').delete().eq('id', ag.id);
+      agendamentosList = agendamentosList.filter(x => x.id !== ag.id);
+      render();
+    });
+    actions.appendChild(toggleBtn); actions.appendChild(delBtn);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+
+  const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Novo agendamento</button>');
+  novoBtn.addEventListener('click', () => { agFormOpen = true; render(); });
+  container.appendChild(novoBtn);
+}
+
+function renderAgendamentoForm(container) {
+  const box = el('<div class="form-box"></div>');
+
+  const titulo = el('<input type="text" placeholder="Ex: Revisar treino de pernas">');
+  box.appendChild(el('<label>Título</label>')); box.appendChild(titulo);
+
+  const row = el('<div class="field-row" style="margin-top:14px;"></div>');
+  const tipo = el('<select></select>');
+  TIPOS_AGENDAMENTO.forEach(([v, l]) => tipo.appendChild(el('<option value="' + v + '">' + l + '</option>')));
+  const data = el('<input type="date">');
+  const colA = el('<div></div>'); colA.appendChild(el('<label>Tipo</label>')); colA.appendChild(tipo);
+  const colB = el('<div></div>'); colB.appendChild(el('<label>Data</label>')); colB.appendChild(data);
+  row.appendChild(colA); row.appendChild(colB);
+  box.appendChild(row);
+
+  const obs = el('<textarea rows="3" placeholder="Observações" style="margin-top:14px;"></textarea>');
+  box.appendChild(el('<label style="margin-top:14px;">Observações</label>')); box.appendChild(obs);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { agFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">Criar agendamento</button>');
+  salvarBtn.addEventListener('click', async () => {
+    if (!titulo.value.trim()) { erro.textContent = 'Digite um título.'; erro.style.display = ''; return; }
+    if (!data.value) { erro.textContent = 'Escolha uma data.'; erro.style.display = ''; return; }
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const { error } = await supabaseClient.from('agendamentos').insert({
+      trainer_id: userId, cliente_id: clienteIdParam, titulo: titulo.value.trim(),
+      tipo: tipo.value, data_lembrete: data.value, observacoes: obs.value.trim() || null
+    });
+    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = 'Criar agendamento'; return; }
+    const { data: rows } = await supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true });
+    agendamentosList = rows || [];
+    agFormOpen = false;
+    render();
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
+}
+
+init();
+</script>
+</body>
+</html>

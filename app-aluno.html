@@ -386,7 +386,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 </sc-for>
               </div>
             </div>
-            <textarea placeholder="Alguma dor, dificuldade ou observação? (opcional)" style="width:100%;min-height:64px;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:12px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
+            <textarea value="{{ comentarioFeedback }}" sc-camel-on-change="{{ onComentarioFeedbackChange }}" placeholder="Alguma dor, dificuldade ou observação? (opcional)" style="width:100%;min-height:64px;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:12px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
             <button sc-camel-on-click="{{ enviarFeedback }}" style="margin-top:12px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px 26px;border-radius:11px;cursor:pointer;">{{ feedbackLabel }}</button>
           </section>
         </sc-if>
@@ -444,9 +444,24 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">+ Peso</button>
             <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">+ Medidas</button>
-            <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">+ Fotos</button>
+            <div style="position:relative;display:inline-flex;">
+              <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">{{ fotoUploadLabel }}</button>
+              <input type="file" accept="image/*" sc-camel-on-change="{{ onFotoUpload }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;">
+            </div>
           </div>
         </div>
+
+        <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:800;margin-bottom:14px;">Fotos de evolução</div>
+          <sc-if value="{{ semFotosEvolucao }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12.5px;color:#66707e;">Nenhuma foto enviada ainda.</div>
+          </sc-if>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;">
+            <sc-for list="{{ fotosEvolucao }}" as="f" hint-placeholder-count="4">
+              <img src="{{ f.url }}" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid #1e2633;">
+            </sc-for>
+          </div>
+        </section>
 
         <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:16px;">
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:20px;">
@@ -604,20 +619,30 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 class Component extends DCLogic {
   state = {
     tab: 'hoje', abertoEx: -1, feitos: [],
-    humor: -1, rpe: -1, fbEnviado: false, pesoSalvo: false,
-    refeitas: [], exerciciosDoTreino: []
+    humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
+    refeitas: [], exerciciosDoTreino: [],
+    clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false
   };
 
   componentDidMount() {
     this.loadTreino();
   }
 
+  async resolveFotoUrls(fotos) {
+    if (!fotos || !fotos.length) return [];
+    const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotos.map(f => f.url), 60 * 60 * 24 * 7);
+    return fotos.map((f, i) => ({ ...f, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
+  }
+
   async loadTreino() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const { data: cliente } = await supabaseClient.from('clientes').select('id').eq('auth_user_id', user.id).maybeSingle();
+    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) return;
+    this.setState({ clienteId: cliente.id, trainerId: cliente.trainer_id });
     const { data: treinos } = await supabaseClient.from('treinos').select('id').eq('cliente_id', cliente.id).eq('habilitado', true);
+    const { data: fotos } = await supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false });
+    this.setState({ fotosEvolucao: await this.resolveFotoUrls(fotos) });
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
       .from('treino_exercicios')
@@ -625,6 +650,34 @@ class Component extends DCLogic {
       .in('treino_id', treinos.map(t => t.id))
       .order('ordem', { ascending: true });
     this.setState({ exerciciosDoTreino: itens || [] });
+  }
+
+  async onEnviarFeedback() {
+    const humorLabels = ['🔥 Muito bem', '🙂 Tranquilo', '😐 Cansado', '😕 Com dor'];
+    this.setState({ fbEnviando: true });
+    await supabaseClient.from('feedbacks_treino').insert({
+      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
+      humor: this.state.humor >= 0 ? humorLabels[this.state.humor] : null,
+      rpe: this.state.rpe >= 0 ? this.state.rpe + 1 : null,
+      comentario: this.state.comentarioFeedback.trim() || null
+    });
+    this.setState({ fbEnviando: false, fbEnviado: true });
+  }
+
+  async onFotoUpload(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file || !this.state.clienteId) return;
+    this.setState({ fotoUploadBusy: true });
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = this.state.clienteId + '/evolucao-' + Date.now() + '.' + ext;
+    const { error: upErr } = await supabaseClient.storage.from('fotos-evolucao').upload(path, file);
+    if (upErr) { this.setState({ fotoUploadBusy: false }); alert('Não foi possível enviar a foto: ' + upErr.message); return; }
+    await supabaseClient.from('fotos_evolucao').insert({
+      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: path, tipo: 'evolucao'
+    });
+    const { data: fotos } = await supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', this.state.clienteId).order('created_at', { ascending: false });
+    this.setState({ fotoUploadBusy: false, fotosEvolucao: await this.resolveFotoUrls(fotos) });
   }
 
   renderVals() {
@@ -714,8 +767,15 @@ class Component extends DCLogic {
         border: this.state.rpe === i ? 'rgba(249,115,22,.45)' : '#1e2633',
         color: this.state.rpe === i ? '#f97316' : '#9aa4b2'
       })),
-      enviarFeedback: () => this.setState({ fbEnviado: true }),
-      feedbackLabel: this.state.fbEnviado ? 'Enviado ✓' : 'Enviar feedback',
+      enviarFeedback: () => this.onEnviarFeedback(),
+      feedbackLabel: this.state.fbEnviado ? 'Enviado ✓' : (this.state.fbEnviando ? 'Enviando…' : 'Enviar feedback'),
+      comentarioFeedback: this.state.comentarioFeedback,
+      onComentarioFeedbackChange: (e) => this.setState({ comentarioFeedback: e.target.value }),
+
+      fotosEvolucao: this.state.fotosEvolucao.map(f => ({ url: f.url })),
+      semFotosEvolucao: this.state.fotosEvolucao.length === 0,
+      onFotoUpload: (e) => this.onFotoUpload(e),
+      fotoUploadLabel: this.state.fotoUploadBusy ? 'Enviando…' : '+ Fotos',
 
       semDieta: rfData.length === 0,
       macros: [],
