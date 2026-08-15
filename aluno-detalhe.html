@@ -74,6 +74,28 @@ textarea{resize:vertical;min-height:52px;}
 .form-box{background:#0d1119;border:1px dashed #1e2633;border-radius:12px;padding:18px;margin-top:14px;}
 .actions-row{display:flex;gap:10px;margin-top:16px;}
 .actions-row .btn{flex:1;}
+
+.opt-group{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.opt-card{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:12px 14px;cursor:pointer;}
+.opt-card:hover{border-color:rgba(249,115,22,.3);}
+.opt-card.sel{background:rgba(249,115,22,.08);border-color:rgba(249,115,22,.5);}
+.opt-nome{font-size:13.5px;font-weight:700;}
+.opt-card.sel .opt-nome{color:#f97316;}
+.opt-desc{font-size:12px;color:#66707e;margin-top:2px;}
+.opt-fator{font-size:11px;color:#4a5364;margin-top:3px;font-weight:700;}
+
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px;}
+.result-box{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:16px;text-align:center;}
+.result-num{font-size:22px;font-weight:800;color:#f97316;}
+.result-label{font-size:11px;color:#66707e;margin-top:4px;}
+
+.result-summary{font-size:12.5px;color:#9aa4b2;background:#0d1119;border:1px solid #1a2130;border-radius:10px;padding:12px 14px;}
+.result-summary b{color:#e5e9f0;}
+
+.warn-box{background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.3);border-radius:12px;padding:14px 16px;font-size:12.5px;color:#e5e9f0;margin-bottom:14px;}
+.sexo-row{display:flex;gap:8px;}
+.sexo-row .chip{flex:1;text-align:center;background:#0d1119;border:1px solid #1e2633;color:#9aa4b2;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;}
+.sexo-row .chip.sel{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:#f97316;}
 </style>
 </head>
 <body>
@@ -103,6 +125,7 @@ const TABS = [
   ['dieta', 'Dieta'],
   ['cardio', 'Cardio'],
   ['anamnese', 'Anamnese'],
+  ['energetico', 'Energético'],
   ['fotos', 'Fotos'],
   ['feedback', 'Feedback'],
   ['agendamentos', 'Agendamentos']
@@ -110,6 +133,34 @@ const TABS = [
 
 const OBJETIVO_LABEL = { emagrecimento: 'Emagrecimento', hipertrofia: 'Hipertrofia', condicionamento: 'Condicionamento', saude: 'Saúde geral' };
 const NIVEL_LABEL = { iniciante: 'Iniciante', intermediario: 'Intermediário', avancado: 'Avançado' };
+
+const NIVEL_ATIVIDADE_OPCOES = [
+  { key: 'sedentario', nome: 'Sedentário', desc: 'Pouco ou nenhum exercício.', fator: 1.20 },
+  { key: 'leve', nome: 'Levemente ativo', desc: 'Exercício leve 1–3 dias/semana.', fator: 1.375 },
+  { key: 'moderado', nome: 'Moderadamente ativo', desc: 'Exercício moderado 3–5 dias/semana.', fator: 1.55 },
+  { key: 'muito_ativo', nome: 'Muito ativo', desc: 'Exercício pesado 6–7 dias/semana.', fator: 1.725 },
+  { key: 'extremo', nome: 'Extremamente ativo', desc: 'Exercício muito pesado e/ou trabalho físico.', fator: 1.90 }
+];
+
+const OBJETIVO_CALORICO_OPCOES = [
+  { key: 'emagrecer', nome: 'Emagrecer', desc: '−15%', percentual: 0.85 },
+  { key: 'emagrecer_agressivo', nome: 'Emagrecer Agressivo', desc: '−30%', percentual: 0.70 },
+  { key: 'manter', nome: 'Manter peso', desc: '0%', percentual: 1.00 },
+  { key: 'ganho_seco', nome: 'Ganhos Secos', desc: '+7%', percentual: 1.07 },
+  { key: 'ganho_agressivo', nome: 'Ganhar Peso Agressivo', desc: '+15%', percentual: 1.15 }
+];
+
+const ESTADO_ATUAL_OPCOES = [
+  { key: 'magro', nome: 'Magro' },
+  { key: 'magro_gordura_moderada', nome: 'Magro com gordura moderada' },
+  { key: 'falso_magro', nome: 'Falso magro (skinny fat)' },
+  { key: 'acima_peso', nome: 'Muito acima do peso' }
+];
+
+function calcularTMB(sexo, pesoKg, alturaCm, idade) {
+  const base = 10 * pesoKg + 6.25 * alturaCm - 5 * idade;
+  return sexo === 'M' ? base + 5 : base - 161;
+}
 
 let userId = null;
 let cliente = null;
@@ -129,6 +180,8 @@ let taAddExOpen = false;
 
 let cardioFormOpen = false;
 let cardioEditId = '';
+
+let anamneseFormOpen = false;
 
 let agFormOpen = false;
 
@@ -195,6 +248,7 @@ function render() {
   else if (activeTab === 'dieta') renderDietaTab(body);
   else if (activeTab === 'cardio') renderCardioTab(body);
   else if (activeTab === 'anamnese') renderAnamneseTab(body);
+  else if (activeTab === 'energetico') renderEnergeticoTab(body);
   else if (activeTab === 'fotos') renderFotosTab(body);
   else if (activeTab === 'feedback') renderFeedbackTab(body);
   else if (activeTab === 'agendamentos') renderAgendamentosTab(body);
@@ -202,8 +256,13 @@ function render() {
 }
 
 function renderAnamneseTab(container) {
+  if (anamneseFormOpen) { renderAnamneseForm(container); return; }
+
   if (!anamnese) {
     container.appendChild(el('<div class="empty">Aguardando resposta do aluno. Assim que ele preencher a anamnese, as respostas aparecem aqui.</div>'));
+    const preencherBtn = el('<button type="button" class="btn btn-outline btn-block">Preencher sexo, idade, altura e peso</button>');
+    preencherBtn.addEventListener('click', () => { anamneseFormOpen = true; render(); });
+    container.appendChild(preencherBtn);
     return;
   }
   const linha = (label, valor) => el(
@@ -211,7 +270,8 @@ function renderAnamneseTab(container) {
     '<div class="list-row-nome" style="margin-top:4px;">' + (valor || '—') + '</div></div>'
   );
   container.appendChild(linha('Objetivo', OBJETIVO_LABEL[anamnese.objetivo] || anamnese.objetivo));
-  container.appendChild(linha('Nível de atividade', NIVEL_LABEL[anamnese.nivel] || anamnese.nivel));
+  container.appendChild(linha('Nível de experiência', NIVEL_LABEL[anamnese.nivel] || anamnese.nivel));
+  container.appendChild(linha('Sexo', anamnese.sexo === 'M' ? 'Masculino' : anamnese.sexo === 'F' ? 'Feminino' : null));
   container.appendChild(linha('Idade / Altura / Peso', [
     anamnese.idade ? anamnese.idade + ' anos' : null,
     anamnese.altura_cm ? anamnese.altura_cm + ' cm' : null,
@@ -221,6 +281,137 @@ function renderAnamneseTab(container) {
   container.appendChild(linha('Medicamentos em uso', anamnese.medicamentos));
   container.appendChild(linha('Restrições alimentares', anamnese.restricoes));
   container.appendChild(el('<div class="sub" style="margin-top:6px;">Respondido em ' + new Date(anamnese.respondido_em).toLocaleDateString('pt-BR') + '</div>'));
+
+  const editBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:14px;">Editar sexo, idade, altura e peso</button>');
+  editBtn.addEventListener('click', () => { anamneseFormOpen = true; render(); });
+  container.appendChild(editBtn);
+}
+
+function renderAnamneseForm(container) {
+  const box = el('<div class="form-box"></div>');
+  box.appendChild(el('<div class="sub" style="margin:0 0 16px;">Esses 4 dados alimentam automaticamente a calculadora de TMB/GET na aba Energético.</div>'));
+
+  let sexoVal = anamnese ? (anamnese.sexo || '') : '';
+  const sexoWrap = el('<div style="margin-bottom:14px;"></div>');
+  sexoWrap.appendChild(el('<label>Sexo</label>'));
+  const sexoRow = el('<div class="sexo-row"></div>');
+  const chipM = el('<div class="chip' + (sexoVal === 'M' ? ' sel' : '') + '">Masculino</div>');
+  const chipF = el('<div class="chip' + (sexoVal === 'F' ? ' sel' : '') + '">Feminino</div>');
+  chipM.addEventListener('click', () => { sexoVal = 'M'; chipM.classList.add('sel'); chipF.classList.remove('sel'); });
+  chipF.addEventListener('click', () => { sexoVal = 'F'; chipF.classList.add('sel'); chipM.classList.remove('sel'); });
+  sexoRow.appendChild(chipM); sexoRow.appendChild(chipF);
+  sexoWrap.appendChild(sexoRow);
+  box.appendChild(sexoWrap);
+
+  const row = el('<div class="field-row"></div>');
+  const idade = el('<input type="number" min="0" placeholder="Ex: 28">');
+  idade.value = anamnese && anamnese.idade != null ? anamnese.idade : '';
+  const colIdade = el('<div></div>'); colIdade.appendChild(el('<label>Idade (anos)</label>')); colIdade.appendChild(idade);
+  const altura = el('<input type="number" min="0" placeholder="Ex: 175">');
+  altura.value = anamnese && anamnese.altura_cm != null ? anamnese.altura_cm : '';
+  const colAltura = el('<div></div>'); colAltura.appendChild(el('<label>Altura (cm)</label>')); colAltura.appendChild(altura);
+  row.appendChild(colIdade); row.appendChild(colAltura);
+  box.appendChild(row);
+
+  const peso = el('<input type="number" min="0" step="0.1" placeholder="Ex: 78.5">');
+  peso.value = anamnese && anamnese.peso_kg != null ? anamnese.peso_kg : '';
+  box.appendChild(el('<label>Peso (kg)</label>')); box.appendChild(peso);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { anamneseFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">Salvar</button>');
+  salvarBtn.addEventListener('click', async () => {
+    if (!sexoVal) { erro.textContent = 'Selecione o sexo.'; erro.style.display = ''; return; }
+    if (!idade.value || !altura.value || !peso.value) { erro.textContent = 'Preencha idade, altura e peso.'; erro.style.display = ''; return; }
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const payload = {
+      cliente_id: clienteIdParam, trainer_id: userId,
+      sexo: sexoVal, idade: Number(idade.value), altura_cm: Number(altura.value), peso_kg: Number(peso.value)
+    };
+    const { error } = await supabaseClient.from('anamnese_respostas').upsert(payload, { onConflict: 'cliente_id' });
+    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = 'Salvar'; return; }
+    const { data } = await supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle();
+    anamnese = data || null;
+    anamneseFormOpen = false;
+    render();
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
+}
+
+function renderEnergeticoTab(container) {
+  const dadosCompletos = anamnese && anamnese.sexo && anamnese.idade && anamnese.altura_cm && anamnese.peso_kg;
+
+  if (!dadosCompletos) {
+    const warn = el('<div class="warn-box">Preencha sexo, idade, altura e peso do aluno pra calcular a TMB, o GET e a Meta Calórica.</div>');
+    container.appendChild(warn);
+    const irBtn = el('<button type="button" class="btn btn-outline btn-block">Preencher na aba Anamnese</button>');
+    irBtn.addEventListener('click', () => { activeTab = 'anamnese'; anamneseFormOpen = true; render(); });
+    container.appendChild(irBtn);
+    return;
+  }
+
+  const salvarCampo = async (campo, valor) => {
+    const payload = { cliente_id: clienteIdParam, trainer_id: userId, [campo]: valor };
+    const { error } = await supabaseClient.from('anamnese_respostas').upsert(payload, { onConflict: 'cliente_id' });
+    if (!error) anamnese[campo] = valor;
+    render();
+  };
+
+  const renderGrupo = (titulo, opcoes, campo, mostrarExtra) => {
+    container.appendChild(el('<label style="margin-top:2px;">' + titulo + '</label>'));
+    const grupo = el('<div class="opt-group"></div>');
+    opcoes.forEach(op => {
+      const sel = anamnese[campo] === op.key;
+      const card = el('<div class="opt-card' + (sel ? ' sel' : '') + '"></div>');
+      card.appendChild(el('<div class="opt-nome">' + op.nome + '</div>'));
+      if (op.desc) card.appendChild(el('<div class="opt-desc">' + op.desc + '</div>'));
+      if (mostrarExtra && op.fator) card.appendChild(el('<div class="opt-fator">Fator ' + op.fator.toFixed(3).replace(/0+$/, '').replace(/\.$/, '') + '</div>'));
+      card.addEventListener('click', () => salvarCampo(campo, op.key));
+      grupo.appendChild(card);
+    });
+    container.appendChild(grupo);
+  };
+
+  container.appendChild(el('<div class="sub" style="margin:0 0 4px;">Atividade e Objetivos</div>'));
+  renderGrupo('Nível de Atividade', NIVEL_ATIVIDADE_OPCOES, 'nivel_atividade', true);
+  renderGrupo('Objetivo', OBJETIVO_CALORICO_OPCOES, 'objetivo_calorico', false);
+  renderGrupo('Estado Atual', ESTADO_ATUAL_OPCOES, 'estado_atual', false);
+
+  const nivelSel = NIVEL_ATIVIDADE_OPCOES.find(o => o.key === anamnese.nivel_atividade);
+  const objSel = OBJETIVO_CALORICO_OPCOES.find(o => o.key === anamnese.objetivo_calorico);
+  const estadoSel = ESTADO_ATUAL_OPCOES.find(o => o.key === anamnese.estado_atual);
+
+  const tmb = calcularTMB(anamnese.sexo, anamnese.peso_kg, anamnese.altura_cm, anamnese.idade);
+  const get = nivelSel ? tmb * nivelSel.fator : null;
+  const meta = get != null && objSel ? get * objSel.percentual : null;
+
+  container.appendChild(el('<div class="sub" style="margin:18px 0 4px;">Resultados da Sua Dieta</div>'));
+  const grid = el('<div class="result-grid"></div>');
+  [
+    ['Taxa Metabólica Basal (TMB)', Math.round(tmb) + ' kcal'],
+    ['Gasto Energético Total (TDEE)', get != null ? Math.round(get) + ' kcal' : '—'],
+    ['Meta Calórica', meta != null ? Math.round(meta) + ' kcal' : '—']
+  ].forEach(([label, val]) => {
+    const box = el('<div class="result-box"></div>');
+    box.appendChild(el('<div class="result-num">' + val + '</div>'));
+    box.appendChild(el('<div class="result-label">' + label + '</div>'));
+    grid.appendChild(box);
+  });
+  container.appendChild(grid);
+
+  container.appendChild(el(
+    '<div class="result-summary">' +
+    'Nível de Atividade: <b>' + (nivelSel ? nivelSel.nome : 'não selecionado') + '</b><br>' +
+    'Objetivo: <b>' + (objSel ? objSel.nome : 'não selecionado') + '</b><br>' +
+    'Estado Atual: <b>' + (estadoSel ? estadoSel.nome : 'não selecionado') + '</b>' +
+    '</div>'
+  ));
 }
 
 function renderHeader() {
