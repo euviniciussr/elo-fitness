@@ -59,10 +59,20 @@ textarea{resize:vertical;min-height:52px;}
 
 .combo-box{border:1px solid rgba(168,85,247,.3);border-radius:12px;padding:12px;margin-bottom:10px;background:rgba(168,85,247,.04);}
 .combo-label{font-size:10.5px;font-weight:800;color:#a855f7;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
-.combo-box .ex-item{margin-bottom:8px;}
+.combo-box .ex-item{padding:9px 11px;margin-bottom:6px;}
 .combo-box .ex-item:last-child{margin-bottom:0;}
+.combo-box .ex-nome{font-size:12.5px;}
+.combo-box .ex-meta{font-size:11px;margin-top:2px;}
+.combo-box .ex-obs{font-size:11px;}
+.combo-box .ex-icon-btn,.combo-box .ex-remove{font-size:11.5px;padding:3px 5px;}
 .combinar-btn{background:none;border:none;color:#a855f7;font-size:12px;font-weight:700;padding:4px 0;}
 .combinar-btn:hover{text-decoration:underline;}
+
+.ex-search-wrap{position:relative;}
+.ex-search-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#131a26;border:1px solid #1e2633;border-radius:10px;max-height:230px;overflow-y:auto;z-index:30;box-shadow:0 10px 28px rgba(0,0,0,.45);}
+.ex-search-item{padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;}
+.ex-search-item:hover,.ex-search-item.active{background:rgba(249,115,22,.12);color:#f97316;}
+.ex-search-empty{padding:9px 13px;font-size:12px;color:#66707e;}
 
 .btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
 .btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
@@ -651,16 +661,48 @@ function renderAddExForm(treino) {
   if (isCombo) form.appendChild(el('<div class="sub" style="margin:0;color:#a855f7;">Adicionando exercício combinado…</div>'));
   if (editTe) form.appendChild(el('<div class="sub" style="margin:0;color:#f97316;">Editando exercício…</div>'));
 
-  const exListId = 'ex-lib-' + treino.id;
   const selWrap = el('<div><label>Exercício</label></div>');
   const nomeAtual = editTe ? (editTe.exercicios || {}).nome || '' : '';
-  const sel = el('<input list="' + exListId + '" placeholder="Digite pra buscar…" autocomplete="off" value="' + nomeAtual.replace(/"/g, '&quot;') + '">');
-  const datalist = el('<datalist id="' + exListId + '"></datalist>');
-  exerciciosLib.forEach(e => datalist.appendChild(el('<option value="' + e.nome.replace(/"/g, '&quot;') + '">')));
-  selWrap.appendChild(sel);
-  selWrap.appendChild(datalist);
+  const searchWrap = el('<div class="ex-search-wrap"></div>');
+  const sel = el('<input placeholder="Digite pra buscar…" autocomplete="off" value="' + nomeAtual.replace(/"/g, '&quot;') + '">');
+  const dropdown = el('<div class="ex-search-dropdown" style="display:none;"></div>');
+  let exercicioEscolhido = editTe ? exerciciosLib.find(e => e.id === editTe.exercicio_id) || null : null;
+
+  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  const fecharDropdown = () => { dropdown.style.display = 'none'; dropdown.innerHTML = ''; };
+
+  const abrirDropdown = () => {
+    const q = norm(sel.value.trim());
+    const matches = (q ? exerciciosLib.filter(e => norm(e.nome).includes(q)) : exerciciosLib).slice(0, 40);
+    dropdown.innerHTML = '';
+    if (!matches.length) {
+      dropdown.appendChild(el('<div class="ex-search-empty">Nenhum exercício encontrado.</div>'));
+    } else {
+      matches.forEach(e => {
+        const item = el('<div class="ex-search-item">' + e.nome + '</div>');
+        item.addEventListener('mousedown', (ev) => {
+          ev.preventDefault();
+          sel.value = e.nome;
+          exercicioEscolhido = e;
+          fecharDropdown();
+        });
+        dropdown.appendChild(item);
+      });
+    }
+    dropdown.style.display = 'block';
+  };
+
+  sel.addEventListener('input', () => { exercicioEscolhido = null; abrirDropdown(); });
+  sel.addEventListener('focus', abrirDropdown);
+  sel.addEventListener('blur', () => setTimeout(fecharDropdown, 120));
+
+  searchWrap.appendChild(sel);
+  searchWrap.appendChild(dropdown);
+  selWrap.appendChild(searchWrap);
   form.appendChild(selWrap);
   const exercicioSelecionado = () => {
+    if (exercicioEscolhido) return exercicioEscolhido;
     const nome = sel.value.trim().toLowerCase();
     return exerciciosLib.find(e => e.nome.toLowerCase() === nome);
   };
