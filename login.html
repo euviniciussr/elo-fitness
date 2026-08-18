@@ -336,10 +336,25 @@ class Component extends DCLogic {
     btn.textContent = 'Entrando…';
     var { error } = await supabaseClient.auth.signInWithPassword({ email: conta.email, password: conta.senha });
     if (error) {
-      emAndamento = false;
-      btn.textContent = original;
-      alert('Acesso rápido falhou: ' + error.message);
-      return;
+      var signUpResult = await supabaseClient.auth.signUp({ email: conta.email, password: conta.senha });
+      if (signUpResult.error || !signUpResult.data.session) {
+        emAndamento = false;
+        btn.textContent = original;
+        alert('Acesso rápido falhou: ' + (signUpResult.error ? signUpResult.error.message : 'não foi possível criar a conta demo automaticamente.'));
+        return;
+      }
+      if (btn.id === 'qa-vinicius') {
+        var uid = signUpResult.data.user.id;
+        var { error: clienteError } = await supabaseClient.from('clientes').insert({
+          trainer_id: uid, auth_user_id: uid, nome: 'Vinícius (demo)', status: 'ativo'
+        });
+        if (clienteError) {
+          emAndamento = false;
+          btn.textContent = original;
+          alert('Acesso rápido falhou ao provisionar aluno demo: ' + clienteError.message);
+          return;
+        }
+      }
     }
     window.location.href = conta.destino;
   }, true);
