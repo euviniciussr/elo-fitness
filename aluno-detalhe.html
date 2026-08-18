@@ -33,6 +33,10 @@ h1{font-size:20px;font-weight:800;margin:0 0 6px;}
 .badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;display:inline-block;}
 .badge-ativo{color:#4ade80;background:rgba(74,222,128,.12);}
 .badge-inativo{color:#66707e;background:#131a26;}
+.badge-convite-pendente{color:#facc15;background:rgba(250,204,21,.12);}
+.badge-convite-aceito{color:#4ade80;background:rgba(74,222,128,.12);}
+.badge-convite-expirado{color:#f87171;background:rgba(248,113,113,.12);}
+.badge-convite-none{color:#66707e;background:#131a26;}
 
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid #171d29;padding-bottom:0;}
 .tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:#9aa4b2;border-bottom:2px solid transparent;cursor:pointer;}
@@ -66,6 +70,9 @@ textarea{resize:vertical;min-height:52px;}
 .btn-ghost{background:none;border:none;color:#66707e;font-size:12.5px;font-weight:600;padding:4px 8px;}
 .btn-ghost:hover{color:#f87171;}
 .btn-wa{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap;}
+.btn-convite{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);color:#f97316;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap;}
+.convite-link-box{display:flex;gap:8px;margin-top:10px;width:100%;}
+.convite-link-box input{flex:1;min-width:0;font-size:12px;}
 .btn:disabled{opacity:.55;cursor:default;}
 .btn-block{width:100%;}
 
@@ -172,6 +179,8 @@ let agendamentosList = [];
 let anamnese = null;
 let fotosList = [];
 let feedbacksList = [];
+let convite = null;
+let conviteLinkAberto = false;
 let activeTab = tabParam || 'treino';
 
 let taDetalheId = '';
@@ -211,7 +220,7 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, trRes, dietaRes, cardioRes, anamneseRes, fotosRes, feedbacksRes, agRes] = await Promise.all([
+  const [exsRes, trRes, dietaRes, cardioRes, anamneseRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
@@ -219,7 +228,8 @@ async function init() {
     supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle(),
     supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('feedbacks_treino').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
-    supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true })
+    supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true }),
+    supabaseClient.from('convites').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }).limit(1).maybeSingle()
   ]);
   exerciciosLib = exsRes.data || [];
   treinos = trRes.data || [];
@@ -235,6 +245,7 @@ async function init() {
   }
   feedbacksList = feedbacksRes.data || [];
   agendamentosList = agRes.data || [];
+  convite = convRes.data || null;
 
   render();
 }
@@ -414,24 +425,66 @@ function renderEnergeticoTab(container) {
   ));
 }
 
+function conviteStatusInfo() {
+  if (cliente.auth_user_id) return { label: 'Cadastro concluído', cls: 'badge-convite-aceito', acao: null };
+  if (!convite) return { label: 'Convite não enviado', cls: 'badge-convite-none', acao: 'Convidar aluno por e-mail' };
+  const expirado = convite.expires_at && new Date(convite.expires_at) < new Date();
+  if (expirado) return { label: 'Convite expirado', cls: 'badge-convite-expirado', acao: 'Reenviar convite' };
+  return { label: 'Aguardando cadastro', cls: 'badge-convite-pendente', acao: 'Reenviar convite' };
+}
+
 function renderHeader() {
   const nome = cliente.nome || clienteNomeParam || 'Aluno';
   const badge = cliente.status === 'ativo'
     ? '<span class="badge badge-ativo">ATIVO</span>'
     : '<span class="badge badge-inativo">INATIVO</span>';
+  const cvInfo = conviteStatusInfo();
   const header = el(
     '<div class="aluno-header">' +
       '<div style="display:flex;align-items:center;gap:14px;">' +
         '<div class="aluno-avatar">' + iniciais(nome) + '</div>' +
         '<div><div style="font-size:18px;font-weight:800;">' + nome + '</div>' +
-        '<div style="margin-top:4px;">' + badge + '</div></div>' +
+        '<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;">' + badge +
+          '<span class="badge ' + cvInfo.cls + '">' + cvInfo.label + '</span></div></div>' +
       '</div>' +
     '</div>'
   );
+  const actions = el('<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;"></div>');
   const wsBtn = el('<button type="button" class="btn-wa">📲 Notificar cliente</button>');
   wsBtn.addEventListener('click', notificarCliente);
-  header.appendChild(wsBtn);
+  actions.appendChild(wsBtn);
+  if (cvInfo.acao) {
+    const cvBtn = el('<button type="button" class="btn-convite">✉️ ' + cvInfo.acao + '</button>');
+    cvBtn.addEventListener('click', gerarConviteCliente);
+    actions.appendChild(cvBtn);
+  }
+  header.appendChild(actions);
+
+  if (conviteLinkAberto && convite) {
+    const link = window.location.origin + window.location.pathname.replace('aluno-detalhe.html', '') + 'convite.html?token=' + convite.token;
+    const box = el(
+      '<div class="convite-link-box">' +
+        '<input readonly value="' + link + '">' +
+        '<button type="button" class="btn btn-secondary" id="cv-copiar">Copiar</button>' +
+      '</div>'
+    );
+    box.querySelector('#cv-copiar').addEventListener('click', (e) => {
+      navigator.clipboard.writeText(link).then(() => { e.target.textContent = 'Copiado!'; setTimeout(() => { e.target.textContent = 'Copiar'; }, 1500); });
+    });
+    header.appendChild(box);
+  }
   return header;
+}
+
+async function gerarConviteCliente() {
+  if (!cliente.email) { alert('Esse aluno ainda não tem e-mail cadastrado.'); return; }
+  const { data, error } = await supabaseClient.from('convites')
+    .insert({ trainer_id: userId, cliente_id: cliente.id, email: cliente.email })
+    .select().single();
+  if (error) { alert('Não foi possível gerar o convite: ' + error.message); return; }
+  convite = data;
+  conviteLinkAberto = true;
+  render();
 }
 
 function notificarCliente() {

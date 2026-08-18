@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adicionar aluno — Performa AI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.voltar{font-size:13px;font-weight:700;color:#9aa4b2;}
+.voltar:hover{color:#e5e9f0;}
+
+.wrap{max-width:560px;margin:0 auto;padding:32px 20px 80px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
+h2{font-size:13px;font-weight:800;color:#9aa4b2;text-transform:uppercase;letter-spacing:.04em;margin:22px 0 12px;}
+h2:first-of-type{margin-top:0;}
+
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;}
+input::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer;}
+.field{margin-bottom:14px;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.erro-campo{color:#f87171;font-size:11.5px;margin-top:5px;}
+
+.erro-geral{color:#f87171;font-size:12.5px;margin:14px 0;display:none;}
+.btns{display:flex;gap:10px;margin-top:24px;}
+.btn{border:none;border-radius:10px;padding:12px 18px;font-size:13.5px;font-weight:700;cursor:pointer;flex:1;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:#1e2633;color:#e5e9f0;}
+.btn:disabled{opacity:.55;cursor:default;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">P</div>
+    <div class="logo-text">Performa <span>AI</span></div>
+  </div>
+  <a href="alunos.html" class="voltar">← Voltar pra Alunos</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h1>Adicionar aluno</h1>
+    <div class="sub">Cadastre o cliente na hora — sem precisar esperar ele aceitar convite. Depois, no perfil dele, você pode gerar o link de acesso quando quiser.</div>
+
+    <h2>Dados do cliente</h2>
+    <div class="field">
+      <label>Nome completo</label>
+      <input id="f-nome" placeholder="Nome do aluno">
+      <div class="erro-campo" id="erro-nome" style="display:none;"></div>
+    </div>
+    <div class="field">
+      <label>WhatsApp</label>
+      <input id="f-whatsapp" placeholder="(11) 99999-9999">
+      <div class="erro-campo" id="erro-whatsapp" style="display:none;"></div>
+    </div>
+    <div class="field">
+      <label>E-mail</label>
+      <input id="f-email" type="email" placeholder="aluno@email.com">
+      <div class="erro-campo" id="erro-email" style="display:none;"></div>
+    </div>
+    <div class="field">
+      <label>Confirmar e-mail</label>
+      <input id="f-email-confirma" type="email" placeholder="aluno@email.com">
+      <div class="erro-campo" id="erro-email-confirma" style="display:none;"></div>
+    </div>
+
+    <h2>Plano contratado</h2>
+    <div class="field">
+      <label>Plano</label>
+      <input id="f-plano" placeholder="Ex: Consultoria Trimestral">
+      <div class="erro-campo" id="erro-plano" style="display:none;"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Início do plano</label>
+        <input id="f-inicio" type="date">
+        <div class="erro-campo" id="erro-inicio" style="display:none;"></div>
+      </div>
+      <div class="field">
+        <label>Vencimento do plano (opcional)</label>
+        <input id="f-vencimento" type="date">
+      </div>
+    </div>
+
+    <div class="erro-geral" id="erro-geral"></div>
+
+    <div class="btns">
+      <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="btn-salvar">Adicionar cliente</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('btn-cancelar').addEventListener('click', () => {
+  window.location.href = 'alunos.html';
+});
+
+function campoErro(id, msg) {
+  const el = document.getElementById(id);
+  if (msg) { el.textContent = msg; el.style.display = ''; } else { el.style.display = 'none'; }
+}
+
+function emailValido(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
+
+document.getElementById('btn-salvar').addEventListener('click', async () => {
+  const nome = document.getElementById('f-nome').value.trim();
+  const whatsapp = document.getElementById('f-whatsapp').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const emailConfirma = document.getElementById('f-email-confirma').value.trim();
+  const plano = document.getElementById('f-plano').value.trim();
+  const inicio = document.getElementById('f-inicio').value;
+  const vencimento = document.getElementById('f-vencimento').value;
+  const erroGeral = document.getElementById('erro-geral');
+  const btn = document.getElementById('btn-salvar');
+
+  ['nome', 'whatsapp', 'email', 'email-confirma', 'plano', 'inicio'].forEach(f => campoErro('erro-' + f, ''));
+  erroGeral.style.display = 'none';
+
+  let ok = true;
+  if (!nome) { campoErro('erro-nome', 'Digite o nome completo.'); ok = false; }
+  if (!whatsapp) { campoErro('erro-whatsapp', 'Digite o WhatsApp.'); ok = false; }
+  if (!email) { campoErro('erro-email', 'Digite o e-mail.'); ok = false; }
+  else if (!emailValido(email)) { campoErro('erro-email', 'E-mail inválido.'); ok = false; }
+  if (!emailConfirma) { campoErro('erro-email-confirma', 'Confirme o e-mail.'); ok = false; }
+  else if (email && emailConfirma !== email) { campoErro('erro-email-confirma', 'Os e-mails não são iguais.'); ok = false; }
+  if (!plano) { campoErro('erro-plano', 'Digite o plano contratado.'); ok = false; }
+  if (!inicio) { campoErro('erro-inicio', 'Selecione a data de início.'); ok = false; }
+  if (!ok) return;
+
+  btn.disabled = true; btn.textContent = 'Salvando…';
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) { window.location.href = 'login.html'; return; }
+
+  const { data: existente } = await supabaseClient.from('clientes')
+    .select('id').eq('trainer_id', user.id).eq('email', email).maybeSingle();
+  if (existente) {
+    erroGeral.textContent = 'Já existe um aluno seu cadastrado com esse e-mail.';
+    erroGeral.style.display = '';
+    btn.disabled = false; btn.textContent = 'Adicionar cliente';
+    return;
+  }
+
+  const { data: novo, error } = await supabaseClient.from('clientes').insert({
+    trainer_id: user.id,
+    nome, telefone: whatsapp, email, plano,
+    plano_data_inicio: inicio,
+    plano_data_expiracao: vencimento || null,
+    status: 'ativo'
+  }).select().single();
+
+  if (error) {
+    erroGeral.textContent = 'Não foi possível salvar: ' + error.message;
+    erroGeral.style.display = '';
+    btn.disabled = false; btn.textContent = 'Adicionar cliente';
+    return;
+  }
+
+  window.location.href = 'aluno-detalhe.html?cliente_id=' + novo.id + '&cliente_nome=' + encodeURIComponent(novo.nome);
+});
+</script>
+</body>
+</html>
