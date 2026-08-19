@@ -449,7 +449,10 @@ function abrirEscolherSerieTemplate({ onAplicar }) {
   box.appendChild(list);
 
   const novaBtn = el('<button type="button" class="btn btn-secondary" style="width:100%;margin-top:6px;">+ Criar nova série pré-definida</button>');
-  novaBtn.addEventListener('click', () => abrirModalSerieTemplate({ template: null, onSaved: (nova) => { renderList(); } }));
+  novaBtn.addEventListener('click', () => abrirModalSerieTemplate({
+    template: null,
+    onSaved: (nova) => { onAplicar(nova); overlay.remove(); }
+  }));
   box.appendChild(novaBtn);
 
   const fecharBtn = el('<button type="button" class="btn btn-primary" style="width:100%;margin-top:10px;">Fechar</button>');
