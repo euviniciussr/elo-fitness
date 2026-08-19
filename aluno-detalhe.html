@@ -128,11 +128,11 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 const app = document.getElementById('app');
 
 const TABS = [
+  ['anamnese', 'Anamnese'],
   ['treino', 'Treino'],
+  ['energetico', 'TBM - GET'],
   ['dieta', 'Dieta'],
   ['cardio', 'Cardio'],
-  ['anamnese', 'Anamnese'],
-  ['energetico', 'Energético'],
   ['fotos', 'Fotos'],
   ['feedback', 'Feedback'],
   ['agendamentos', 'Agendamentos']
@@ -172,6 +172,7 @@ function calcularTMB(sexo, pesoKg, alturaCm, idade) {
 let userId = null;
 let cliente = null;
 let exerciciosLib = [];
+let tecnicasLib = [];
 let treinos = [];
 let dietaList = [];
 let cardioList = [];
@@ -220,8 +221,9 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, trRes, dietaRes, cardioRes, anamneseRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
+  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, anamneseRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
+    supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
@@ -232,6 +234,7 @@ async function init() {
     supabaseClient.from('convites').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }).limit(1).maybeSingle()
   ]);
   exerciciosLib = exsRes.data || [];
+  tecnicasLib = tecsRes.data || [];
   treinos = trRes.data || [];
   dietaList = dietaRes.data || [];
   cardioList = cardioRes.data || [];
@@ -583,10 +586,11 @@ function renderTaDetalhe(container) {
     container.appendChild(el('<div class="empty">Nenhum exercício adicionado ainda.</div>'));
   }
   taDetalheExercicios.forEach(te => {
+    const tec = tecnicasLib.find(t => t.id === te.tecnica_avancada);
     container.appendChild(el(
       '<div class="ex-item">' +
         '<div class="ex-nome">' + ((te.exercicios || {}).nome || 'Exercício') + '</div>' +
-        '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (te.tecnica_avancada === 'super_set' ? 'Super set' : 'Técnica padrão') + '</div>' +
+        '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (tec ? tec.nome : 'Sem técnica avançada') + '</div>' +
       '</div>'
     ));
   });
@@ -606,7 +610,13 @@ function renderTaDetalhe(container) {
     box.appendChild(el('<label style="margin-top:14px;">Intervalo de descanso</label>'));
     box.appendChild(descanso);
 
-    const tecnica = el('<select style="margin-top:14px;"><option value="nenhuma">Nenhuma técnica avançada</option><option value="super_set">Super set</option></select>');
+    const tecnica = el('<select style="margin-top:14px;"><option value="nenhuma">Nenhuma técnica avançada</option></select>');
+    tecnicasLib.forEach(t => {
+      const opt = el('<option></option>');
+      opt.value = t.id;
+      opt.textContent = t.nome;
+      tecnica.appendChild(opt);
+    });
     box.appendChild(el('<label style="margin-top:14px;">Técnica avançada</label>'));
     box.appendChild(tecnica);
 

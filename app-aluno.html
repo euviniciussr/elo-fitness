@@ -349,7 +349,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                   <sc-if value="{{ e.tecnica }}" hint-placeholder-val="{{ true }}">
                     <span style="font-size:10px;font-weight:800;color:#a855f7;background:rgba(168,85,247,.12);padding:3px 10px;border-radius:999px;">{{ e.tecnica }}</span>
                   </sc-if>
-                  <span style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;">🎬 vídeo</span>
+                  <sc-if value="{{ e.temVideo }}" hint-placeholder-val="{{ true }}">
+                    <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;">🎬 vídeo</span>
+                  </sc-if>
                 </div>
               </div>
               <sc-if value="{{ e.aberto }}" hint-placeholder-val="{{ false }}">
@@ -362,6 +364,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                       <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:11.5px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;" style-hover="color:#4ade80;border-color:rgba(74,222,128,.3);">✓</button>
                     </div>
                   </sc-for>
+                  <sc-if value="{{ e.tecnicaObs }}" hint-placeholder-val="{{ true }}">
+                    <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;">
+                      <div style="font-size:11px;font-weight:800;color:#a855f7;margin-bottom:3px;">Como realizar · {{ e.tecnica }}</div>
+                      <div style="font-size:12px;color:#9aa4b2;line-height:1.5;">{{ e.tecnicaObs }}</div>
+                    </div>
+                  </sc-if>
                   <div style="font-size:11.5px;color:#66707e;margin-top:4px;">Último treino: {{ e.historico }}</div>
                 </div>
               </sc-if>
@@ -620,7 +628,7 @@ class Component extends DCLogic {
   state = {
     tab: 'hoje', abertoEx: -1, feitos: [],
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
-    refeitas: [], exerciciosDoTreino: [],
+    refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {},
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false
   };
 
@@ -646,10 +654,16 @@ class Component extends DCLogic {
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
       .from('treino_exercicios')
-      .select('*, exercicios(nome)')
+      .select('*, exercicios(nome, video_url)')
       .in('treino_id', treinos.map(t => t.id))
       .order('ordem', { ascending: true });
-    this.setState({ exerciciosDoTreino: itens || [] });
+    const tecnicaIds = [...new Set((itens || []).map(te => te.tecnica_avancada).filter(id => id && id !== 'nenhuma'))];
+    let tecnicasPorId = {};
+    if (tecnicaIds.length) {
+      const { data: tecnicas } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').in('id', tecnicaIds);
+      (tecnicas || []).forEach(t => { tecnicasPorId[t.id] = t; });
+    }
+    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId });
   }
 
   async onEnviarFeedback() {
@@ -694,13 +708,18 @@ class Component extends DCLogic {
     const doneCount = feitos.filter(Boolean).length;
     const todos = feitos.length > 0 && doneCount === feitos.length;
 
-    const exData = this.state.exerciciosDoTreino.map(te => ({
-      nome: (te.exercicios || {}).nome || 'Exercício',
-      series: te.series || 'sem séries definidas',
-      descanso: te.intervalo_descanso || '—',
-      tecnica: te.tecnica_avancada === 'super_set' ? 'Super set' : '',
-      historico: '—', prev: [], reps: []
-    }));
+    const exData = this.state.exerciciosDoTreino.map(te => {
+      const tecnica = this.state.tecnicasPorId[te.tecnica_avancada];
+      return {
+        nome: (te.exercicios || {}).nome || 'Exercício',
+        series: te.series || 'sem séries definidas',
+        descanso: te.intervalo_descanso || '—',
+        tecnica: tecnica ? tecnica.nome : '',
+        tecnicaObs: tecnica ? (tecnica.observacao || '') : '',
+        videoUrl: (te.exercicios || {}).video_url || '',
+        historico: '—', prev: [], reps: []
+      };
+    });
     const rfData = [];
     const peso = [];
     const humorLabels = ['🔥 Muito bem', '🙂 Tranquilo', '😐 Cansado', '😕 Com dor'];
@@ -740,7 +759,9 @@ class Component extends DCLogic {
         const done = feitos[i];
         const aberto = this.state.abertoEx === i;
         return {
-          nome: e.nome, series: e.series, descanso: e.descanso, tecnica: e.tecnica, historico: e.historico,
+          nome: e.nome, series: e.series, descanso: e.descanso, tecnica: e.tecnica, tecnicaObs: e.tecnicaObs, historico: e.historico,
+          temVideo: !!e.videoUrl,
+          onVerVideo: () => { if (e.videoUrl) window.open(e.videoUrl, '_blank', 'noopener'); },
           aberto,
           border: aberto ? 'rgba(249,115,22,.35)' : done ? 'rgba(74,222,128,.2)' : '#1a2130',
           check: done ? '✅' : '⬜',

@@ -120,6 +120,27 @@ const MEAL_DEFS = [
   { key: 'ceia', nome: 'Ceia', opcional: true }
 ];
 
+const NIVEL_ATIVIDADE_OPCOES = [
+  { key: 'sedentario', fator: 1.20 },
+  { key: 'leve', fator: 1.375 },
+  { key: 'moderado', fator: 1.55 },
+  { key: 'muito_ativo', fator: 1.725 },
+  { key: 'extremo', fator: 1.90 }
+];
+
+const OBJETIVO_CALORICO_OPCOES = [
+  { key: 'emagrecer', percentual: 0.85 },
+  { key: 'emagrecer_agressivo', percentual: 0.70 },
+  { key: 'manter', percentual: 1.00 },
+  { key: 'ganho_seco', percentual: 1.07 },
+  { key: 'ganho_agressivo', percentual: 1.15 }
+];
+
+function calcularTMB(sexo, pesoKg, alturaCm, idade) {
+  const base = 10 * pesoKg + 6.25 * alturaCm - 5 * idade;
+  return sexo === 'M' ? base + 5 : base - 161;
+}
+
 let userId = null;
 let clientes = [];
 let foodLib = []; // { nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g }
@@ -131,6 +152,7 @@ let dietaClienteId = clienteIdParam || '';
 let refeicoes = {}; // key -> { nome, opcoes: [{ nome, itens: [] }] }
 let salvando = false;
 let erroMsg = '';
+let metaEnergetica = null; // { tmb, get, meta }
 
 function el(html) {
   const t = document.createElement('template');
@@ -155,12 +177,23 @@ async function init() {
   if (!user) return;
   userId = user.id;
 
-  const [clsRes, alimentosRes, tacoRes] = await Promise.all([
+  const [clsRes, alimentosRes, tacoRes, anamneseRes] = await Promise.all([
     supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').eq('trainer_id', userId),
-    supabaseClient.from('taco_alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').order('nome')
+    supabaseClient.from('taco_alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').order('nome'),
+    clienteIdParam ? supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle() : Promise.resolve({ data: null })
   ]);
   clientes = clsRes.data || [];
+
+  const anamnese = anamneseRes.data;
+  if (anamnese && anamnese.sexo && anamnese.peso_kg && anamnese.altura_cm && anamnese.idade) {
+    const nivelSel = NIVEL_ATIVIDADE_OPCOES.find(o => o.key === anamnese.nivel_atividade);
+    const objSel = OBJETIVO_CALORICO_OPCOES.find(o => o.key === anamnese.objetivo_calorico);
+    const tmb = calcularTMB(anamnese.sexo, anamnese.peso_kg, anamnese.altura_cm, anamnese.idade);
+    const get = nivelSel ? tmb * nivelSel.fator : null;
+    const meta = get != null && objSel ? get * objSel.percentual : null;
+    metaEnergetica = { tmb, get, meta };
+  }
 
   foodLib = [...(alimentosRes.data || []), ...(tacoRes.data || [])];
   foodByNome = new Map();
@@ -227,7 +260,23 @@ function render() {
   app.innerHTML = '';
 
   const h = el('<div></div>');
-  h.appendChild(el('<h1>' + (dietaId ? 'Editar dieta' : 'Criar nova dieta') + '</h1>'));
+  const hTop = el('<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;"></div>');
+  hTop.appendChild(el('<h1>' + (dietaId ? 'Editar dieta' : 'Criar nova dieta') + '</h1>'));
+  if (metaEnergetica) {
+    const box = el('<div style="text-align:right;flex-shrink:0;"></div>');
+    box.appendChild(el(
+      '<div style="font-size:11px;font-weight:700;color:#66707e;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;">TMB · GET · Meta calórica</div>'
+    ));
+    box.appendChild(el(
+      '<div style="font-size:13.5px;font-weight:700;color:#f97316;white-space:nowrap;">' +
+      Math.round(metaEnergetica.tmb) + ' kcal' +
+      (metaEnergetica.get != null ? ' · ' + Math.round(metaEnergetica.get) + ' kcal' : '') +
+      (metaEnergetica.meta != null ? ' · ' + Math.round(metaEnergetica.meta) + ' kcal' : '') +
+      '</div>'
+    ));
+    hTop.appendChild(box);
+  }
+  h.appendChild(hTop);
   h.appendChild(el('<div class="sub">Pesquise alimentos da Tabela TACO (ou dos seus próprios cadastrados), informe a quantidade em gramas e os macros são calculados automaticamente.</div>'));
   app.appendChild(h);
 

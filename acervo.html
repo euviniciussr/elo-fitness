@@ -508,7 +508,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Técnica avançada</label>
               <select sc-camel-on-change="{{ onAddExTecnicaChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
                 <option value="nenhuma">Nenhuma técnica avançada</option>
-                <option value="super_set">Super set</option>
+                <sc-for list="{{ tecnicaOptions }}" as="to" hint-placeholder-count="4">
+                  <option value="{{ to.id }}">{{ to.nome }}</option>
+                </sc-for>
               </select>
               <div style="{{ addExErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ addExErro }}</div>
               <div style="display:flex;gap:10px;margin-top:16px;">
@@ -696,7 +698,9 @@ class Component extends DCLogic {
     formulaModalOpen: false, formulaEditId: '', formulaNome: '', formulaDescricao: '', formulaErro: '', formulaSalvarLabel: 'Criar fórmula',
 
     refeicoesPredefinidasDb: [],
-    refeicaoModalOpen: false, refeicaoEditId: '', refeicaoNome: '', refeicaoDescricao: '', refeicaoErro: '', refeicaoSalvarLabel: 'Criar refeição'
+    refeicaoModalOpen: false, refeicaoEditId: '', refeicaoNome: '', refeicaoDescricao: '', refeicaoErro: '', refeicaoSalvarLabel: 'Criar refeição',
+
+    tecnicasDb: []
   };
 
   componentDidMount() {
@@ -706,19 +710,21 @@ class Component extends DCLogic {
   async loadAcervo() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes] = await Promise.all([
+    const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes, tecnicasRes] = await Promise.all([
       supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
       supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id),
       supabaseClient.from('dietas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('alimentos').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
       supabaseClient.from('formulas_alimentares').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('refeicoes_predefinidas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false })
+      supabaseClient.from('refeicoes_predefinidas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
+      supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', user.id).order('created_at', { ascending: true })
     ]);
     this.setState({
       exerciciosDb: exRes.data || [], treinosDb: trRes.data || [], clientesDb: clRes.data || [],
       dietasDb: dietasRes.data || [], alimentosDb: alimentosRes.data || [],
-      formulasDb: formulasRes.data || [], refeicoesPredefinidasDb: refeicoesRes.data || []
+      formulasDb: formulasRes.data || [], refeicoesPredefinidasDb: refeicoesRes.data || [],
+      tecnicasDb: tecnicasRes.data || []
     });
   }
 
@@ -1337,12 +1343,15 @@ class Component extends DCLogic {
       treinoDetalheOpen: !!this.state.treinoDetalheId,
       treinoDetalheNome: (this.state.treinosDb.find(t => t.id === this.state.treinoDetalheId) || {}).nome || '',
       treinoDetalheDias: diasLabel((this.state.treinosDb.find(t => t.id === this.state.treinoDetalheId) || {}).dias_semana),
-      treinoDetalheExercicios: this.state.treinoDetalheExercicios.map(te => ({
-        nome: (te.exercicios || {}).nome || 'Exercício',
-        series: te.series || 'sem séries definidas',
-        descanso: te.intervalo_descanso || 'sem descanso definido',
-        tecnica: te.tecnica_avancada === 'super_set' ? 'Super set' : 'Técnica padrão'
-      })),
+      treinoDetalheExercicios: this.state.treinoDetalheExercicios.map(te => {
+        const tec = this.state.tecnicasDb.find(t => t.id === te.tecnica_avancada);
+        return {
+          nome: (te.exercicios || {}).nome || 'Exercício',
+          series: te.series || 'sem séries definidas',
+          descanso: te.intervalo_descanso || 'sem descanso definido',
+          tecnica: tec ? tec.nome : 'Sem técnica avançada'
+        };
+      }),
       treinoDetalheSemExercicios: this.state.treinoDetalheExercicios.length === 0,
       closeTreinoDetalhe: () => this.closeTreinoDetalhe(),
 
@@ -1351,6 +1360,7 @@ class Component extends DCLogic {
       openAddEx: () => this.openAddEx(),
       closeAddEx: () => this.closeAddEx(),
       exercicioOptions: this.state.exerciciosDb.map(ex => ({ id: ex.id, nome: ex.nome })),
+      tecnicaOptions: this.state.tecnicasDb.map(t => ({ id: t.id, nome: t.nome })),
       onAddExExercicioChange: (e) => this.setState({ addExExercicioId: e.target.value }),
       addExSeries: this.state.addExSeries,
       addExSeriesCount: String(this.state.addExSeries.length),

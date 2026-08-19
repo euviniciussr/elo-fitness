@@ -114,6 +114,27 @@ textarea{resize:vertical;min-height:52px;}
 
 .template-item{width:100%;text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;color:#e5e9f0;font-size:13.5px;font-weight:700;margin-bottom:8px;}
 .template-item:hover{border-color:rgba(249,115,22,.45);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal-box{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:24px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
+.modal-box h2{font-size:16px;font-weight:800;margin:0 0 16px;}
+.tecnica-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;background:#0d1119;border:1px solid #1a2130;border-radius:10px;padding:10px 13px;margin-bottom:8px;}
+.tecnica-row-nome{font-size:13px;font-weight:700;}
+.tecnica-row-obs{font-size:11.5px;color:#66707e;margin-top:2px;}
+.tecnica-row-actions{display:flex;gap:2px;flex-shrink:0;}
+.tecnica-obs-preview{font-size:11.5px;color:#9aa4b2;background:#0d1119;border:1px solid #1a2130;border-radius:8px;padding:9px 11px;margin-top:8px;font-style:italic;}
+
+.serie-tmpl-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0d1119;border:1px solid #1a2130;border-radius:10px;padding:10px 13px;margin-bottom:8px;cursor:pointer;}
+.serie-tmpl-row:hover{border-color:rgba(249,115,22,.35);}
+.serie-tmpl-nome{font-size:13px;font-weight:700;}
+.serie-tmpl-sub{font-size:11.5px;color:#66707e;margin-top:2px;}
+.serie-tmpl-actions{display:flex;gap:2px;flex-shrink:0;}
+.serie-tmpl-linha{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.serie-tmpl-linha input{flex:1;}
+.add-serie-btn{background:none;border:1px dashed #1e2633;color:#9aa4b2;font-size:12px;font-weight:700;padding:9px;border-radius:8px;width:100%;}
+.add-serie-btn:hover{border-color:rgba(249,115,22,.45);color:#f97316;}
+.serie-tmpl-link{background:none;border:none;color:#f97316;font-size:12px;font-weight:700;padding:2px 0;}
+.serie-tmpl-link:hover{text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -145,6 +166,8 @@ const LETRAS = ['A','B','C','D','E','F'];
 let userId = null;
 let treinos = [];
 let exerciciosLib = [];
+let tecnicasLib = [];
+let seriesTemplatesLib = [];
 let clientes = [];
 let activeIndex = 0;
 let formMode = { type: 'add' };
@@ -158,6 +181,301 @@ function el(html) {
   return t.content.firstElementChild;
 }
 
+function tecnicaPorId(id) {
+  if (!id || id === 'nenhuma') return null;
+  return tecnicasLib.find(t => t.id === id) || null;
+}
+
+function abrirModalTecnica({ tecnica, onSaved }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box"></div>');
+  box.appendChild(el('<h2>' + (tecnica ? 'Editar técnica' : 'Criar nova técnica') + '</h2>'));
+
+  const nomeWrap = el('<div><label>Nome da técnica</label></div>');
+  const nomeInput = el('<input maxlength="60" placeholder="Ex: Rest-Pause, Cluster Set, Drop Set Duplo…">');
+  nomeInput.value = tecnica ? tecnica.nome : '';
+  nomeWrap.appendChild(nomeInput);
+  box.appendChild(nomeWrap);
+
+  const obsWrap = el('<div style="margin-top:12px;"><label>Como realizar / Observação</label></div>');
+  const obsTa = el('<textarea maxlength="500" placeholder="Ex: Realizar as repetições até próximo da falha, descansar 15 segundos e executar mais algumas repetições mantendo a execução controlada."></textarea>');
+  obsTa.value = tecnica ? (tecnica.observacao || '') : '';
+  obsWrap.appendChild(obsTa);
+  box.appendChild(obsWrap);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Salvar técnica</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  saveBtn.addEventListener('click', async () => {
+    const nome = nomeInput.value.trim();
+    if (!nome) { erro.textContent = 'Digite um nome pra técnica.'; erro.style.display = ''; return; }
+    erro.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando…';
+
+    const payload = { nome, observacao: obsTa.value.trim() || null };
+    const result = tecnica
+      ? await supabaseClient.from('tecnicas_avancadas').update(payload).eq('id', tecnica.id).select().single()
+      : await supabaseClient.from('tecnicas_avancadas').insert({ ...payload, trainer_id: userId }).select().single();
+
+    if (result.error) {
+      erro.textContent = result.error.message;
+      erro.style.display = '';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar técnica';
+      return;
+    }
+
+    if (tecnica) Object.assign(tecnica, result.data);
+    else tecnicasLib.push(result.data);
+
+    overlay.remove();
+    onSaved && onSaved(result.data);
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  box.appendChild(btnRow);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  nomeInput.focus();
+}
+
+function abrirGerenciarTecnicas(onChange) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:480px;"></div>');
+  box.appendChild(el('<h2>Técnicas avançadas</h2>'));
+
+  const list = el('<div></div>');
+
+  const renderList = () => {
+    list.innerHTML = '';
+    if (!tecnicasLib.length) {
+      list.appendChild(el('<div class="sub" style="margin:0 0 12px;">Nenhuma técnica cadastrada ainda.</div>'));
+    }
+    tecnicasLib.forEach(t => {
+      const row = el('<div class="tecnica-row"></div>');
+      const info = el('<div style="min-width:0;"></div>');
+      info.appendChild(el('<div class="tecnica-row-nome"></div>')).textContent = t.nome;
+      if (t.observacao) info.appendChild(el('<div class="tecnica-row-obs"></div>')).textContent = t.observacao;
+      row.appendChild(info);
+
+      const actions = el('<div class="tecnica-row-actions"></div>');
+      const editBtn = el('<button type="button" class="ex-icon-btn" title="Editar">✎</button>');
+      editBtn.addEventListener('click', () => abrirModalTecnica({
+        tecnica: t,
+        onSaved: () => { renderList(); onChange && onChange(); }
+      }));
+      const delBtn = el('<button type="button" class="ex-remove">remover</button>');
+      delBtn.addEventListener('click', async () => {
+        if (!window.confirm('Remover a técnica "' + t.nome + '"? Exercícios que já usam ela vão ficar sem técnica vinculada.')) return;
+        await supabaseClient.from('tecnicas_avancadas').delete().eq('id', t.id);
+        tecnicasLib = tecnicasLib.filter(x => x.id !== t.id);
+        renderList();
+        onChange && onChange();
+      });
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
+      list.appendChild(row);
+    });
+  };
+  renderList();
+  box.appendChild(list);
+
+  const novaBtn = el('<button type="button" class="btn btn-secondary" style="width:100%;margin-top:6px;">+ Criar nova técnica</button>');
+  novaBtn.addEventListener('click', () => abrirModalTecnica({
+    tecnica: null,
+    onSaved: () => { renderList(); onChange && onChange(); }
+  }));
+  box.appendChild(novaBtn);
+
+  const fecharBtn = el('<button type="button" class="btn btn-primary" style="width:100%;margin-top:10px;">Fechar</button>');
+  fecharBtn.addEventListener('click', () => overlay.remove());
+  box.appendChild(fecharBtn);
+
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+function formatarSerieTemplate(tmpl) {
+  return (tmpl.linhas || [])
+    .filter(l => (l.nome || '').trim() || (l.reps || '').trim())
+    .map(l => (l.nome || '').trim() + ': ' + (l.reps || '').trim())
+    .join('\n');
+}
+
+function abrirModalSerieTemplate({ template, linhasIniciais, onSaved }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:460px;"></div>');
+  box.appendChild(el('<h2>' + (template ? 'Editar série pré-definida' : 'Criar nova série pré-definida') + '</h2>'));
+
+  const nomeWrap = el('<div><label>Nome da série pré-definida</label></div>');
+  const nomeInput = el('<input maxlength="60" placeholder="Ex: Protocolo Padrão, Hipertrofia, Força…">');
+  nomeInput.value = template ? template.nome : '';
+  nomeWrap.appendChild(nomeInput);
+  box.appendChild(nomeWrap);
+
+  const linhasWrap = el('<div style="margin-top:14px;"><label>Séries</label></div>');
+  const linhasList = el('<div></div>');
+  linhasWrap.appendChild(linhasList);
+  box.appendChild(linhasWrap);
+
+  const linhasIniciaisReais = template ? (template.linhas || []) : (linhasIniciais || [{ nome: '', reps: '' }]);
+  const linhas = linhasIniciaisReais.length ? linhasIniciaisReais.map(l => ({ ...l })) : [{ nome: '', reps: '' }];
+
+  const renderLinhas = () => {
+    linhasList.innerHTML = '';
+    linhas.forEach((l, i) => {
+      const row = el('<div class="serie-tmpl-linha"></div>');
+      const nomeI = el('<input placeholder="Ex: Aquecimento, Trabalho, Drop…">');
+      nomeI.value = l.nome || '';
+      nomeI.addEventListener('input', () => l.nome = nomeI.value);
+      const repsI = el('<input placeholder="Ex: 10 reps, 8-10, 12">');
+      repsI.value = l.reps || '';
+      repsI.addEventListener('input', () => l.reps = repsI.value);
+      const rmBtn = el('<button type="button" class="ex-remove">✕</button>');
+      rmBtn.addEventListener('click', () => { linhas.splice(i, 1); renderLinhas(); });
+      row.appendChild(nomeI);
+      row.appendChild(repsI);
+      row.appendChild(rmBtn);
+      linhasList.appendChild(row);
+    });
+  };
+  renderLinhas();
+
+  const addLinhaBtn = el('<button type="button" class="add-serie-btn">+ Adicionar série</button>');
+  addLinhaBtn.addEventListener('click', () => { linhas.push({ nome: '', reps: '' }); renderLinhas(); });
+  box.appendChild(addLinhaBtn);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Salvar série pré-definida</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  saveBtn.addEventListener('click', async () => {
+    const nome = nomeInput.value.trim();
+    const linhasValidas = linhas.filter(l => (l.nome || '').trim() || (l.reps || '').trim());
+    if (!nome) { erro.textContent = 'Digite um nome pra série pré-definida.'; erro.style.display = ''; return; }
+    if (!linhasValidas.length) { erro.textContent = 'Adicione ao menos uma série.'; erro.style.display = ''; return; }
+    erro.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando…';
+
+    const payload = { nome, linhas: linhasValidas };
+    const result = template
+      ? await supabaseClient.from('series_predefinidas').update(payload).eq('id', template.id).select().single()
+      : await supabaseClient.from('series_predefinidas').insert({ ...payload, trainer_id: userId }).select().single();
+
+    if (result.error) {
+      erro.textContent = result.error.message;
+      erro.style.display = '';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar série pré-definida';
+      return;
+    }
+
+    if (template) Object.assign(template, result.data);
+    else seriesTemplatesLib.push(result.data);
+
+    overlay.remove();
+    onSaved && onSaved(result.data);
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  box.appendChild(btnRow);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  nomeInput.focus();
+}
+
+function abrirEscolherSerieTemplate({ onAplicar }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:480px;"></div>');
+  box.appendChild(el('<h2>Séries pré-definidas</h2>'));
+
+  const list = el('<div></div>');
+
+  const renderList = () => {
+    list.innerHTML = '';
+    if (!seriesTemplatesLib.length) {
+      list.appendChild(el('<div class="sub" style="margin:0 0 12px;">Nenhuma série pré-definida cadastrada ainda.</div>'));
+    }
+    seriesTemplatesLib.forEach(tmpl => {
+      const row = el('<div class="serie-tmpl-row"></div>');
+      const info = el('<div style="min-width:0;"></div>');
+      info.appendChild(el('<div class="serie-tmpl-nome"></div>')).textContent = tmpl.nome;
+      const n = (tmpl.linhas || []).length;
+      info.appendChild(el('<div class="serie-tmpl-sub"></div>')).textContent = n + (n === 1 ? ' série' : ' séries');
+      row.appendChild(info);
+
+      const actions = el('<div class="serie-tmpl-actions"></div>');
+      const editBtn = el('<button type="button" class="ex-icon-btn" title="Editar">✎</button>');
+      editBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        abrirModalSerieTemplate({ template: tmpl, onSaved: () => renderList() });
+      });
+      const delBtn = el('<button type="button" class="ex-remove">remover</button>');
+      delBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        if (!window.confirm('Remover a série pré-definida "' + tmpl.nome + '"?')) return;
+        await supabaseClient.from('series_predefinidas').delete().eq('id', tmpl.id);
+        seriesTemplatesLib = seriesTemplatesLib.filter(x => x.id !== tmpl.id);
+        renderList();
+      });
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
+
+      row.addEventListener('click', () => { onAplicar(tmpl); overlay.remove(); });
+      list.appendChild(row);
+    });
+  };
+  renderList();
+  box.appendChild(list);
+
+  const novaBtn = el('<button type="button" class="btn btn-secondary" style="width:100%;margin-top:6px;">+ Criar nova série pré-definida</button>');
+  novaBtn.addEventListener('click', () => abrirModalSerieTemplate({ template: null, onSaved: (nova) => { renderList(); } }));
+  box.appendChild(novaBtn);
+
+  const fecharBtn = el('<button type="button" class="btn btn-primary" style="width:100%;margin-top:10px;">Fechar</button>');
+  fecharBtn.addEventListener('click', () => overlay.remove());
+  box.appendChild(fecharBtn);
+
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+function extractYoutubeId(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url.trim());
+    const host = u.hostname.replace(/^www\./, '');
+    if (host === 'youtu.be') return u.pathname.slice(1) || null;
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (u.pathname === '/watch') return u.searchParams.get('v');
+      if (u.pathname.startsWith('/embed/')) return u.pathname.split('/embed/')[1] || null;
+      if (u.pathname.startsWith('/shorts/')) return u.pathname.split('/shorts/')[1] || null;
+    }
+  } catch (e) { /* not a valid URL */ }
+  return null;
+}
+
 async function init() {
   if (clienteIdParam) {
     const link = document.getElementById('voltar-link');
@@ -169,8 +487,14 @@ async function init() {
   if (!user) return;
   userId = user.id;
 
-  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome');
+  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url').eq('trainer_id', userId).order('nome');
   exerciciosLib = exs || [];
+
+  const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at');
+  tecnicasLib = tecs || [];
+
+  const { data: sTmpls } = await supabaseClient.from('series_predefinidas').select('id, nome, linhas').eq('trainer_id', userId).order('created_at');
+  seriesTemplatesLib = sTmpls || [];
 
   const { data: cls } = await supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome');
   clientes = cls || [];
@@ -199,7 +523,7 @@ async function carregarTemplates() {
 async function loadExerciciosDoTreino(treino) {
   const { data } = await supabaseClient
     .from('treino_exercicios')
-    .select('*, exercicios(nome, categoria)')
+    .select('*, exercicios(nome, categoria, video_url)')
     .eq('treino_id', treino.id)
     .order('ordem');
   treino._exercicios = data || [];
@@ -539,8 +863,12 @@ function renderTreinoBody(treino) {
   });
   body.appendChild(diasGrid);
 
-  const exLabel = el('<label>Exercícios</label>');
-  body.appendChild(exLabel);
+  const exLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;"></div>');
+  exLabelRow.appendChild(el('<label style="margin-bottom:0;">Exercícios</label>'));
+  const gerenciarTecBtn = el('<button type="button" class="combinar-btn" style="color:#9aa4b2;">Gerenciar técnicas avançadas</button>');
+  gerenciarTecBtn.addEventListener('click', () => abrirGerenciarTecnicas(() => renderMontar()));
+  exLabelRow.appendChild(gerenciarTecBtn);
+  body.appendChild(exLabelRow);
 
   const grupos = gruposMusculares(treino);
   if (grupos.length) {
@@ -554,7 +882,6 @@ function renderTreinoBody(treino) {
   } else {
     const list = treino._exercicios;
     const rendered = new Set();
-    const TEC_LABEL = { super_set: 'Super set', drop_set: 'Drop set', bi_set: 'Bi-set', rest_pause: 'Rest-pause' };
 
     const apendarComEdicaoInline = (container, m) => {
       container.appendChild(renderExItem(treino, m));
@@ -569,7 +896,7 @@ function renderTreinoBody(treino) {
         const membros = list.filter(x => x.grupo_id === te.grupo_id);
         membros.forEach(m => rendered.add(m.id));
         const combo = el('<div class="combo-box"></div>');
-        combo.appendChild(el('<div class="combo-label">' + (TEC_LABEL[te.tecnica_avancada] || 'Combo') + '</div>'));
+        combo.appendChild(el('<div class="combo-label">' + ((tecnicaPorId(te.tecnica_avancada) || {}).nome || 'Combo') + '</div>'));
         membros.forEach(m => apendarComEdicaoInline(combo, m));
         const combinarBtn = el('<button type="button" class="combinar-btn">+ adicionar exercício ao combo</button>');
         combinarBtn.addEventListener('click', () => {
@@ -617,6 +944,12 @@ function renderExItem(treino, te) {
   info.appendChild(el('<div class="ex-nome">' + (te.exercicios || {}).nome + '</div>'));
   info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + (te.carga ? ' · 🏋️ ' + te.carga : '') + ' · ⏱️ descanso ' + (te.intervalo_descanso || '—') + '</div>'));
   if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
+  const teVideoUrl = (te.exercicios || {}).video_url;
+  if (teVideoUrl) {
+    const videoLink = el('<a target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:11.5px;font-weight:700;color:#f97316;">▶ Ver vídeo</a>');
+    videoLink.href = teVideoUrl;
+    info.appendChild(videoLink);
+  }
   item.appendChild(info);
 
   const actions = el('<div class="ex-actions"></div>');
@@ -685,6 +1018,7 @@ function renderAddExForm(treino) {
           ev.preventDefault();
           sel.value = e.nome;
           exercicioEscolhido = e;
+          renderVideoPreview();
           fecharDropdown();
         });
         dropdown.appendChild(item);
@@ -693,7 +1027,28 @@ function renderAddExForm(treino) {
     dropdown.style.display = 'block';
   };
 
-  sel.addEventListener('input', () => { exercicioEscolhido = null; abrirDropdown(); });
+  const videoPreviewWrap = el('<div style="display:none;"></div>');
+
+  const renderVideoPreview = () => {
+    videoPreviewWrap.innerHTML = '';
+    if (!exercicioEscolhido) { videoPreviewWrap.style.display = 'none'; return; }
+    videoPreviewWrap.style.display = '';
+    const ytId = extractYoutubeId(exercicioEscolhido.video_url);
+    if (ytId) {
+      videoPreviewWrap.appendChild(el(
+        '<iframe src="https://www.youtube.com/embed/' + ytId + '" width="100%" height="180" ' +
+        'style="border:0;border-radius:10px;display:block;" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
+      ));
+    } else if (exercicioEscolhido.video_url) {
+      const link = el('<a target="_blank" rel="noopener" style="display:inline-block;font-size:12.5px;font-weight:700;color:#f97316;">▶ Ver vídeo do exercício</a>');
+      link.href = exercicioEscolhido.video_url;
+      videoPreviewWrap.appendChild(link);
+    } else {
+      videoPreviewWrap.appendChild(el('<div style="font-size:12px;color:#66707e;">Vídeo não cadastrado</div>'));
+    }
+  };
+
+  sel.addEventListener('input', () => { exercicioEscolhido = null; renderVideoPreview(); abrirDropdown(); });
   sel.addEventListener('focus', abrirDropdown);
   sel.addEventListener('blur', () => setTimeout(fecharDropdown, 120));
 
@@ -701,19 +1056,38 @@ function renderAddExForm(treino) {
   searchWrap.appendChild(dropdown);
   selWrap.appendChild(searchWrap);
   form.appendChild(selWrap);
+  form.appendChild(videoPreviewWrap);
+  renderVideoPreview();
   const exercicioSelecionado = () => {
     if (exercicioEscolhido) return exercicioEscolhido;
     const nome = sel.value.trim().toLowerCase();
     return exerciciosLib.find(e => e.nome.toLowerCase() === nome);
   };
 
-  const seriesWrap = el('<div><label>Séries</label></div>');
+  const seriesWrap = el('<div></div>');
+  const seriesLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;"></div>');
+  seriesLabelRow.appendChild(el('<label style="margin-bottom:0;">Séries</label>'));
+  const escolherSerieBtn = el('<button type="button" class="serie-tmpl-link">+ Adicionar série pré-definida</button>');
+  seriesLabelRow.appendChild(escolherSerieBtn);
+  seriesWrap.appendChild(seriesLabelRow);
   const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 3x12, 4x8-10, 3x15"></textarea>');
   seriesTa.value = editTe ? (editTe.series || '') : '';
   const seriesCount = el('<div class="counter">' + seriesTa.value.length + '/250</div>');
   seriesTa.addEventListener('input', () => seriesCount.textContent = seriesTa.value.length + '/250');
+  escolherSerieBtn.addEventListener('click', () => abrirEscolherSerieTemplate({
+    onAplicar: (tmpl) => {
+      seriesTa.value = formatarSerieTemplate(tmpl).slice(0, 250);
+      seriesCount.textContent = seriesTa.value.length + '/250';
+    }
+  }));
   seriesWrap.appendChild(seriesTa);
   seriesWrap.appendChild(seriesCount);
+  const salvarComoTemplateBtn = el('<button type="button" class="serie-tmpl-link" style="margin-top:4px;">Salvar como série pré-definida</button>');
+  salvarComoTemplateBtn.addEventListener('click', () => abrirModalSerieTemplate({
+    template: null,
+    linhasIniciais: [{ nome: 'Trabalho', reps: seriesTa.value.trim() }]
+  }));
+  seriesWrap.appendChild(salvarComoTemplateBtn);
   form.appendChild(seriesWrap);
 
   const cargaWrap = el('<div><label>Carga (opcional)</label></div>');
@@ -732,18 +1106,59 @@ function renderAddExForm(treino) {
   form.appendChild(descansoWrap);
 
   const tecWrap = el('<div><label>Técnica avançada</label></div>');
-  const tecSel = el(
-    '<select>' +
-    '<option value="nenhuma">Nenhuma técnica avançada</option>' +
-    '<option value="super_set">Super set</option>' +
-    '<option value="drop_set">Drop set</option>' +
-    '<option value="bi_set">Bi-set</option>' +
-    '<option value="rest_pause">Rest-pause</option>' +
-    '</select>'
-  );
-  tecSel.value = editTe ? (editTe.tecnica_avancada || 'nenhuma') : (isCombo ? 'bi_set' : 'nenhuma');
+  const tecSel = el('<select></select>');
+  const tecObsPreview = el('<div class="tecnica-obs-preview" style="display:none;"></div>');
+
+  const NOVA_TECNICA_VALUE = '__nova__';
+
+  const popularTecSel = (valorSelecionado) => {
+    tecSel.innerHTML = '';
+    tecSel.appendChild(el('<option value="nenhuma">Nenhuma técnica avançada</option>'));
+    tecnicasLib.forEach(t => {
+      const opt = el('<option></option>');
+      opt.value = t.id;
+      opt.textContent = t.nome;
+      tecSel.appendChild(opt);
+    });
+    tecSel.appendChild(el('<option value="' + NOVA_TECNICA_VALUE + '">+ Criar nova técnica</option>'));
+    tecSel.value = valorSelecionado;
+    if (tecSel.value !== valorSelecionado) tecSel.value = 'nenhuma';
+  };
+
+  const atualizarObsPreview = () => {
+    const t = tecnicaPorId(tecSel.value);
+    if (t && t.observacao) {
+      tecObsPreview.textContent = 'Como realizar: ' + t.observacao;
+      tecObsPreview.style.display = '';
+    } else {
+      tecObsPreview.style.display = 'none';
+    }
+  };
+
+  const isComboDefault = () => {
+    const biSet = tecnicasLib.find(t => t.nome === 'Bi-set');
+    return biSet ? biSet.id : 'nenhuma';
+  };
+
+  popularTecSel(editTe ? (editTe.tecnica_avancada || 'nenhuma') : (isCombo ? isComboDefault() : 'nenhuma'));
+  atualizarObsPreview();
+
+  tecSel.addEventListener('change', () => {
+    if (tecSel.value === NOVA_TECNICA_VALUE) {
+      const valorAnterior = 'nenhuma';
+      abrirModalTecnica({
+        tecnica: null,
+        onSaved: (nova) => { popularTecSel(nova.id); atualizarObsPreview(); }
+      });
+      tecSel.value = valorAnterior;
+      return;
+    }
+    atualizarObsPreview();
+  });
+
   tecWrap.appendChild(tecSel);
   form.appendChild(tecWrap);
+  form.appendChild(tecObsPreview);
 
   const obsWrap = el('<div><label>Observações (opcional)</label></div>');
   const obsTa = el('<textarea maxlength="250" placeholder="Ex: cuidado com o joelho, ajustar banco no nível 4…"></textarea>');
