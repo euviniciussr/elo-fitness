@@ -1036,15 +1036,16 @@ function renderAddExForm(treino) {
     videoPreviewWrap.innerHTML = '';
     if (!exercicioEscolhido) { videoPreviewWrap.style.display = 'none'; return; }
     videoPreviewWrap.style.display = '';
-    const ytId = extractYoutubeId(exercicioEscolhido.video_url);
-    if (ytId) {
+    const url = exercicioEscolhido.video_url;
+    if (url) {
+      const ytId = extractYoutubeId(url);
+      const embedSrc = ytId ? 'https://www.youtube.com/embed/' + ytId : url;
       videoPreviewWrap.appendChild(el(
-        '<iframe src="https://www.youtube.com/embed/' + ytId + '" width="100%" height="180" ' +
+        '<iframe src="' + embedSrc.replace(/"/g, '&quot;') + '" width="100%" height="180" ' +
         'style="border:0;border-radius:10px;display:block;" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>'
       ));
-    } else if (exercicioEscolhido.video_url) {
-      const link = el('<a target="_blank" rel="noopener" style="display:inline-block;font-size:12.5px;font-weight:700;color:#f97316;">▶ Ver vídeo do exercício</a>');
-      link.href = exercicioEscolhido.video_url;
+      const link = el('<a target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:11.5px;font-weight:700;color:#66707e;">Não carregou? Abrir vídeo em nova aba ↗</a>');
+      link.href = url;
       videoPreviewWrap.appendChild(link);
     } else {
       videoPreviewWrap.appendChild(el('<div style="font-size:12px;color:#66707e;">Vídeo não cadastrado</div>'));
