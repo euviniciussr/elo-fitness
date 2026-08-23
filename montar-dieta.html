@@ -188,6 +188,8 @@ function el(html) {
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
+function normalizarSemAcento(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
 function novaRefeicao(nome) {
   return { nome, opcoes: [{ nome: 'Opção 1', itens: [] }] };
 }
@@ -528,21 +530,28 @@ async function fpFetchSearch(q) {
     // Parte 24: se a Edge Function estiver fora do ar (não só a FatSecret),
     // a base própria do app (cadastros do treinador + biblioteca padrão)
     // continua pesquisável direto via RLS, sem depender de nada externo.
-    const termoSeguro = q.replace(/,/g, ' ');
+    // Busca por PALAVRAS (não frase inteira) — mesmo motivo do backend:
+    // "Pão, trigo, francês" não bate com ILIKE %pão francês% de uma vez só.
+    const palavras = normalizarSemAcento(q.replace(/,/g, ' ')).split(/\s+/).filter(Boolean);
+    if (!palavras.length) return { results: [], warning: 'edge_function_unavailable' };
+    const orAlimentos = palavras.map((w) => 'nome.ilike.%' + w + '%,brand_name.ilike.%' + w + '%').join(',');
+    const orTaco = palavras.map((w) => 'nome.ilike.%' + w + '%').join(',');
     const [ownRes, tacoRes] = await Promise.all([
       supabaseClient
         .from('alimentos')
         .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, source, source_id, brand_name, barcode, other_nutrients, default_unit, measures')
         .eq('trainer_id', userId)
-        .or('nome.ilike.%' + termoSeguro + '%,brand_name.ilike.%' + termoSeguro + '%')
-        .limit(20),
+        .or(orAlimentos)
+        .limit(200),
       supabaseClient
         .from('taco_alimentos')
         .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg')
-        .ilike('nome', '%' + termoSeguro + '%')
-        .limit(20)
+        .or(orTaco)
+        .limit(1000)
     ]);
-    const results = (ownRes.data || []).map(rowToNormalizedApp).concat((tacoRes.data || []).map(rowToNormalizedTaco));
+    const combina = (nome, marca) => palavras.every((w) => normalizarSemAcento((nome || '') + ' ' + (marca || '')).includes(w));
+    const results = (ownRes.data || []).filter((r) => combina(r.nome, r.brand_name)).slice(0, 30).map(rowToNormalizedApp)
+      .concat((tacoRes.data || []).filter((r) => combina(r.nome)).slice(0, 30).map(rowToNormalizedTaco));
     return { results, warning: 'edge_function_unavailable' };
   }
 }

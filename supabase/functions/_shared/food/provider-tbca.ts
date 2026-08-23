@@ -8,6 +8,22 @@
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { FoodProvider, FoodSearchParams, NormalizedFood } from "./types.ts";
 
+// Mesmo fix de busca-por-palavras do provider-app.ts (ver comentário lá):
+// nomes no formato "Alimento, Descritor" não batem com ILIKE de frase
+// inteira. Mantido aqui pra quando a TBCA tiver dados reais.
+function stripAccentsLower(s: string): string {
+  return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function splitWords(q: string): string[] {
+  return stripAccentsLower(q.replace(/,/g, " ")).split(/\s+/).filter(Boolean);
+}
+
+function matchesAllWords(text: string, words: string[]): boolean {
+  const norm = stripAccentsLower(text);
+  return words.every((w) => norm.includes(w));
+}
+
 interface TbcaRow {
   source_id: string | null;
   nome: string;
@@ -53,26 +69,32 @@ export function createTbcaProvider(supabase: SupabaseClient): FoodProvider {
   return {
     name: "TBCA",
     async search({ q }: FoodSearchParams): Promise<NormalizedFood[]> {
-      const term = q.trim();
-      if (!term) return [];
+      const words = splitWords(q);
+      if (!words.length) return [];
       const { data, error } = await supabase
         .from("tbca_alimentos")
         .select(SELECT_COLUMNS)
-        .ilike("nome", `%${term}%`)
-        .limit(30);
+        .or(words.map((w) => `nome.ilike.%${w}%`).join(","))
+        .limit(200);
       if (error || !data) return [];
-      return (data as TbcaRow[]).map(toNormalized);
+      return (data as TbcaRow[])
+        .filter((r) => matchesAllWords(r.nome, words))
+        .slice(0, 30)
+        .map(toNormalized);
     },
     async autocomplete({ q }: FoodSearchParams): Promise<string[]> {
-      const term = q.trim();
-      if (!term) return [];
+      const words = splitWords(q);
+      if (!words.length) return [];
       const { data, error } = await supabase
         .from("tbca_alimentos")
         .select("nome")
-        .ilike("nome", `${term}%`)
-        .limit(10);
+        .or(words.map((w) => `nome.ilike.%${w}%`).join(","))
+        .limit(50);
       if (error || !data) return [];
-      return (data as Pick<TbcaRow, "nome">[]).map((r) => r.nome);
+      return (data as Pick<TbcaRow, "nome">[])
+        .filter((r) => matchesAllWords(r.nome, words))
+        .slice(0, 10)
+        .map((r) => r.nome);
     },
     async getById(sourceId: string): Promise<NormalizedFood | null> {
       const { data, error } = await supabase

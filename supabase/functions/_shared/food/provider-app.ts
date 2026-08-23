@@ -7,9 +7,44 @@
 //     só a parte compartilhada da própria base do app, sem rótulo externo.
 // Recebe o client do Supabase já autenticado com o JWT de quem chamou a
 // Edge Function, então a RLS de sempre se aplica sem query extra aqui.
+//
+// BUSCA POR PALAVRAS (não por frase literal) — bug corrigido aqui:
+// Os nomes da base padrão seguem o formato "Alimento, Descritor, Descritor2"
+// (ex.: "Pão, trigo, francês"). Um ILIKE '%pão francês%' (frase inteira,
+// contígua) nunca bate com esse formato, porque a vírgula+descritor fica no
+// meio. A busca agora exige que CADA PALAVRA digitada apareça em algum
+// lugar do nome (AND de palavras, não a frase como substring única) — feito
+// em memória (JS) depois de um fetch amplo, já que as duas tabelas são
+// pequenas (base padrão ~600 linhas, base do treinador tipicamente dezenas).
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { FoodProvider, FoodSearchParams, NormalizedFood } from "./types.ts";
+
+function stripAccentsLower(s: string): string {
+  return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function splitWords(q: string): string[] {
+  return stripAccentsLower(q.replace(/,/g, " ")).split(/\s+/).filter(Boolean);
+}
+
+function matchesAllWords(text: string, words: string[]): boolean {
+  const norm = stripAccentsLower(text);
+  return words.every((w) => norm.includes(w));
+}
+
+// Quanto mais cedo as palavras aparecem no nome, mais relevante — evita que
+// "Canjica, com leite integral" apareça antes de "Leite, de vaca, integral"
+// numa busca por "leite".
+function relevanceScore(text: string, words: string[]): number {
+  const norm = stripAccentsLower(text);
+  let score = 0;
+  for (const w of words) {
+    const idx = norm.indexOf(w);
+    score += idx < 0 ? 1000 : idx;
+  }
+  return score;
+}
 
 interface AlimentoRow {
   id: string;
@@ -97,19 +132,44 @@ function tacoToNormalized(row: TacoRow): NormalizedFood {
 
 const TACO_SELECT_COLUMNS = "id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg";
 
-async function tacoSearch(supabase: SupabaseClient, term: string): Promise<NormalizedFood[]> {
-  const { data, error } = await supabase.from("taco_alimentos").select(TACO_SELECT_COLUMNS).ilike("nome", `%${term}%`).limit(30);
-  if (error || !data) return [];
-  return (data as TacoRow[]).map(tacoToNormalized);
+// A tabela padrão é global, read-only e pequena (~600 linhas) — cachear em
+// memória do isolate evita rebuscar tudo a cada tecla digitada (debounce de
+// 400ms no frontend já reduz chamadas, isto reduz ainda mais round-trips ao
+// Postgres). TTL curto só como rede de segurança.
+let tacoCache: { rows: TacoRow[]; fetchedAt: number } | null = null;
+const TACO_CACHE_TTL_MS = 10 * 60 * 1000;
+
+async function loadTacoRows(supabase: SupabaseClient): Promise<TacoRow[]> {
+  if (tacoCache && Date.now() - tacoCache.fetchedAt < TACO_CACHE_TTL_MS) return tacoCache.rows;
+  const { data, error } = await supabase.from("taco_alimentos").select(TACO_SELECT_COLUMNS).limit(1000);
+  if (error || !data) return tacoCache?.rows || [];
+  tacoCache = { rows: data as TacoRow[], fetchedAt: Date.now() };
+  return tacoCache.rows;
 }
 
-async function tacoAutocomplete(supabase: SupabaseClient, term: string): Promise<string[]> {
-  const { data, error } = await supabase.from("taco_alimentos").select("nome").ilike("nome", `${term}%`).limit(10);
-  if (error || !data) return [];
-  return (data as Array<{ nome: string }>).map((r) => r.nome);
+async function tacoSearch(supabase: SupabaseClient, words: string[]): Promise<NormalizedFood[]> {
+  const rows = await loadTacoRows(supabase);
+  return rows
+    .filter((r) => matchesAllWords(r.nome, words))
+    .sort((a, b) => relevanceScore(a.nome, words) - relevanceScore(b.nome, words))
+    .slice(0, 30)
+    .map(tacoToNormalized);
+}
+
+async function tacoAutocomplete(supabase: SupabaseClient, words: string[]): Promise<string[]> {
+  const rows = await loadTacoRows(supabase);
+  return rows
+    .filter((r) => matchesAllWords(r.nome, words))
+    .sort((a, b) => relevanceScore(a.nome, words) - relevanceScore(b.nome, words))
+    .slice(0, 10)
+    .map((r) => r.nome);
 }
 
 async function tacoGetById(supabase: SupabaseClient, id: string): Promise<NormalizedFood | null> {
+  const rows = await loadTacoRows(supabase);
+  const row = rows.find((r) => String(r.id) === id);
+  if (row) return tacoToNormalized(row);
+  // fallback direto (cache pode ter expirado / linha nova) — busca pontual.
   const { data, error } = await supabase.from("taco_alimentos").select(TACO_SELECT_COLUMNS).eq("id", Number(id)).maybeSingle();
   if (error || !data) return null;
   return tacoToNormalized(data as TacoRow);
@@ -119,27 +179,43 @@ export function createAppProvider(supabase: SupabaseClient): FoodProvider {
   return {
     name: "APP",
     async search({ q }: FoodSearchParams): Promise<NormalizedFood[]> {
-      // Vírgula quebraria a sintaxe do filtro .or() do PostgREST — remove
-      // antes de montar a string (busca continua funcionando sem ela).
-      const term = q.trim().replace(/,/g, " ");
-      if (!term) return [];
+      const words = splitWords(q);
+      if (!words.length) return [];
       const [ownResult, tacoResult] = await Promise.all([
-        supabase.from("alimentos").select(SELECT_COLUMNS).or(`nome.ilike.%${term}%,brand_name.ilike.%${term}%`).limit(30),
-        tacoSearch(supabase, term),
+        // Busca ampla (qualquer palavra) no Postgres — filtro fino (todas as
+        // palavras, com/sem acento) fica em memória logo abaixo.
+        supabase
+          .from("alimentos")
+          .select(SELECT_COLUMNS)
+          .or(words.map((w) => `nome.ilike.%${w}%,brand_name.ilike.%${w}%`).join(","))
+          .limit(200),
+        tacoSearch(supabase, words),
       ]);
-      const own = ownResult.error || !ownResult.data ? [] : (ownResult.data as AlimentoRow[]).map(toNormalized);
+      const ownRows = (ownResult.error || !ownResult.data ? [] : (ownResult.data as AlimentoRow[]))
+        .filter((r) => matchesAllWords([r.nome, r.brand_name].filter(Boolean).join(" "), words))
+        .sort((a, b) => relevanceScore(a.nome, words) - relevanceScore(b.nome, words))
+        .slice(0, 30);
+      const own = ownRows.map(toNormalized);
       // Base do treinador primeiro (já revisada/usada por ele), depois a
       // biblioteca padrão do app (Parte 14 — ordem de prioridade).
       return [...own, ...tacoResult];
     },
     async autocomplete({ q }: FoodSearchParams): Promise<string[]> {
-      const term = q.trim();
-      if (!term) return [];
+      const words = splitWords(q);
+      if (!words.length) return [];
       const [ownResult, tacoNames] = await Promise.all([
-        supabase.from("alimentos").select("nome").ilike("nome", `${term}%`).limit(10),
-        tacoAutocomplete(supabase, term),
+        supabase
+          .from("alimentos")
+          .select("nome")
+          .or(words.map((w) => `nome.ilike.%${w}%`).join(","))
+          .limit(50),
+        tacoAutocomplete(supabase, words),
       ]);
-      const own = ownResult.error || !ownResult.data ? [] : (ownResult.data as Pick<AlimentoRow, "nome">[]).map((r) => r.nome);
+      const own = (ownResult.error || !ownResult.data ? [] : (ownResult.data as Pick<AlimentoRow, "nome">[]))
+        .filter((r) => matchesAllWords(r.nome, words))
+        .sort((a, b) => relevanceScore(a.nome, words) - relevanceScore(b.nome, words))
+        .slice(0, 10)
+        .map((r) => r.nome);
       return [...own, ...tacoNames];
     },
     async getById(sourceId: string): Promise<NormalizedFood | null> {
