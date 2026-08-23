@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/food-measures.js"></script>
 <style>
 html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
 *{box-sizing:border-box;}
@@ -85,6 +86,36 @@ input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;bor
 .btn:disabled{opacity:.55;cursor:default;}
 .btn-block{width:100%;}
 .erro{color:#f87171;font-size:12.5px;margin-top:8px;}
+
+.add-item-btn2{width:100%;background:none;border:1px dashed #2a3444;color:#66707e;font-size:12.5px;font-weight:700;padding:10px;border-radius:9px;margin-top:8px;}
+.add-item-btn2:hover{border-color:rgba(249,115,22,.4);color:#f97316;}
+
+.fp-overlay{position:fixed;inset:0;background:rgba(6,8,12,.7);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;z-index:200;overflow-y:auto;}
+.fp-modal{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:22px;width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;}
+.fp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.fp-title{font-size:15.5px;font-weight:800;}
+.fp-close{width:28px;height:28px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:14px;line-height:1;}
+.fp-search{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-size:13.5px;outline:none;}
+.fp-body{overflow-y:auto;margin-top:12px;flex:1;}
+.fp-section-label{font-size:11px;font-weight:800;color:#66707e;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
+.fp-section-label:first-child{margin-top:0;}
+.fp-result{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:10px 12px;margin-bottom:7px;cursor:pointer;}
+.fp-result:hover{border-color:rgba(249,115,22,.4);}
+.fp-result-nome{font-size:13px;font-weight:700;}
+.fp-result-sub{font-size:11px;color:#66707e;margin-top:2px;}
+.fp-star{background:none;border:none;font-size:15px;cursor:pointer;color:#4a5364;flex-shrink:0;padding:2px 4px;}
+.fp-star.on{color:#f5b942;}
+.fp-empty{font-size:12.5px;color:#66707e;text-align:center;padding:24px 8px;}
+.fp-warning{font-size:11.5px;color:#f5b942;background:rgba(245,185,66,.1);border:1px solid rgba(245,185,66,.3);border-radius:8px;padding:8px 11px;margin-bottom:10px;}
+.fp-link-btn{background:none;border:none;color:#66707e;font-size:12px;font-weight:700;padding:6px 0;cursor:pointer;}
+.fp-link-btn:hover{color:#f97316;}
+.fp-qty-row{display:flex;gap:8px;margin-top:14px;}
+.fp-qty-row input[type=number]{flex:0 0 90px;}
+.fp-qty-row select{flex:1;}
+.fp-macros-preview{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px dashed #2a3444;}
+.fp-macros-preview .t{font-size:11px;color:#66707e;}
+.fp-macros-preview .t b{color:#e5e9f0;font-size:12.5px;}
+.fp-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 </style>
 </head>
 <body>
@@ -101,15 +132,12 @@ input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;bor
   <div class="card" id="app">Carregando…</div>
 </div>
 
-<datalist id="food-lib"></datalist>
-
 <script>
 const params = new URLSearchParams(window.location.search);
 const dietaIdParam = params.get('dieta_id');
 const clienteIdParam = params.get('cliente_id');
 const clienteNomeParam = params.get('cliente_nome');
 const app = document.getElementById('app');
-const foodDatalist = document.getElementById('food-lib');
 
 const MEAL_DEFS = [
   { key: 'cafe', nome: 'Café da manhã', opcional: false },
@@ -143,8 +171,6 @@ function calcularTMB(sexo, pesoKg, alturaCm, idade) {
 
 let userId = null;
 let clientes = [];
-let foodLib = []; // { nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g }
-let foodByNome = new Map();
 let dietaId = dietaIdParam || null;
 let dietaNome = '';
 let dietaMeta = '';
@@ -177,10 +203,8 @@ async function init() {
   if (!user) return;
   userId = user.id;
 
-  const [clsRes, alimentosRes, tacoRes, anamneseRes] = await Promise.all([
+  const [clsRes, anamneseRes] = await Promise.all([
     supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome'),
-    supabaseClient.from('alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').eq('trainer_id', userId),
-    supabaseClient.from('taco_alimentos').select('nome, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g').order('nome'),
     clienteIdParam ? supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle() : Promise.resolve({ data: null })
   ]);
   clientes = clsRes.data || [];
@@ -194,12 +218,6 @@ async function init() {
     const meta = get != null && objSel ? get * objSel.percentual : null;
     metaEnergetica = { tmb, get, meta };
   }
-
-  foodLib = [...(alimentosRes.data || []), ...(tacoRes.data || [])];
-  foodByNome = new Map();
-  foodLib.forEach(f => { if (!foodByNome.has(f.nome)) foodByNome.set(f.nome, f); });
-  foodDatalist.innerHTML = '';
-  foodLib.forEach(f => foodDatalist.appendChild(el('<option value="' + f.nome.replace(/"/g, '&quot;') + '">')));
 
   if (dietaId) {
     const { data: dieta } = await supabaseClient.from('dietas').select('*').eq('id', dietaId).single();
@@ -222,16 +240,31 @@ async function init() {
   render();
 }
 
-function computeItem(food, grams) {
-  const f = grams / 100;
+// `food` aqui é um NormalizedFood (ver supabase/functions/_shared/food/types.ts)
+// vindo da busca; `quantidade`/`unidade` é o que o nutricionista escolheu na
+// tela (Partes 15-19). O item salvo mantém o formato antigo (nome,
+// quantidade_g, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g) —
+// dietas antigas continuam lendo normalmente — e ganha campos novos e
+// opcionais só pra exibição/auditoria (não usados em nenhum recálculo).
+function buildItemFromFood(food, quantidade, unidade) {
+  const nutrientes = computeNutrients(food, quantidade, unidade);
+  if (!nutrientes) return null;
+  const grams = toGrams(food, quantidade, unidade);
   return {
-    nome: food.nome,
-    quantidade_g: grams,
-    kcal: round1((food.kcal || 0) * f),
-    proteina_g: round1((food.proteina_g || 0) * f),
-    carboidrato_g: round1((food.carboidrato_g || 0) * f),
-    gordura_g: round1((food.gordura_g || 0) * f),
-    fibra_g: round1((food.fibra_g || 0) * f)
+    nome: food.brandName ? (food.nome + ' — ' + food.brandName) : food.nome,
+    // Fallback pra não perder a quantidade em display quando não há
+    // conversão pra grama (ex.: líquido em ml sem densidade conhecida).
+    quantidade_g: grams != null ? grams : quantidade,
+    kcal: nutrientes.kcal,
+    proteina_g: nutrientes.proteinaG,
+    carboidrato_g: nutrientes.carboidratoG,
+    gordura_g: nutrientes.gorduraG,
+    fibra_g: nutrientes.fibraG,
+    sodio_mg: nutrientes.sodioMg,
+    quantidade: quantidade,
+    unidade: unidade,
+    food_source: food.source,
+    food_source_id: food.sourceId || food.alimentoId || null
   };
 }
 
@@ -277,7 +310,7 @@ function render() {
     hTop.appendChild(box);
   }
   h.appendChild(hTop);
-  h.appendChild(el('<div class="sub">Pesquise alimentos da Tabela TACO (ou dos seus próprios cadastrados), informe a quantidade em gramas e os macros são calculados automaticamente.</div>'));
+  h.appendChild(el('<div class="sub">Busque o alimento, escolha a quantidade em g, ml, unidade ou medida caseira e os macros são calculados automaticamente.</div>'));
   app.appendChild(h);
 
   const fieldRow = el('<div class="field-row"></div>');
@@ -390,7 +423,10 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
     const row = el('<div class="item-row"></div>');
     const left = el('<div></div>');
     left.appendChild(el('<div class="item-nome">' + it.nome + '</div>'));
-    left.appendChild(el('<div class="item-qtd">' + it.quantidade_g + 'g</div>'));
+    const qtdLabel = (it.quantidade != null && it.unidade)
+      ? it.quantidade + ' ' + foodMeasureLabel(it.unidade) + (it.unidade !== 'g' && it.unidade !== 'ml' && it.quantidade_g != null ? ' (' + it.quantidade_g + 'g)' : '')
+      : it.quantidade_g + 'g';
+    left.appendChild(el('<div class="item-qtd">' + qtdLabel + '</div>'));
     row.appendChild(left);
     const right = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
     right.appendChild(el('<div class="item-macros">' + it.kcal + ' kcal · P ' + it.proteina_g + 'g · C ' + it.carboidrato_g + 'g · G ' + it.gordura_g + 'g · F ' + it.fibra_g + 'g</div>'));
@@ -401,21 +437,9 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
     box.appendChild(row);
   });
 
-  const addRow = el('<div class="add-item-row"></div>');
-  const nomeInput = el('<input list="food-lib" placeholder="Buscar alimento…" autocomplete="off">');
-  const qtdInput = el('<input type="number" min="1" placeholder="g" value="100">');
-  const addBtn = el('<button type="button" class="add-item-btn">Adicionar</button>');
-  addBtn.addEventListener('click', () => {
-    const food = foodByNome.get(nomeInput.value.trim());
-    const grams = Number(qtdInput.value);
-    if (!food) { erroMsg = 'Escolha um alimento da lista de busca.'; render(); return; }
-    if (!grams || grams <= 0) { erroMsg = 'Informe a quantidade em gramas.'; render(); return; }
-    erroMsg = '';
-    opcao.itens.push(computeItem(food, grams));
-    render();
-  });
-  addRow.appendChild(nomeInput); addRow.appendChild(qtdInput); addRow.appendChild(addBtn);
-  box.appendChild(addRow);
+  const addBtn2 = el('<button type="button" class="add-item-btn2">+ Adicionar alimento</button>');
+  addBtn2.addEventListener('click', () => abrirFoodPicker(opcao, render));
+  box.appendChild(addBtn2);
 
   if (opcao.itens.length) {
     const s = somaItens(opcao.itens);
@@ -463,6 +487,447 @@ async function salvarDieta() {
   } else {
     window.location.href = 'acervo.html?categoria=nutricao&tipo=minhasDietas';
   }
+}
+
+// ------------------------------------------------------------------------
+// Seletor de alimentos (Partes 13-14, 20-21): busca unificada (App + TBCA +
+// FatSecret via Edge Function), favoritos, recentes, código de barras e
+// cadastro de alimento personalizado — tudo dentro de um único modal,
+// espelhando o padrão de picker já usado em montar-treino.html
+// (abrirEscolherSerieTemplate: overlay próprio, fora do ciclo de render()
+// principal, pra não perder foco do campo de busca a cada digitação).
+// ------------------------------------------------------------------------
+
+let fpDebounceTimer = null;
+
+function rowToNormalizedApp(row) {
+  return {
+    id: 'APP:' + row.id, source: 'APP', sourceId: row.source_id, alimentoId: row.id,
+    nome: row.nome, brandName: row.brand_name, categoria: row.categoria, barcode: row.barcode,
+    kcal: row.kcal, proteinaG: row.proteina_g, carboidratoG: row.carboidrato_g, gorduraG: row.gordura_g,
+    fibraG: row.fibra_g, sodioMg: row.sodio_mg, otherNutrients: row.other_nutrients || {},
+    defaultUnit: row.default_unit || 'g', measures: row.measures || [], isLiquid: (row.default_unit || 'g') === 'ml'
+  };
+}
+
+function rowToNormalizedTaco(row) {
+  return {
+    id: 'APP:taco:' + row.id, source: 'APP', sourceId: 'taco:' + row.id, alimentoId: null,
+    nome: row.nome, brandName: null, categoria: row.categoria, barcode: null,
+    kcal: row.kcal, proteinaG: row.proteina_g, carboidratoG: row.carboidrato_g, gorduraG: row.gordura_g,
+    fibraG: row.fibra_g, sodioMg: row.sodio_mg, otherNutrients: {}, defaultUnit: 'g', measures: [], isLiquid: false
+  };
+}
+
+async function fpFetchSearch(q) {
+  try {
+    const { data, error } = await supabaseClient.functions.invoke('food-search', { body: { q } });
+    if (error) throw error;
+    return { results: (data && data.results) || [], warning: (data && data.warnings && data.warnings[0]) || null };
+  } catch (err) {
+    // Parte 24: se a Edge Function estiver fora do ar (não só a FatSecret),
+    // a base própria do app (cadastros do treinador + biblioteca padrão)
+    // continua pesquisável direto via RLS, sem depender de nada externo.
+    const termoSeguro = q.replace(/,/g, ' ');
+    const [ownRes, tacoRes] = await Promise.all([
+      supabaseClient
+        .from('alimentos')
+        .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, source, source_id, brand_name, barcode, other_nutrients, default_unit, measures')
+        .eq('trainer_id', userId)
+        .or('nome.ilike.%' + termoSeguro + '%,brand_name.ilike.%' + termoSeguro + '%')
+        .limit(20),
+      supabaseClient
+        .from('taco_alimentos')
+        .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg')
+        .ilike('nome', '%' + termoSeguro + '%')
+        .limit(20)
+    ]);
+    const results = (ownRes.data || []).map(rowToNormalizedApp).concat((tacoRes.data || []).map(rowToNormalizedTaco));
+    return { results, warning: 'edge_function_unavailable' };
+  }
+}
+
+async function fpCarregarFavoritosRecentes() {
+  const [favRes, recRes] = await Promise.all([
+    supabaseClient.from('food_favoritos').select('*').eq('trainer_id', userId).order('created_at', { ascending: false }).limit(10),
+    supabaseClient.from('food_recentes').select('*').eq('trainer_id', userId).order('used_at', { ascending: false }).limit(10)
+  ]);
+  return { favoritos: favRes.data || [], recentes: recRes.data || [] };
+}
+
+async function fpToggleFavorito(food, isFav) {
+  const sourceId = String(food.sourceId || food.alimentoId);
+  if (isFav) {
+    await supabaseClient.from('food_favoritos').delete()
+      .eq('trainer_id', userId).eq('source', food.source).eq('source_id', sourceId);
+  } else {
+    await supabaseClient.from('food_favoritos').upsert({
+      trainer_id: userId, alimento_id: food.alimentoId || null, source: food.source,
+      source_id: sourceId, nome: food.nome, snapshot: food
+    }, { onConflict: 'trainer_id,source,source_id' });
+  }
+}
+
+function fpRegistrarRecente(food) {
+  const sourceId = String(food.sourceId || food.alimentoId);
+  supabaseClient.from('food_recentes').upsert({
+    trainer_id: userId, alimento_id: food.alimentoId || null, source: food.source,
+    source_id: sourceId, nome: food.nome, snapshot: food, used_at: new Date().toISOString()
+  }, { onConflict: 'trainer_id,source,source_id' }).then(() => {}, () => {});
+}
+
+async function fpPromoverParaApp(food) {
+  const payload = {
+    trainer_id: userId, nome: food.nome, categoria: food.categoria, brand_name: food.brandName,
+    barcode: food.barcode, kcal: food.kcal, proteina_g: food.proteinaG, carboidrato_g: food.carboidratoG,
+    gordura_g: food.gorduraG, fibra_g: food.fibraG, sodio_mg: food.sodioMg, other_nutrients: food.otherNutrients || {},
+    default_unit: food.defaultUnit, measures: food.measures || [], source: food.source, source_id: food.sourceId
+  };
+  const { data, error } = await supabaseClient.from('alimentos').insert(payload).select().single();
+  if (error) throw error;
+  return rowToNormalizedApp(data);
+}
+
+const MEDIDA_SLUGS = ['unidade', 'fatia', 'colher_sopa', 'colher_cha', 'xicara', 'copo', 'concha'];
+
+function abrirFoodPicker(opcao, onAdded) {
+  const state = {
+    step: 'busca', query: '', results: [], favoritos: [], recentes: [], loading: false, warning: null,
+    barcodeOpen: false, barcodeErro: '', formErro: '', selected: null, qtd: 100, unidade: 'g', customForm: null
+  };
+
+  const overlay = el('<div class="fp-overlay"></div>');
+  const modal = el('<div class="fp-modal"></div>');
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+  document.body.appendChild(overlay);
+
+  let bodyEl = null; // container de resultados dentro do passo "busca" — atualizado sozinho pra não recriar o <input> (perderia foco/digitação a cada tecla)
+
+  function fechar() { overlay.remove(); }
+
+  fpCarregarFavoritosRecentes().then((r) => { state.favoritos = r.favoritos; state.recentes = r.recentes; if (bodyEl) renderResultsBody(); else renderModal(); });
+
+  function buscar(q) {
+    state.query = q;
+    clearTimeout(fpDebounceTimer);
+    if (!q.trim()) { state.results = []; state.warning = null; renderResultsBody(); return; }
+    state.loading = true; renderResultsBody();
+    fpDebounceTimer = setTimeout(async () => {
+      const r = await fpFetchSearch(q.trim());
+      if (state.query !== q) return; // resposta atrasada de uma busca já trocada
+      state.results = r.results; state.warning = r.warning; state.loading = false; renderResultsBody();
+    }, 400);
+  }
+
+  async function selecionar(food) {
+    let full = food;
+    if (food.source === 'FATSECRET' && (!food.measures || !food.measures.length)) {
+      state.loading = true; renderModal();
+      try {
+        const { data, error } = await supabaseClient.functions.invoke('food-get', { body: { source: food.source, source_id: food.sourceId } });
+        if (error || !data || !data.food) throw error || new Error('sem dados');
+        full = data.food;
+      } catch (err) {
+        state.loading = false; state.formErro = 'Não deu pra carregar os detalhes desse alimento agora.'; renderModal(); return;
+      }
+    }
+    state.selected = full;
+    state.qtd = full.isLiquid ? 200 : 100;
+    state.unidade = full.isLiquid ? 'ml' : 'g';
+    state.step = 'quantidade';
+    state.loading = false;
+    state.formErro = '';
+    renderModal();
+  }
+
+  function confirmarQuantidade() {
+    const qtd = Number(state.qtd);
+    if (!qtd || qtd <= 0) { state.formErro = 'Informe uma quantidade válida.'; renderModal(); return; }
+    const item = buildItemFromFood(state.selected, qtd, state.unidade);
+    if (!item) { state.formErro = 'Sem conversão disponível pra essa unidade.'; renderModal(); return; }
+    opcao.itens.push(item);
+    fpRegistrarRecente(Object.assign({}, state.selected, { alimentoId: state.selected.alimentoId }));
+    fechar();
+    if (onAdded) onAdded();
+  }
+
+  function hydrate(row) {
+    const snap = row.snapshot || {};
+    return Object.assign({}, snap, {
+      id: row.source + ':' + row.source_id,
+      source: row.source,
+      sourceId: row.source_id,
+      alimentoId: row.alimento_id || snap.alimentoId || null,
+      nome: row.nome || snap.nome
+    });
+  }
+
+  function isFavorito(food) {
+    const sid = String(food.sourceId || food.alimentoId);
+    return state.favoritos.some((f) => f.source === food.source && f.source_id === sid);
+  }
+
+  function renderResultRow(food, favorito) {
+    const row = el('<div class="fp-result"></div>');
+    const left = el('<div style="min-width:0;"></div>');
+    left.appendChild(el('<div class="fp-result-nome">' + food.nome + (food.brandName ? ' — ' + food.brandName : '') + '</div>'));
+    const subParts = [];
+    if (food.kcal != null) subParts.push(round1(food.kcal) + ' kcal/100' + (food.isLiquid ? 'ml' : 'g'));
+    subParts.push(food.source === 'APP' ? 'sua base' : (food.source === 'TBCA' ? 'TBCA' : 'FatSecret'));
+    left.appendChild(el('<div class="fp-result-sub">' + subParts.join(' · ') + '</div>'));
+    row.appendChild(left);
+
+    const starBtn = el('<button type="button" class="fp-star' + (favorito ? ' on' : '') + '">' + (favorito ? '★' : '☆') + '</button>');
+    starBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await fpToggleFavorito(food, favorito);
+      const r = await fpCarregarFavoritosRecentes();
+      state.favoritos = r.favoritos; state.recentes = r.recentes;
+      renderResultsBody();
+    });
+    row.appendChild(starBtn);
+
+    row.addEventListener('click', () => selecionar(food));
+    return row;
+  }
+
+  function renderResultsBody() {
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '';
+
+    if (state.warning === 'fatsecret_unavailable' || state.warning === 'fatsecret_unavailable_stale_cache' || state.warning === 'edge_function_unavailable') {
+      bodyEl.appendChild(el('<div class="fp-warning">Não foi possível consultar produtos externos no momento. Mostrando só a sua base local.</div>'));
+    }
+
+    if (!state.query.trim()) {
+      if (state.favoritos.length) {
+        bodyEl.appendChild(el('<div class="fp-section-label">Favoritos</div>'));
+        state.favoritos.forEach((f) => bodyEl.appendChild(renderResultRow(hydrate(f), true)));
+      }
+      if (state.recentes.length) {
+        bodyEl.appendChild(el('<div class="fp-section-label">Recentes</div>'));
+        state.recentes.forEach((r) => { const food = hydrate(r); bodyEl.appendChild(renderResultRow(food, isFavorito(food))); });
+      }
+      if (!state.favoritos.length && !state.recentes.length) {
+        bodyEl.appendChild(el('<div class="fp-empty">Digite pra buscar um alimento.</div>'));
+      }
+    } else if (state.loading) {
+      bodyEl.appendChild(el('<div class="fp-empty">Buscando…</div>'));
+    } else if (!state.results.length) {
+      bodyEl.appendChild(el('<div class="fp-empty">Nenhum alimento encontrado pra "' + state.query + '".</div>'));
+    } else {
+      state.results.forEach((f) => bodyEl.appendChild(renderResultRow(f, isFavorito(f))));
+    }
+  }
+
+  // O <input> de busca só é criado UMA vez por passagem pelo passo "busca"
+  // (abrirFoodPicker → renderModal → renderBusca). Digitar só atualiza
+  // `bodyEl` via renderResultsBody(), nunca recria o campo — recriar a
+  // cada tecla (via renderModal() cheio) derrubava o foco/composição do
+  // input e perdia caracteres digitados rápido.
+  function renderBusca() {
+    const searchInput = el('<input class="fp-search" placeholder="Digite o alimento… (ex: pão, arroz, frango)" autocomplete="off">');
+    searchInput.value = state.query;
+    searchInput.addEventListener('input', () => buscar(searchInput.value));
+    modal.appendChild(searchInput);
+    setTimeout(() => searchInput.focus(), 0);
+
+    bodyEl = el('<div class="fp-body"></div>');
+    modal.appendChild(bodyEl);
+    renderResultsBody();
+
+    const footer = el('<div style="margin-top:6px;border-top:1px solid #1a2130;padding-top:10px;"></div>');
+    const barcodeBtn = el('<button type="button" class="fp-link-btn">📷 Buscar por código de barras</button>');
+    barcodeBtn.addEventListener('click', () => { state.barcodeOpen = !state.barcodeOpen; renderModal(); });
+    footer.appendChild(barcodeBtn);
+
+    if (state.barcodeOpen) {
+      const row = el('<div style="display:flex;gap:8px;margin-top:8px;"></div>');
+      const bcInput = el('<input placeholder="Código de barras (EAN/UPC)" style="flex:1;">');
+      const bcBtn = el('<button type="button" class="btn btn-secondary" style="flex:0 0 auto;">Buscar</button>');
+      bcBtn.addEventListener('click', async () => {
+        const barcode = bcInput.value.trim();
+        if (!barcode) return;
+        state.loading = true; state.barcodeErro = ''; renderModal();
+        const { data, error } = await supabaseClient.functions.invoke('food-barcode', { body: { barcode } });
+        state.loading = false;
+        if (error || !data || !data.food) { state.barcodeErro = 'Nenhum produto encontrado pra esse código.'; renderModal(); return; }
+        selecionar(data.food);
+      });
+      row.appendChild(bcInput); row.appendChild(bcBtn);
+      footer.appendChild(row);
+      if (state.barcodeErro) footer.appendChild(el('<div class="erro">' + state.barcodeErro + '</div>'));
+    }
+
+    const customBtn = el('<button type="button" class="fp-link-btn" style="display:block;margin-top:6px;">+ Cadastrar alimento personalizado</button>');
+    customBtn.addEventListener('click', () => {
+      state.customForm = { nome: '', marca: '', categoria: '', barcode: '', porcaoQtd: '100', porcaoUnidade: 'g', kcal: '', proteina: '', carboidrato: '', gordura: '', fibra: '', sodio: '', medidaSlug: '' };
+      state.step = 'personalizado'; state.formErro = '';
+      renderModal();
+    });
+    footer.appendChild(customBtn);
+    modal.appendChild(footer);
+  }
+
+  function renderQuantidade() {
+    const food = state.selected;
+    modal.appendChild(el('<div style="font-size:14.5px;font-weight:800;">' + food.nome + (food.brandName ? ' — ' + food.brandName : '') + '</div>'));
+
+    if (food.source !== 'APP') {
+      const promoteBtn = el('<button type="button" class="fp-link-btn" style="margin-top:6px;">+ Adicionar ao banco do app</button>');
+      promoteBtn.addEventListener('click', async () => {
+        promoteBtn.disabled = true;
+        try {
+          const saved = await fpPromoverParaApp(food);
+          state.selected = Object.assign({}, food, { alimentoId: saved.alimentoId });
+          promoteBtn.textContent = '✓ Adicionado ao banco do app';
+        } catch (err) {
+          promoteBtn.disabled = false;
+        }
+      });
+      modal.appendChild(promoteBtn);
+    }
+
+    const measures = availableMeasures(food);
+    const row = el('<div class="fp-qty-row"></div>');
+    const qtdInput = el('<input type="number" min="0" step="any">');
+    qtdInput.value = state.qtd;
+    qtdInput.addEventListener('input', () => { state.qtd = qtdInput.value; renderPreview(); });
+    const unidadeSelect = el('<select></select>');
+    measures.forEach((m) => {
+      const opt = el('<option value="' + m.unidade + '">' + foodMeasureLabel(m.unidade, m.label) + '</option>');
+      if (m.unidade === state.unidade) opt.selected = true;
+      unidadeSelect.appendChild(opt);
+    });
+    unidadeSelect.addEventListener('change', () => { state.unidade = unidadeSelect.value; renderPreview(); });
+    row.appendChild(qtdInput); row.appendChild(unidadeSelect);
+    modal.appendChild(row);
+
+    const previewBox = el('<div></div>');
+    modal.appendChild(previewBox);
+    function renderPreview() {
+      const n = computeNutrients(food, Number(state.qtd) || 0, state.unidade);
+      previewBox.innerHTML = '';
+      if (!n) { previewBox.appendChild(el('<div class="erro" style="margin-top:10px;">Sem conversão pra essa unidade.</div>')); return; }
+      const box = el('<div class="fp-macros-preview"></div>');
+      [['Kcal', n.kcal, ''], ['Proteínas', n.proteinaG, 'g'], ['Carboidratos', n.carboidratoG, 'g'], ['Gorduras', n.gorduraG, 'g'], ['Fibras', n.fibraG, 'g']]
+        .forEach(([label, val, suf]) => box.appendChild(el('<div class="t">' + label + ': <b>' + val + suf + '</b></div>')));
+      previewBox.appendChild(box);
+    }
+    renderPreview();
+
+    if (state.formErro) modal.appendChild(el('<div class="erro">' + state.formErro + '</div>'));
+
+    const actionsRow = el('<div style="display:flex;gap:8px;margin-top:16px;"></div>');
+    const backBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Voltar</button>');
+    backBtn.addEventListener('click', () => { state.step = 'busca'; state.formErro = ''; renderModal(); });
+    const confirmBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Adicionar</button>');
+    confirmBtn.addEventListener('click', confirmarQuantidade);
+    actionsRow.appendChild(backBtn); actionsRow.appendChild(confirmBtn);
+    modal.appendChild(actionsRow);
+  }
+
+  function renderFormPersonalizado() {
+    const f = state.customForm;
+
+    function field(label, key, type) {
+      const wrap = el('<div class="field"></div>');
+      wrap.appendChild(el('<label>' + label + '</label>'));
+      const input = el('<input' + (type ? ' type="' + type + '"' : '') + '>');
+      input.value = f[key];
+      input.addEventListener('input', () => { f[key] = input.value; });
+      wrap.appendChild(input);
+      return wrap;
+    }
+
+    modal.appendChild(field('Nome', 'nome'));
+    const row1 = el('<div class="fp-form-grid"></div>');
+    row1.appendChild(field('Marca (opcional)', 'marca'));
+    row1.appendChild(field('Código de barras (opcional)', 'barcode'));
+    modal.appendChild(row1);
+
+    const row2 = el('<div class="fp-form-grid"></div>');
+    row2.appendChild(field('Quantidade da porção', 'porcaoQtd', 'number'));
+    const unidWrap = el('<div class="field"></div>');
+    unidWrap.appendChild(el('<label>Unidade da porção</label>'));
+    const unidSel = el('<select><option value="g">g</option><option value="ml">ml</option></select>');
+    unidSel.value = f.porcaoUnidade;
+    unidSel.addEventListener('change', () => { f.porcaoUnidade = unidSel.value; });
+    unidWrap.appendChild(unidSel);
+    row2.appendChild(unidWrap);
+    modal.appendChild(row2);
+
+    const row3 = el('<div class="fp-form-grid"></div>');
+    row3.appendChild(field('Kcal (na porção acima)', 'kcal', 'number'));
+    row3.appendChild(field('Proteína g', 'proteina', 'number'));
+    modal.appendChild(row3);
+    const row4 = el('<div class="fp-form-grid"></div>');
+    row4.appendChild(field('Carboidrato g', 'carboidrato', 'number'));
+    row4.appendChild(field('Gordura g', 'gordura', 'number'));
+    modal.appendChild(row4);
+    const row5 = el('<div class="fp-form-grid"></div>');
+    row5.appendChild(field('Fibra g (opcional)', 'fibra', 'number'));
+    row5.appendChild(field('Sódio mg (opcional)', 'sodio', 'number'));
+    modal.appendChild(row5);
+
+    const medWrap = el('<div class="field"></div>');
+    medWrap.appendChild(el('<label>Medida caseira equivalente à porção acima (opcional)</label>'));
+    const medSel = el('<select><option value="">Nenhuma</option></select>');
+    MEDIDA_SLUGS.forEach((slug) => medSel.appendChild(el('<option value="' + slug + '">' + foodMeasureLabel(slug) + '</option>')));
+    medSel.value = f.medidaSlug;
+    medSel.addEventListener('change', () => { f.medidaSlug = medSel.value; });
+    medWrap.appendChild(medSel);
+    modal.appendChild(medWrap);
+
+    if (state.formErro) modal.appendChild(el('<div class="erro">' + state.formErro + '</div>'));
+
+    const actionsRow = el('<div style="display:flex;gap:8px;margin-top:14px;"></div>');
+    const backBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Voltar</button>');
+    backBtn.addEventListener('click', () => { state.step = 'busca'; state.formErro = ''; renderModal(); });
+    const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Cadastrar e usar</button>');
+    saveBtn.addEventListener('click', async () => {
+      if (!f.nome.trim()) { state.formErro = 'Dê um nome pro alimento.'; renderModal(); return; }
+      const porcao = Number(f.porcaoQtd);
+      if (!porcao || porcao <= 0) { state.formErro = 'Informe a quantidade da porção.'; renderModal(); return; }
+      const scale = 100 / porcao;
+      const measures = f.medidaSlug ? [{
+        unidade: f.medidaSlug, label: foodMeasureLabel(f.medidaSlug),
+        grams: f.porcaoUnidade === 'g' ? porcao : undefined,
+        ml: f.porcaoUnidade === 'ml' ? porcao : undefined
+      }] : [];
+      const payload = {
+        trainer_id: userId, nome: f.nome.trim(), categoria: f.categoria.trim() || null,
+        brand_name: f.marca.trim() || null, barcode: f.barcode.trim() || null,
+        kcal: Number(f.kcal || 0) * scale, proteina_g: Number(f.proteina || 0) * scale,
+        carboidrato_g: Number(f.carboidrato || 0) * scale, gordura_g: Number(f.gordura || 0) * scale,
+        fibra_g: f.fibra ? Number(f.fibra) * scale : null, sodio_mg: f.sodio ? Number(f.sodio) * scale : null,
+        default_unit: f.porcaoUnidade, measures: measures, source: 'APP'
+      };
+      const { data, error } = await supabaseClient.from('alimentos').insert(payload).select().single();
+      if (error) { state.formErro = error.message; renderModal(); return; }
+      selecionar(rowToNormalizedApp(data));
+    });
+    actionsRow.appendChild(backBtn); actionsRow.appendChild(saveBtn);
+    modal.appendChild(actionsRow);
+  }
+
+  function renderModal() {
+    modal.innerHTML = '';
+    const head = el('<div class="fp-head"></div>');
+    const titulo = state.step === 'quantidade' ? 'Quantidade' : (state.step === 'personalizado' ? 'Cadastrar alimento' : 'Adicionar alimento');
+    head.appendChild(el('<div class="fp-title">' + titulo + '</div>'));
+    const closeBtn = el('<button type="button" class="fp-close">×</button>');
+    closeBtn.addEventListener('click', fechar);
+    head.appendChild(closeBtn);
+    modal.appendChild(head);
+
+    if (state.step === 'busca') renderBusca();
+    else if (state.step === 'quantidade') renderQuantidade();
+    else renderFormPersonalizado();
+  }
+
+  renderModal();
 }
 
 init();
