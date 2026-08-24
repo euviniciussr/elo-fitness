@@ -60,6 +60,8 @@ input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;bor
 .item-macros{font-size:11px;color:#66707e;text-align:right;white-space:nowrap;}
 .item-remove{background:none;border:none;color:#4a5364;font-size:14px;padding:2px 6px;line-height:1;}
 .item-remove:hover{color:#f87171;}
+.item-edit{background:none;border:none;color:#4a5364;font-size:13px;padding:2px 6px;line-height:1;cursor:pointer;}
+.item-edit:hover{color:#f97316;}
 
 .add-item-row{display:flex;gap:8px;margin-top:10px;}
 .add-item-row input:first-child{flex:1;}
@@ -458,6 +460,9 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
     row.appendChild(left);
     const right = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
     right.appendChild(el('<div class="item-macros">' + it.kcal + ' kcal · P ' + it.proteina_g + 'g · C ' + it.carboidrato_g + 'g · G ' + it.gordura_g + 'g · F ' + it.fibra_g + 'g</div>'));
+    const editBtn = el('<button type="button" class="item-edit" title="Editar quantidade">✎</button>');
+    editBtn.addEventListener('click', () => abrirEditarItem(opcao, ii, render));
+    right.appendChild(editBtn);
     const rmBtn = el('<button type="button" class="item-remove">×</button>');
     rmBtn.addEventListener('click', () => { opcao.itens.splice(ii, 1); render(); });
     right.appendChild(rmBtn);
@@ -625,6 +630,127 @@ async function fpPromoverParaApp(food) {
 }
 
 const MEDIDA_SLUGS = ['unidade', 'fatia', 'colher_sopa', 'colher_cha', 'xicara', 'copo', 'concha'];
+
+// Edita a quantidade/unidade de um alimento já adicionado à refeição, sem
+// precisar excluir e adicionar de novo. Reaproveita as mesmas funções de
+// cálculo do fluxo de adicionar (availableMeasures/computeNutrients/
+// buildItemFromFood) — nenhuma lógica de conversão nova, mesmos dados das
+// integrações já usadas. Prefere buscar o alimento de novo via food-get
+// (usando food_source/food_source_id salvos no item) pra ter a lista de
+// medidas mais atual; se o item for antigo e não tiver essa referência,
+// reconstrói uma referência "por 100g/100ml" aproximada a partir dos
+// valores já salvos, então a edição continua funcionando (só sem trocar de
+// unidade nesse caso raro, já que não sabemos as medidas originais).
+function abrirEditarItem(opcao, index, onSaved) {
+  const it = opcao.itens[index];
+  const overlay = el('<div class="fp-overlay"></div>');
+  const modal = el('<div class="fp-modal"></div>');
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  const state = {
+    qtd: it.quantidade != null ? it.quantidade : it.quantidade_g,
+    unidade: it.unidade || 'g',
+    food: null, erro: ''
+  };
+
+  function deriveFoodFromItem() {
+    const grams = it.quantidade_g || 100;
+    const f = grams > 0 ? (100 / grams) : 0;
+    return {
+      nome: it.nome, kcal: (it.kcal || 0) * f, proteinaG: (it.proteina_g || 0) * f,
+      carboidratoG: (it.carboidrato_g || 0) * f, gorduraG: (it.gordura_g || 0) * f,
+      fibraG: (it.fibra_g || 0) * f, sodioMg: (it.sodio_mg || 0) * f,
+      isLiquid: it.unidade === 'ml', measures: []
+    };
+  }
+
+  function renderLoading() {
+    modal.innerHTML = '';
+    const head = el('<div class="fp-head"></div>');
+    head.appendChild(el('<div class="fp-title">Editar quantidade</div>'));
+    const closeBtn = el('<button type="button" class="fp-close">×</button>');
+    closeBtn.addEventListener('click', () => overlay.remove());
+    head.appendChild(closeBtn);
+    modal.appendChild(head);
+    modal.appendChild(el('<div class="fp-empty">Carregando…</div>'));
+  }
+
+  async function carregarFood() {
+    if (it.food_source && it.food_source_id) {
+      try {
+        const { data, error } = await supabaseClient.functions.invoke('food-get', { body: { source: it.food_source, source_id: it.food_source_id } });
+        if (!error && data && data.food) { state.food = data.food; renderForm(); return; }
+      } catch (err) { /* cai pro fallback abaixo */ }
+    }
+    state.food = deriveFoodFromItem();
+    renderForm();
+  }
+
+  function renderForm() {
+    modal.innerHTML = '';
+    const head = el('<div class="fp-head"></div>');
+    head.appendChild(el('<div class="fp-title">Editar quantidade</div>'));
+    const closeBtn = el('<button type="button" class="fp-close">×</button>');
+    closeBtn.addEventListener('click', () => overlay.remove());
+    head.appendChild(closeBtn);
+    modal.appendChild(head);
+
+    modal.appendChild(el('<div style="font-size:14.5px;font-weight:800;">' + it.nome + '</div>'));
+
+    const measures = availableMeasures(state.food);
+    if (!measures.some((m) => m.unidade === state.unidade)) state.unidade = measures[0].unidade;
+
+    const row = el('<div class="fp-qty-row"></div>');
+    const qtdInput = el('<input type="number" min="0" step="any">');
+    qtdInput.value = state.qtd;
+    qtdInput.addEventListener('input', () => { state.qtd = qtdInput.value; renderPreview(); });
+    const unidadeSelect = el('<select></select>');
+    measures.forEach((m) => {
+      const opt = el('<option value="' + m.unidade + '">' + foodMeasureLabel(m.unidade, m.label) + '</option>');
+      if (m.unidade === state.unidade) opt.selected = true;
+      unidadeSelect.appendChild(opt);
+    });
+    unidadeSelect.addEventListener('change', () => { state.unidade = unidadeSelect.value; renderPreview(); });
+    row.appendChild(qtdInput); row.appendChild(unidadeSelect);
+    modal.appendChild(row);
+
+    const previewBox = el('<div></div>');
+    modal.appendChild(previewBox);
+    function renderPreview() {
+      const n = computeNutrients(state.food, Number(state.qtd) || 0, state.unidade);
+      previewBox.innerHTML = '';
+      if (!n) { previewBox.appendChild(el('<div class="erro" style="margin-top:10px;">Sem conversão pra essa unidade.</div>')); return; }
+      const box = el('<div class="fp-macros-preview"></div>');
+      [['Kcal', n.kcal, ''], ['Proteínas', n.proteinaG, 'g'], ['Carboidratos', n.carboidratoG, 'g'], ['Gorduras', n.gorduraG, 'g'], ['Fibras', n.fibraG, 'g']]
+        .forEach(([label, val, suf]) => box.appendChild(el('<div class="t">' + label + ': <b>' + val + suf + '</b></div>')));
+      previewBox.appendChild(box);
+    }
+    renderPreview();
+
+    if (state.erro) modal.appendChild(el('<div class="erro">' + state.erro + '</div>'));
+
+    const actionsRow = el('<div style="display:flex;gap:8px;margin-top:16px;"></div>');
+    const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+    cancelBtn.addEventListener('click', () => overlay.remove());
+    const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Salvar</button>');
+    saveBtn.addEventListener('click', () => {
+      const qtd = Number(state.qtd);
+      if (!qtd || qtd <= 0) { state.erro = 'Informe uma quantidade válida.'; renderForm(); return; }
+      const novoItem = buildItemFromFood(state.food, qtd, state.unidade);
+      if (!novoItem) { state.erro = 'Sem conversão disponível pra essa unidade.'; renderForm(); return; }
+      opcao.itens[index] = novoItem;
+      overlay.remove();
+      if (onSaved) onSaved();
+    });
+    actionsRow.appendChild(cancelBtn); actionsRow.appendChild(saveBtn);
+    modal.appendChild(actionsRow);
+  }
+
+  renderLoading();
+  carregarFood();
+}
 
 function abrirFoodPicker(opcao, onAdded) {
   const state = {

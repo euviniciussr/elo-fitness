@@ -103,6 +103,8 @@ interface TacoRow {
   gordura_g: number | null;
   fibra_g: number | null;
   sodio_mg: number | null;
+  default_unit: string | null;
+  measures: NormalizedFood["measures"] | null;
 }
 
 // Prefixo "taco:" distingue esses ids (numéricos, tabela separada) dos
@@ -124,13 +126,14 @@ function tacoToNormalized(row: TacoRow): NormalizedFood {
     fibraG: row.fibra_g,
     sodioMg: row.sodio_mg,
     otherNutrients: {},
-    defaultUnit: "g",
-    measures: [],
-    isLiquid: false,
+    defaultUnit: row.default_unit || "g",
+    measures: row.measures || [],
+    isLiquid: (row.default_unit || "g") === "ml",
   };
 }
 
-const TACO_SELECT_COLUMNS = "id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg";
+const TACO_SELECT_COLUMNS =
+  "id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, default_unit, measures";
 
 // A tabela padrão é global, read-only e pequena (~600 linhas) — cachear em
 // memória do isolate evita rebuscar tudo a cada tecla digitada (debounce de

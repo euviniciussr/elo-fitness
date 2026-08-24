@@ -280,7 +280,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
   <main style="flex:1;min-width:0;padding:0 32px 48px;">
     <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-bottom:1px solid #171d29;margin-bottom:26px;">
       <div>
-        <h1 style="margin:0;font-size:24px;font-weight:800;">Olá! 👋</h1>
+        <h1 style="margin:0;font-size:24px;font-weight:800;">{{ saudacao }} 👋</h1>
         <div style="display:flex;align-items:center;gap:10px;margin-top:5px;font-size:13px;color:#9aa4b2;flex-wrap:wrap;">
           <span>sexta-feira, 31 de julho</span>
         </div>
@@ -486,7 +486,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;metaMensal&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10000,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1000,&quot;max&quot;:100000,&quot;step&quot;:500,&quot;unit&quot;:&quot;R$&quot;,&quot;section&quot;:&quot;Metas&quot;},&quot;ocultarValores&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Exibição&quot;}}">
 class Component extends DCLogic {
-  state = { ocultar: false, tab: 'receita', copied: false, clientes: [], faturamentoMes: 0 };
+  state = { ocultar: false, tab: 'receita', copied: false, clientes: [], faturamentoMes: 0, trainerNome: '' };
 
   componentDidMount() {
     this.loadDashboard();
@@ -498,12 +498,14 @@ class Component extends DCLogic {
     const inicioMes = new Date();
     inicioMes.setDate(1);
     const inicioMesStr = inicioMes.toISOString().slice(0, 10);
-    const [clientesRes, pagamentosRes] = await Promise.all([
+    const [trainerRes, clientesRes, pagamentosRes] = await Promise.all([
+      supabaseClient.from('trainers').select('nome').eq('id', user.id).maybeSingle(),
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('pagamentos').select('valor').eq('trainer_id', user.id).gte('data', inicioMesStr)
     ]);
     const faturamentoMes = (pagamentosRes.data || []).reduce((sum, p) => sum + Number(p.valor), 0);
-    this.setState({ clientes: clientesRes.data || [], faturamentoMes });
+    const trainerNome = (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim().split(/\s+/)[0] : '';
+    this.setState({ clientes: clientesRes.data || [], faturamentoMes, trainerNome });
   }
 
   renderVals() {
@@ -545,6 +547,7 @@ class Component extends DCLogic {
       React.createElement('path', { d: d, fill: 'none', stroke: '#f97316', strokeWidth: 2.5, strokeLinejoin: 'round' })
     );
     return {
+      saudacao: this.state.trainerNome ? ('Olá, ' + this.state.trainerNome + '!') : 'Olá!',
       fatMes: m(brl(fat)), projecao: m(brl(fat)), media3m: m(brl(0)),
       fatHoje: m('R$ 0,00'), fatSemana: m(brl(0)), fatAno: m(brl(0)),
       vDiario: m('R$ 0,00'), vSemana: m(brl(0)), vMensal: m(brl(fat)),
