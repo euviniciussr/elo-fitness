@@ -309,8 +309,71 @@ function abrirGerenciarTecnicas(onChange) {
 function formatarSerieTemplate(tmpl) {
   return (tmpl.linhas || [])
     .filter(l => (l.nome || '').trim() || (l.reps || '').trim())
-    .map(l => (l.nome || '').trim() + ': ' + (l.reps || '').trim())
+    .map(l => (l.nome || '').trim() ? (l.nome.trim() + ': ' + (l.reps || '').trim()) : (l.reps || '').trim())
     .join('\n');
+}
+
+// Cada linha já preenchida no textarea de séries (ex.: "1x10 aquecimento")
+// vira uma linha do modelo tal como está — sem tentar separar nome/reps,
+// que na prática vêm misturados no texto livre do treinador.
+function parseSeriesTextoParaLinhas(texto) {
+  return (texto || '')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(l => ({ nome: '', reps: l }));
+}
+
+function abrirModalSalvarSerieRapido({ linhas, onSaved }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:380px;"></div>');
+  box.appendChild(el('<h2>Salvar como série pré-definida</h2>'));
+
+  const nomeWrap = el('<div><label>Nome da série pré-definida</label></div>');
+  const nomeInput = el('<input maxlength="60" placeholder="Ex: Protocolo Padrão">');
+  nomeWrap.appendChild(nomeInput);
+  box.appendChild(nomeWrap);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Salvar</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  saveBtn.addEventListener('click', async () => {
+    const nome = nomeInput.value.trim();
+    if (!nome) { erro.textContent = 'Digite um nome pra série pré-definida.'; erro.style.display = ''; return; }
+    if (!linhas.length) { erro.textContent = 'Preencha as séries do exercício antes de salvar como modelo.'; erro.style.display = ''; return; }
+    erro.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando…';
+
+    const result = await supabaseClient.from('series_predefinidas')
+      .insert({ nome, linhas, trainer_id: userId }).select().single();
+
+    if (result.error) {
+      erro.textContent = result.error.message;
+      erro.style.display = '';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar';
+      return;
+    }
+
+    seriesTemplatesLib.push(result.data);
+    overlay.remove();
+    onSaved && onSaved(result.data);
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  box.appendChild(btnRow);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  nomeInput.focus();
 }
 
 function abrirModalSerieTemplate({ template, linhasIniciais, onSaved }) {
@@ -1087,9 +1150,8 @@ function renderAddExForm(treino) {
   seriesWrap.appendChild(seriesTa);
   seriesWrap.appendChild(seriesCount);
   const salvarComoTemplateBtn = el('<button type="button" class="serie-tmpl-link" style="margin-top:4px;">Salvar como série pré-definida</button>');
-  salvarComoTemplateBtn.addEventListener('click', () => abrirModalSerieTemplate({
-    template: null,
-    linhasIniciais: [{ nome: 'Trabalho', reps: seriesTa.value.trim() }]
+  salvarComoTemplateBtn.addEventListener('click', () => abrirModalSalvarSerieRapido({
+    linhas: parseSeriesTextoParaLinhas(seriesTa.value)
   }));
   seriesWrap.appendChild(salvarComoTemplateBtn);
   form.appendChild(seriesWrap);

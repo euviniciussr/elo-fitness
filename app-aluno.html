@@ -407,7 +407,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
           <div>
             <h1 style="margin:0;font-size:23px;font-weight:800;">Plano alimentar</h1>
-            <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Você ainda não tem uma dieta</div>
+            <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">{{ dietaSubtitulo }}</div>
           </div>
         </div>
         <sc-if value="{{ semDieta }}" hint-placeholder-val="{{ true }}">
@@ -628,7 +628,7 @@ class Component extends DCLogic {
   state = {
     tab: 'hoje', abertoEx: -1, feitos: [],
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
-    refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {},
+    refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false
   };
 
@@ -648,9 +648,12 @@ class Component extends DCLogic {
     const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) return;
     this.setState({ clienteId: cliente.id, trainerId: cliente.trainer_id });
-    const { data: treinos } = await supabaseClient.from('treinos').select('id').eq('cliente_id', cliente.id).eq('habilitado', true);
-    const { data: fotos } = await supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false });
-    this.setState({ fotosEvolucao: await this.resolveFotoUrls(fotos) });
+    const [{ data: treinos }, { data: fotos }, { data: dietas }] = await Promise.all([
+      supabaseClient.from('treinos').select('id').eq('cliente_id', cliente.id).eq('habilitado', true),
+      supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
+      supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1)
+    ]);
+    this.setState({ fotosEvolucao: await this.resolveFotoUrls(fotos), dietaAtual: (dietas && dietas[0]) || null });
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
       .from('treino_exercicios')
@@ -720,7 +723,19 @@ class Component extends DCLogic {
         historico: '—', prev: [], reps: []
       };
     });
-    const rfData = [];
+    const dietaAtual = this.state.dietaAtual;
+    const rfData = dietaAtual ? (dietaAtual.refeicoes || []).map(r => {
+      const itens = (r.opcoes && r.opcoes[0] && r.opcoes[0].itens) || [];
+      const kcal = itens.reduce((s, it) => s + (it.kcal || 0), 0);
+      const ptn = itens.reduce((s, it) => s + (it.proteina_g || 0), 0);
+      return {
+        nome: r.nome,
+        hora: '—',
+        itens: itens.length ? itens.map(it => it.nome).join(', ') : 'Sem alimentos ainda',
+        kcal: Math.round(kcal) + ' kcal',
+        ptn: Math.round(ptn) + 'g'
+      };
+    }) : [];
     const peso = [];
     const humorLabels = ['🔥 Muito bem', '🙂 Tranquilo', '😐 Cansado', '😕 Com dor'];
     const refeitas = this.state.refeitas;
@@ -799,6 +814,7 @@ class Component extends DCLogic {
       fotoUploadLabel: this.state.fotoUploadBusy ? 'Enviando…' : '+ Fotos',
 
       semDieta: rfData.length === 0,
+      dietaSubtitulo: dietaAtual ? (dietaAtual.nome + (dietaAtual.meta_calorica ? ' · ' + dietaAtual.meta_calorica : '')) : 'Você ainda não tem uma dieta',
       macros: [],
       refeicoes: rfData.map((r, i) => ({
         ...r,

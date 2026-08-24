@@ -17,3 +17,7 @@ create policy "trainer vê e edita suas séries pré-definidas"
   on series_predefinidas for all
   using (trainer_id = auth.uid())
   with check (trainer_id = auth.uid());
+
+-- Tabelas criadas via SQL cru não herdam GRANTs automáticos do Table Editor
+-- (lição já registrada no projeto) — GRANT explícito.
+grant select, insert, update, delete on series_predefinidas to authenticated;

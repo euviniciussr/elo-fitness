@@ -116,6 +116,10 @@ input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;bor
 .fp-macros-preview .t{font-size:11px;color:#66707e;}
 .fp-macros-preview .t b{color:#e5e9f0;font-size:12.5px;}
 .fp-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.toggle-switch{width:44px;height:26px;border-radius:999px;background:#1e2633;border:none;position:relative;flex-shrink:0;padding:0;}
+.toggle-switch.on{background:#f97316;}
+.toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;}
+.toggle-switch.on .toggle-knob{left:21px;}
 </style>
 </head>
 <body>
@@ -175,6 +179,7 @@ let dietaId = dietaIdParam || null;
 let dietaNome = '';
 let dietaMeta = '';
 let dietaClienteId = clienteIdParam || '';
+let dietaHabilitado = true;
 let refeicoes = {}; // key -> { nome, opcoes: [{ nome, itens: [] }] }
 let salvando = false;
 let erroMsg = '';
@@ -227,6 +232,7 @@ async function init() {
       dietaNome = dieta.nome || '';
       dietaMeta = dieta.meta_calorica || '';
       dietaClienteId = dieta.cliente_id || '';
+      dietaHabilitado = dieta.habilitado !== false;
       (dieta.refeicoes || []).forEach(r => {
         const def = MEAL_DEFS.find(m => m.nome === r.nome);
         const key = def ? def.key : r.nome;
@@ -314,6 +320,26 @@ function render() {
   h.appendChild(hTop);
   h.appendChild(el('<div class="sub">Busque o alimento, escolha a quantidade em g, ml, unidade ou medida caseira e os macros são calculados automaticamente.</div>'));
   app.appendChild(h);
+
+  if (dietaClienteId) {
+    const nomeCliente = (clientes.find(c => c.id === dietaClienteId) || {}).nome || clienteNomeParam || 'aluno';
+    const box = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:20px;"></div>');
+    box.appendChild(el(
+      '<div><div style="font-size:13.5px;font-weight:700;">Visível para ' + nomeCliente + '</div>' +
+      '<div class="sub" style="margin:2px 0 0;">' + (dietaHabilitado ? 'O aluno já vê essa dieta no app dele.' : 'Oculta — o aluno não vê essa dieta até você habilitar.') + '</div></div>'
+    ));
+    const toggleBtn = el('<button type="button" class="toggle-switch' + (dietaHabilitado ? ' on' : '') + '"><span class="toggle-knob"></span></button>');
+    toggleBtn.addEventListener('click', async () => {
+      dietaHabilitado = !dietaHabilitado;
+      if (dietaId) {
+        toggleBtn.disabled = true;
+        await supabaseClient.from('dietas').update({ habilitado: dietaHabilitado }).eq('id', dietaId);
+      }
+      render();
+    });
+    box.appendChild(toggleBtn);
+    app.appendChild(box);
+  }
 
   const fieldRow = el('<div class="field-row"></div>');
   const nomeField = el('<div class="field"></div>');
@@ -471,7 +497,8 @@ async function salvarDieta() {
     nome: dietaNome.trim(),
     cliente_id: dietaClienteId || null,
     meta_calorica: dietaMeta.trim() || null,
-    refeicoes: refeicoesArr
+    refeicoes: refeicoesArr,
+    habilitado: dietaHabilitado
   };
 
   let error, saved;
