@@ -272,7 +272,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </a>
       </nav>
       <div style="display:flex;align-items:center;gap:10px;padding:14px 8px 0;border-top:1px solid #171d29;margin-top:10px;">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">👤</div>
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
         <div><div style="font-size:13px;font-weight:700;">Seu nome</div><div style="font-size:11px;color:#66707e;">seu@email.com</div></div>
       </div>
     </div>
@@ -333,7 +333,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           </div>
         </div>
         <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:20px;">
-          <div style="font-size:14px;font-weight:800;margin-bottom:6px;">💡 Sobre o lembrete quinzenal</div>
+          <div style="font-size:14px;font-weight:800;margin-bottom:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z"></path></svg> Sobre o lembrete quinzenal</div>
           <div style="font-size:12.5px;color:#9aa4b2;line-height:1.55;text-wrap:pretty;">É o mesmo lembrete que aparece na Central de notificações de Alunos: a cada 14 dias, o aluno recebe um aviso automático pra mandar feedback e fotos.</div>
         </div>
       </div>
@@ -366,9 +366,9 @@ class Component extends DCLogic {
         toggle('notifMensagens', 'Novas mensagens de alunos', 'Notificação a cada mensagem recebida no chat')
       ],
       integracoes: [
-        { icon: '💬', iconBg: 'rgba(74,222,128,.12)', nome: 'WhatsApp Business', status: 'Conectado · envia lembretes automáticos', btnLabel: 'Gerenciar', btnBg: '#131a26', btnBorder: '#1e2633', btnColor: '#9aa4b2' },
-        { icon: '📅', iconBg: 'rgba(59,130,246,.12)', nome: 'Google Calendar', status: 'Não conectado', btnLabel: 'Conectar', btnBg: 'rgba(249,115,22,.12)', btnBorder: 'rgba(249,115,22,.35)', btnColor: '#f97316' },
-        { icon: '💳', iconBg: 'rgba(168,85,247,.12)', nome: 'Gateway de pagamento', status: 'Conectado · PIX e cartão', btnLabel: 'Gerenciar', btnBg: '#131a26', btnBorder: '#1e2633', btnColor: '#9aa4b2' }
+        { icon: '', iconBg: 'rgba(74,222,128,.12)', nome: 'WhatsApp Business', status: 'Conectado · envia lembretes automáticos', btnLabel: 'Gerenciar', btnBg: '#131a26', btnBorder: '#1e2633', btnColor: '#9aa4b2' },
+        { icon: '', iconBg: 'rgba(59,130,246,.12)', nome: 'Google Calendar', status: 'Não conectado', btnLabel: 'Conectar', btnBg: 'rgba(249,115,22,.12)', btnBorder: 'rgba(249,115,22,.35)', btnColor: '#f97316' },
+        { icon: '', iconBg: 'rgba(168,85,247,.12)', nome: 'Gateway de pagamento', status: 'Conectado · PIX e cartão', btnLabel: 'Gerenciar', btnBg: '#131a26', btnBorder: '#1e2633', btnColor: '#9aa4b2' }
       ]
     };
   }

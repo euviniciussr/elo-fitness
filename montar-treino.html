@@ -1008,7 +1008,7 @@ function renderExItem(treino, te) {
 
   const info = el('<div style="min-width:0;"></div>');
   info.appendChild(el('<div class="ex-nome">' + (te.exercicios || {}).nome + '</div>'));
-  info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + (te.carga ? ' · 🏋️ ' + te.carga : '') + ' · ⏱️ descanso ' + (te.intervalo_descanso || '—') + '</div>'));
+  info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + (te.carga ? ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg> ' + te.carga : '') + ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg> descanso ' + (te.intervalo_descanso || '—') + '</div>'));
   if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
   const teVideoUrl = (te.exercicios || {}).video_url;
   if (teVideoUrl) {
@@ -1037,7 +1037,7 @@ function renderExItem(treino, te) {
   actions.appendChild(downBtn);
   actions.appendChild(editBtn);
   if (!te.grupo_id) {
-    const combinarBtn = el('<button type="button" class="ex-icon-btn" title="Combinar com outro exercício (bi-set/super-set)">⛓</button>');
+    const combinarBtn = el('<button type="button" class="ex-icon-btn" title="Combinar com outro exercício (bi-set/super-set)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></button>');
     combinarBtn.addEventListener('click', () => {
       formMode = { type: 'combo', grupoId: crypto.randomUUID(), anchorTe: te };
       renderMontar();

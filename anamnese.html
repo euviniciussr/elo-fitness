@@ -272,7 +272,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                   <span style="position:absolute;top:6px;right:6px;background:rgba(74,222,128,.9);color:#0a0d13;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;">✓</span>
                 </sc-if>
                 <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ true }}">
-                  <div style="font-size:20px;">📷</div>
+                  <div style="font-size:20px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
                   <div style="font-size:10.5px;color:#66707e;margin-top:6px;font-weight:600;">{{ s.label }}</div>
                 </sc-if>
                 <input type="file" accept="image/*" sc-camel-on-change="{{ s.onChange }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">

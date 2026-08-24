@@ -900,7 +900,7 @@ function abrirFoodPicker(opcao, onAdded) {
     renderResultsBody();
 
     const footer = el('<div style="margin-top:6px;border-top:1px solid #1a2130;padding-top:10px;"></div>');
-    const barcodeBtn = el('<button type="button" class="fp-link-btn">📷 Buscar por código de barras</button>');
+    const barcodeBtn = el('<button type="button" class="fp-link-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> Buscar por código de barras</button>');
     barcodeBtn.addEventListener('click', () => { state.barcodeOpen = !state.barcodeOpen; renderModal(); });
     footer.appendChild(barcodeBtn);
 

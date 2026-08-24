@@ -247,13 +247,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <div style="margin-top:auto;">
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:32px;height:32px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">👤</div>
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
           <div style="min-width:0;"><div style="font-size:12px;font-weight:700;">Seu personal</div><div style="font-size:10.5px;color:#66707e;">ainda não conectado</div></div>
         </div>
-        <button sc-camel-on-click="{{ irMensagens }}" style="width:100%;margin-top:11px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:8px;border-radius:8px;cursor:pointer;">💬 Falar com ele</button>
+        <button sc-camel-on-click="{{ irMensagens }}" style="width:100%;margin-top:11px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:8px;border-radius:8px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> Falar com ele</button>
       </div>
       <div style="display:flex;align-items:center;gap:10px;padding:12px 8px 0;border-top:1px solid #171d29;">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">👤</div>
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
         <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">Seu nome</div><div style="font-size:11px;color:#66707e;">seu@email.com</div></div>
         <a href="login.html" style="display:flex;"><svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#66707e" stroke-width="2" style="cursor:pointer;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg></a>
       </div>
@@ -280,28 +280,28 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
           <div>
-            <h1 style="margin:0;font-size:23px;font-weight:800;">Fala! 💪</h1>
+            <h1 style="margin:0;font-size:23px;font-weight:800;">{{ saudacao }}</h1>
             <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">sábado, 1 de agosto</div>
           </div>
           <div style="display:flex;gap:14px;">
-            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;color:#f97316;">🔥 0</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">dias seguidos</div></div>
+            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;color:#f97316;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> 0</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">dias seguidos</div></div>
             <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;">0/0</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">treinos na semana</div></div>
           </div>
         </div>
 
         <section style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:22px 24px;margin-bottom:16px;text-align:center;">
-          <div style="font-size:28px;margin-bottom:8px;">🏋️</div>
+          <div style="font-size:28px;margin-bottom:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg></div>
           <div style="font-size:15px;font-weight:800;">Nenhum treino liberado ainda</div>
           <div style="font-size:12.5px;color:#9aa4b2;margin-top:5px;">Assim que seu personal montar seu plano, ele aparece aqui.</div>
         </section>
 
         <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:16px;">
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;">
-            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">🍽️ Próxima refeição</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6 2v7a2 2 0 0 0 2 2v11"></path><path d="M6 2v7"></path><path d="M9 2v7"></path><path d="M17 22V15c-2 0-4-1.8-4-4V2s5 0 5 5v15"></path></svg> Próxima refeição</div>
             <div style="font-size:12.5px;color:#66707e;">Nenhuma dieta ainda.</div>
           </div>
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;">
-            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">⚖️ Registro de hoje</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M12 3v18"></path><path d="M6 8l-4 8a4 4 0 0 0 8 0z"></path><path d="M18 8l-4 8a4 4 0 0 0 8 0z"></path><path d="M4 8h16"></path><path d="M9 21h6"></path></svg> Registro de hoje</div>
             <div style="display:flex;align-items:center;gap:10px;">
               <input placeholder="0,0" style="width:76px;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:9px 12px;color:#e5e9f0;font-family:inherit;font-size:15px;font-weight:700;outline:none;text-align:center;">
               <span style="font-size:12px;color:#66707e;">kg</span>
@@ -309,7 +309,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             </div>
           </div>
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;">
-            <div style="font-size:13px;font-weight:700;margin-bottom:12px;">📅 Próxima sessão</div>
+            <div style="font-size:13px;font-weight:700;margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg> Próxima sessão</div>
             <div style="font-size:12.5px;color:#66707e;">Nenhuma sessão agendada.</div>
           </div>
         </section>
@@ -344,7 +344,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
         <sc-if value="{{ semTreino }}" hint-placeholder-val="{{ true }}">
           <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
-            <div style="font-size:30px;margin-bottom:10px;">🏋️</div>
+            <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg></div>
             <div style="font-size:14.5px;font-weight:800;">Nenhum treino ainda</div>
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Seu personal vai montar e liberar seu plano de treino em breve.</div>
           </div>
@@ -363,7 +363,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                     <span style="font-size:10px;font-weight:800;color:#a855f7;background:rgba(168,85,247,.12);padding:3px 10px;border-radius:999px;">{{ e.tecnica }}</span>
                   </sc-if>
                   <sc-if value="{{ e.temVideo }}" hint-placeholder-val="{{ true }}">
-                    <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;">🎬 vídeo</span>
+                    <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> vídeo</span>
                   </sc-if>
                 </div>
               </div>
@@ -392,7 +392,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
         <sc-if value="{{ treinoConcluido }}" hint-placeholder-val="{{ false }}">
           <section style="background:linear-gradient(160deg,#0a1a10,#10151f);border:1px solid rgba(74,222,128,.35);border-radius:16px;padding:22px 24px;margin-top:16px;">
-            <div style="font-size:16px;font-weight:800;margin-bottom:4px;">🎉 Treino concluído! Como foi?</div>
+            <div style="font-size:16px;font-weight:800;margin-bottom:4px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="6"></circle><path d="M9 13.5 7 22l5-3 5 3-2-8.5"></path></svg> Treino concluído! Como foi?</div>
             <div style="font-size:12.5px;color:#9aa4b2;margin-bottom:14px;">Seu feedback vai direto pro seu personal ajustar seu próximo treino.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
               <sc-for list="{{ humores }}" as="h" hint-placeholder-count="4">
@@ -425,7 +425,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </div>
         <sc-if value="{{ semDieta }}" hint-placeholder-val="{{ true }}">
           <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
-            <div style="font-size:30px;margin-bottom:10px;">🍽️</div>
+            <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6 2v7a2 2 0 0 0 2 2v11"></path><path d="M6 2v7"></path><path d="M9 2v7"></path><path d="M17 22V15c-2 0-4-1.8-4-4V2s5 0 5 5v15"></path></svg></div>
             <div style="font-size:14.5px;font-weight:800;">Nenhuma dieta ainda</div>
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Assim que seu personal montar seu plano alimentar, ele aparece aqui.</div>
           </div>
@@ -514,7 +514,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </section>
 
         <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;">
-          <div style="font-size:14px;font-weight:800;margin-bottom:16px;">Recordes pessoais 🏆</div>
+          <div style="font-size:14px;font-weight:800;margin-bottom:16px;">Recordes pessoais <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M8 21h8"></path><path d="M12 17v4"></path><path d="M7 4h10v6a5 5 0 0 1-10 0z"></path><path d="M17 5h3a2 2 0 0 1-2 4"></path><path d="M7 5H4a2 2 0 0 0 2 4"></path></svg></div>
           <sc-if value="{{ semRecordes }}" hint-placeholder-val="{{ true }}">
             <div style="font-size:12.5px;color:#66707e;">Nenhum recorde ainda — eles aparecem conforme você treina.</div>
           </sc-if>
@@ -540,7 +540,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </div>
         <sc-if value="{{ semSessoes }}" hint-placeholder-val="{{ true }}">
           <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
-            <div style="font-size:30px;margin-bottom:10px;">📅</div>
+            <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg></div>
             <div style="font-size:14.5px;font-weight:800;">Nenhuma sessão agendada</div>
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Suas sessões com o personal aparecem aqui.</div>
           </div>
@@ -573,7 +573,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <sc-if value="{{ isMensagens }}" hint-placeholder-val="{{ true }}">
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;display:flex;flex-direction:column;min-height:480px;">
         <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid #171d29;">
-          <div style="width:36px;height:36px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">👤</div>
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
           <div style="flex:1;"><div style="font-size:13.5px;font-weight:700;">Seu personal</div></div>
         </div>
         <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:12px;">
@@ -604,7 +604,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <section style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
           <div style="flex:1 1 400px;min-width:0;display:flex;flex-direction:column;gap:16px;">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 24px;text-align:center;">
-              <div style="font-size:30px;margin-bottom:10px;">💳</div>
+              <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></div>
               <div style="font-size:14.5px;font-weight:800;">Nenhum plano ativo</div>
               <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Fale com seu personal pra contratar um plano.</div>
             </div>
@@ -643,7 +643,7 @@ class Component extends DCLogic {
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
-    convitesPendentes: []
+    convitesPendentes: [], alunoNome: ''
   };
 
   componentDidMount() {
@@ -683,9 +683,10 @@ class Component extends DCLogic {
   async loadTreino() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id').eq('auth_user_id', user.id).maybeSingle();
+    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) return;
-    this.setState({ clienteId: cliente.id, trainerId: cliente.trainer_id });
+    const alunoNome = (cliente.nome || '').trim().split(/\s+/)[0] || '';
+    this.setState({ clienteId: cliente.id, trainerId: cliente.trainer_id, alunoNome });
     const [{ data: treinos }, { data: fotos }, { data: dietas }] = await Promise.all([
       supabaseClient.from('treinos').select('id').eq('cliente_id', cliente.id).eq('habilitado', true),
       supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
@@ -708,7 +709,7 @@ class Component extends DCLogic {
   }
 
   async onEnviarFeedback() {
-    const humorLabels = ['🔥 Muito bem', '🙂 Tranquilo', '😐 Cansado', '😕 Com dor'];
+    const humorLabels = ['Muito bem', 'Tranquilo', 'Cansado', 'Com dor'];
     this.setState({ fbEnviando: true });
     await supabaseClient.from('feedbacks_treino').insert({
       cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
@@ -775,18 +776,19 @@ class Component extends DCLogic {
       };
     }) : [];
     const peso = [];
-    const humorLabels = ['🔥 Muito bem', '🙂 Tranquilo', '😐 Cansado', '😕 Com dor'];
+    const humorLabels = ['Muito bem', 'Tranquilo', 'Cansado', 'Com dor'];
     const refeitas = this.state.refeitas;
 
     return {
+      saudacao: this.state.alunoNome ? ('Olá, ' + this.state.alunoNome + '!') : 'Olá!',
       temConvitePendente: this.state.convitesPendentes.length > 0,
       convitesPendentes: this.state.convitesPendentes.map(cv => ({
         trainerNome: cv.trainer_nome,
         onAceitar: () => this.onAceitarConvite(cv.token, cv.tem_cadastro_previo)
       })),
-      navDia: [navItem('hoje', '🏠', 'Hoje', ''), navItem('agenda', '📅', 'Agenda', '')],
-      navPlano: [navItem('treino', '🏋️', 'Meu treino', ''), navItem('dieta', '🍽️', 'Minha dieta', ''), navItem('evolucao', '📈', 'Evolução', '')],
-      navComigo: [navItem('mensagens', '💬', 'Mensagens', ''), navItem('plano', '💳', 'Meu plano', '')],
+      navDia: [navItem('hoje', '', 'Hoje', ''), navItem('agenda', '', 'Agenda', '')],
+      navPlano: [navItem('treino', '', 'Meu treino', ''), navItem('dieta', '', 'Minha dieta', ''), navItem('evolucao', '', 'Evolução', '')],
+      navComigo: [navItem('mensagens', '', 'Mensagens', ''), navItem('plano', '', 'Meu plano', '')],
       isHoje: t === 'hoje', isTreino: t === 'treino', isDieta: t === 'dieta',
       isEvolucao: t === 'evolucao', isAgenda: t === 'agenda', isMensagens: t === 'mensagens', isPlano: t === 'plano',
       irTreino: go('treino'), irAgenda: go('agenda'), irMensagens: go('mensagens'),
@@ -809,7 +811,7 @@ class Component extends DCLogic {
       progressoW: exData.length ? Math.round(doneCount / exData.length * 100) + '%' : '0%',
       treinoConcluido: todos,
       finalizarTreino: () => this.setState({ feitos: exData.map(() => true) }),
-      finalizarLabel: todos ? 'Concluído 🎉' : 'Concluir tudo',
+      finalizarLabel: todos ? 'Concluído ' : 'Concluir tudo',
       finalizarBg: todos ? 'rgba(74,222,128,.12)' : '#131a26',
       finalizarBorder: todos ? 'rgba(74,222,128,.3)' : '#1e2633',
       finalizarColor: todos ? '#4ade80' : '#9aa4b2',
@@ -822,7 +824,7 @@ class Component extends DCLogic {
           onVerVideo: () => { if (e.videoUrl) window.open(e.videoUrl, '_blank', 'noopener'); },
           aberto,
           border: aberto ? 'rgba(249,115,22,.35)' : done ? 'rgba(74,222,128,.2)' : '#1a2130',
-          check: done ? '✅' : '⬜',
+          check: done ? '' : '',
           checkBg: done ? 'rgba(74,222,128,.12)' : '#131a26',
           checkBorder: done ? 'rgba(74,222,128,.3)' : '#1e2633',
           decoration: done ? 'line-through' : 'none',
@@ -862,7 +864,7 @@ class Component extends DCLogic {
       refeicoes: rfData.map((r, i) => ({
         ...r,
         border: refeitas[i] ? 'rgba(74,222,128,.2)' : '#1a2130',
-        check: refeitas[i] ? '✅' : '⬜',
+        check: refeitas[i] ? '' : '',
         checkBg: refeitas[i] ? 'rgba(74,222,128,.12)' : '#131a26',
         checkBorder: refeitas[i] ? 'rgba(74,222,128,.3)' : '#1e2633',
         onToggle: () => this.setState(s => { const f = s.refeitas.slice(); f[i] = !f[i]; return { refeitas: f }; })

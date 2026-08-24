@@ -281,7 +281,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </a>
       </nav>
       <div style="display:flex;align-items:center;gap:10px;padding:14px 8px 0;border-top:1px solid #171d29;margin-top:10px;">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">👤</div>
+        <div style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
         <div><div style="font-size:13px;font-weight:700;">Seu nome</div><div style="font-size:11px;color:#66707e;">seu@email.com</div></div>
       </div>
     </div>
@@ -553,7 +553,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <input value="{{ buscaAlimentos }}" sc-camel-on-input="{{ onBuscaAlimentosChange }}" placeholder="Buscar alimento pelo nome…" style="width:100%;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:14px;">
           <sc-if value="{{ alimentosVazio }}" hint-placeholder-val="{{ true }}">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
-              <div style="font-size:30px;margin-bottom:10px;">🍎</div>
+              <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="11" cy="14" r="7"></circle><path d="M11 7c0-2 1-4 3-4"></path><path d="M8 4c1 1 2 2 2 3"></path></svg></div>
               <div style="font-size:14.5px;font-weight:800;">Nenhum alimento próprio cadastrado</div>
               <div style="font-size:12.5px;color:#66707e;margin-top:6px;">A busca ao montar uma dieta já traz alimentos da base do app e de fontes externas — use esta lista só pra acompanhar os que você cadastrou manualmente.</div>
             </div>
@@ -585,7 +585,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <sc-if value="{{ isCards }}" hint-placeholder-val="{{ true }}">
           <sc-if value="{{ itensVazio }}" hint-placeholder-val="{{ true }}">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
-              <div style="font-size:30px;margin-bottom:10px;">📂</div>
+              <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
               <div style="font-size:14.5px;font-weight:800;">Nada por aqui ainda</div>
               <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Clique em "{{ botaoNovo }}" pra começar a montar seu acervo.</div>
             </div>
@@ -664,7 +664,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </div>
 
         <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:20px;">
-          <div style="font-size:14px;font-weight:800;margin-bottom:6px;">🧹 Limpeza sugerida</div>
+          <div style="font-size:14px;font-weight:800;margin-bottom:6px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M20 20 9 9"></path><path d="M4 21a2 2 0 0 1-1-3.7L15 7l3 3-10.3 8a2 2 0 0 1-3.7-1z"></path><path d="M15 7l3-4 3 3-4 3"></path></svg> Limpeza sugerida</div>
           <div style="font-size:12.5px;color:#9aa4b2;line-height:1.55;text-wrap:pretty;">{{ limpezaTexto }}</div>
           <button style="width:100%;margin-top:14px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;" style-hover="color:#e5e9f0;">Revisar itens</button>
         </div>
@@ -917,7 +917,7 @@ class Component extends DCLogic {
   dietaParaCard(d) {
     const cliente = d.cliente_id ? (this.state.clientesDb.find(c => c.id === d.cliente_id) || {}).nome : null;
     return {
-      icon: '🍽️', iconBg: 'rgba(74,222,128,.12)',
+      icon: '', iconBg: 'rgba(74,222,128,.12)',
       nome: d.nome, meta: d.meta_calorica || 'Meta calórica não definida',
       tags: [(d.refeicoes || []).length + ' refeições'], uso: '', border: '#1a2130',
       mostrarUsar: false, temAcoesExercicio: false,
@@ -1145,18 +1145,18 @@ class Component extends DCLogic {
     const treinosCardCount = this.state.treinosDb.filter(tr => !tr.split_id).length + new Set(this.state.treinosDb.filter(tr => tr.split_id).map(tr => tr.split_id)).size;
     const TIPOS = {
       treino: [
-        ['exercicios', '🏋️', 'Exercícios', this.state.exerciciosDb.length],
-        ['tecnicas', '⚡', 'Técnicas avançadas', 0],
-        ['treinos', '📋', 'Meus treinos', treinosCardCount],
-        ['predefinidos', '⭐', 'Treinos predefinidos', 0],
-        ['cardio', '❤️', 'Planos de cardio', 0]
+        ['exercicios', '', 'Exercícios', this.state.exerciciosDb.length],
+        ['tecnicas', '', 'Técnicas avançadas', 0],
+        ['treinos', '', 'Meus treinos', treinosCardCount],
+        ['predefinidos', '', 'Treinos predefinidos', 0],
+        ['cardio', '', 'Planos de cardio', 0]
       ],
       nutricao: [
-        ['alimentos', '🍎', 'Alimentos', this.state.alimentosDb.length],
-        ['formulas', '⚖️', 'Fórmulas', this.state.formulasDb.length],
-        ['cardapios', '🍽️', 'Cardápios', this.state.dietasDb.filter(d => !d.cliente_id).length],
-        ['refeicoes', '🥗', 'Refeições predefinidas', this.state.refeicoesPredefinidasDb.length],
-        ['minhasDietas', '📒', 'Minhas Dietas', this.state.dietasDb.length]
+        ['alimentos', '', 'Alimentos', this.state.alimentosDb.length],
+        ['formulas', '', 'Fórmulas', this.state.formulasDb.length],
+        ['cardapios', '', 'Cardápios', this.state.dietasDb.filter(d => !d.cliente_id).length],
+        ['refeicoes', '', 'Refeições predefinidas', this.state.refeicoesPredefinidasDb.length],
+        ['minhasDietas', '', 'Minhas Dietas', this.state.dietasDb.length]
       ]
     };
     const lista = TIPOS[cat];
@@ -1170,7 +1170,7 @@ class Component extends DCLogic {
 
     const dados = {
       exercicios: this.state.exerciciosDb.filter(ex => combinaBusca(ex.nome)).map(ex => ({
-        icon: '🏋️', iconBg: 'rgba(249,115,22,.12)',
+        icon: '', iconBg: 'rgba(249,115,22,.12)',
         nome: ex.nome, meta: ex.categoria || 'Sem categoria',
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
         mostrarUsar: false, temAcoesExercicio: true, temVideo: !!ex.video_url,
@@ -1186,7 +1186,7 @@ class Component extends DCLogic {
         const standaloneItens = standalone.map(tr => {
           const cliente = tr.cliente_id ? clienteNome(tr.cliente_id) : null;
           return {
-            icon: '📋', iconBg: 'rgba(249,115,22,.12)',
+            icon: '', iconBg: 'rgba(249,115,22,.12)',
             nome: tr.nome, meta: diasLabel(tr.dias_semana),
             tags: [], uso: '', border: '#1a2130',
             mostrarUsar: true, temAcoesExercicio: false,
@@ -1205,7 +1205,7 @@ class Component extends DCLogic {
           const letras = grupo.map(tr => tr.nome.replace(/^Treino\s*/i, '')).join('/');
           const cliente = grupo[0].cliente_id ? clienteNome(grupo[0].cliente_id) : null;
           return {
-            icon: '📋', iconBg: 'rgba(249,115,22,.12)',
+            icon: '', iconBg: 'rgba(249,115,22,.12)',
             nome: 'Divisão ' + letras, meta: grupo.length + ' treinos',
             tags: [], uso: '', border: '#1a2130',
             mostrarUsar: true, temAcoesExercicio: false,
@@ -1220,7 +1220,7 @@ class Component extends DCLogic {
       predefinidos: [],
       cardio: [],
       formulas: this.state.formulasDb.filter(f => combinaBusca(f.nome)).map(f => ({
-        icon: '⚖️', iconBg: 'rgba(59,130,246,.12)',
+        icon: '', iconBg: 'rgba(59,130,246,.12)',
         nome: f.nome, meta: f.descricao || 'Sem descrição', tags: [], uso: '', border: '#1a2130',
         mostrarUsar: false, temAcoesExercicio: false,
         onDelete: (e) => { e.stopPropagation(); this.onDeleteFormula(f.id, f.nome); },
@@ -1228,7 +1228,7 @@ class Component extends DCLogic {
       })),
       cardapios: this.state.dietasDb.filter(d => !d.cliente_id && combinaBusca(d.nome)).map(d => this.dietaParaCard(d)),
       refeicoes: this.state.refeicoesPredefinidasDb.filter(r => combinaBusca(r.nome)).map(r => ({
-        icon: '🥗', iconBg: 'rgba(74,222,128,.12)',
+        icon: '', iconBg: 'rgba(74,222,128,.12)',
         nome: r.nome, meta: (r.itens || []).map(i => i.descricao).join(', ') || 'Sem itens', tags: [], uso: '', border: '#1a2130',
         mostrarUsar: false, temAcoesExercicio: false,
         onDelete: (e) => { e.stopPropagation(); this.onDeleteRefeicao(r.id, r.nome); },
