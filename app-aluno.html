@@ -206,7 +206,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:17px;">P</div>
       <div style="font-size:18px;font-weight:800;">Performa <span style="color:#f97316;">AI</span></div>
     </div>
-    <div style="margin:18px 8px 20px;"><span style="font-size:11px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);padding:5px 12px;border-radius:999px;">Aluno</span></div>
+    <div style="margin:18px 8px 20px;display:flex;gap:6px;flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);padding:5px 12px;border-radius:999px;">Aluno</span>
+      <sc-if value="{{ alunoAtivo }}" hint-placeholder-val="{{ true }}">
+        <span style="font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.3);padding:5px 12px;border-radius:999px;">Ativo</span>
+      </sc-if>
+    </div>
 
     <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#4a5364;padding:0 14px;margin-bottom:6px;">MEU DIA</div>
     <nav style="display:flex;flex-direction:column;gap:3px;margin-bottom:18px;">
@@ -701,7 +706,7 @@ class Component extends DCLogic {
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
-    convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', trainerNome: '',
+    convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', alunoStatus: '', trainerNome: '',
     notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
     pesoInput: '', pesoHistorico: [], execucoes: []
   };
@@ -759,12 +764,12 @@ class Component extends DCLogic {
   async loadTreino() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome').eq('auth_user_id', user.id).maybeSingle();
+    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) return;
     const alunoNome = (cliente.nome || '').trim().split(/\s+/)[0] || '';
     this.setState({
       clienteId: cliente.id, trainerId: cliente.trainer_id, alunoNome,
-      alunoNomeCompleto: cliente.nome || '', alunoEmail: user.email || ''
+      alunoNomeCompleto: cliente.nome || '', alunoEmail: user.email || '', alunoStatus: cliente.status || ''
     });
     supabaseClient.from('trainers').select('nome').eq('id', cliente.trainer_id).maybeSingle()
       .then(({ data: trainer }) => this.setState({ trainerNome: (trainer && trainer.nome) || '' }));
@@ -987,6 +992,7 @@ class Component extends DCLogic {
       personalStatus: this.state.trainerId ? (this.state.trainerNome || 'conectado') : 'ainda não conectado',
       meuNome: this.state.alunoNomeCompleto || 'Seu nome',
       meuEmail: this.state.alunoEmail || 'seu@email.com',
+      alunoAtivo: this.state.alunoStatus === 'ativo',
       notifOpen: this.state.notifOpen,
       notifNaoLidas: this.state.notificacoes.some(n => !n.lida),
       semNotificacoes: this.state.notificacoes.length === 0,

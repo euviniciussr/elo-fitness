@@ -353,10 +353,10 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <sc-if value="{{ isAtivos }}" hint-placeholder-val="{{ true }}">
       <div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px;">
-          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Alunos ativos</div><div style="font-size:24px;font-weight:800;margin-top:6px;">0</div></div>
-          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Aderência média</div><div style="font-size:24px;font-weight:800;margin-top:6px;color:#66707e;">—</div></div>
-          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Em risco de abandono</div><div style="font-size:24px;font-weight:800;margin-top:6px;">0</div></div>
-          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Sem treino há +7 dias</div><div style="font-size:24px;font-weight:800;margin-top:6px;">0</div></div>
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Alunos ativos</div><div style="font-size:24px;font-weight:800;margin-top:6px;">{{ qtdAtivos }}</div></div>
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Aderência média</div><div style="font-size:24px;font-weight:800;margin-top:6px;color:#66707e;">{{ aderenciaMediaLabel }}</div></div>
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Em risco de abandono</div><div style="font-size:24px;font-weight:800;margin-top:6px;">{{ qtdRisco }}</div></div>
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Sem treino há +7 dias</div><div style="font-size:24px;font-weight:800;margin-top:6px;">{{ qtdSemTreino7 }}</div></div>
         </div>
         <sc-if value="{{ semAtivos }}" hint-placeholder-val="{{ true }}">
           <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
@@ -720,7 +720,7 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 class Component extends DCLogic {
   state = {
     tab: 'ativos', chat: 'ana', filtroTodos: 'todos', notifOpen: false, notificacoes: [],
-    clientes: [], convites: [], exerciciosDb: [],
+    clientes: [], convites: [], exerciciosDb: [], treinosPorCliente: [], execucoes: [],
     convidarOpen: false, convidarEmail: '', convidarErro: '', convidarCarregando: false, convidarLink: '', copiarLabel: 'Copiar', gerarLabel: 'Gerar convite'
   };
 
@@ -731,13 +731,19 @@ class Component extends DCLogic {
   async loadDados() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const [clientesRes, convitesRes, exerciciosRes, notifRes] = await Promise.all([
+    const desde30 = new Date(); desde30.setDate(desde30.getDate() - 30);
+    const [clientesRes, convitesRes, exerciciosRes, notifRes, treinosRes, execucoesRes] = await Promise.all([
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('convites').select('*').eq('trainer_id', user.id).eq('status', 'pendente').order('created_at', { ascending: false }),
       supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
-      supabaseClient.from('notificacoes').select('*').eq('trainer_id', user.id).eq('destino', 'trainer').order('created_at', { ascending: false }).limit(20)
+      supabaseClient.from('notificacoes').select('*').eq('trainer_id', user.id).eq('destino', 'trainer').order('created_at', { ascending: false }).limit(20),
+      supabaseClient.from('treinos').select('cliente_id, dias_semana').eq('trainer_id', user.id).eq('habilitado', true),
+      supabaseClient.from('treino_execucoes').select('cliente_id, data').eq('trainer_id', user.id).gte('data', desde30.toISOString().slice(0, 10))
     ]);
-    this.setState({ clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: exerciciosRes.data || [], notificacoes: notifRes.data || [] });
+    this.setState({
+      clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: exerciciosRes.data || [], notificacoes: notifRes.data || [],
+      treinosPorCliente: treinosRes.data || [], execucoes: execucoesRes.data || []
+    });
   }
 
   toggleNotif() {
@@ -826,6 +832,31 @@ class Component extends DCLogic {
     });
 
     const iniciais = (nome) => (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+
+    const isoOf = (d) => d.toISOString().slice(0, 10);
+    const hojeMeiaNoite = new Date(); hojeMeiaNoite.setHours(0, 0, 0, 0);
+    const treinosByCliente = {};
+    this.state.treinosPorCliente.forEach(t => { (treinosByCliente[t.cliente_id] = treinosByCliente[t.cliente_id] || []).push(t); });
+    const execByCliente = {};
+    this.state.execucoes.forEach(e => { (execByCliente[e.cliente_id] = execByCliente[e.cliente_id] || new Set()).add(e.data); });
+    const adherenceFor = (clienteId) => {
+      const treinos = treinosByCliente[clienteId] || [];
+      const scheduledDow = new Set();
+      treinos.forEach(t => (t.dias_semana || []).forEach(d => scheduledDow.add(d)));
+      const execs = execByCliente[clienteId] || new Set();
+      const allExecIsos = Array.from(execs).sort();
+      const diasSemUltimo = allExecIsos.length ? Math.round((hojeMeiaNoite - new Date(allExecIsos[allExecIsos.length - 1] + 'T00:00:00')) / 86400000) : null;
+      if (!scheduledDow.size) return { pct: null, diasSemUltimo };
+      let scheduledCount = 0, doneCount = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(hojeMeiaNoite); d.setDate(d.getDate() - i);
+        if (scheduledDow.has(d.getDay())) {
+          scheduledCount++;
+          if (execs.has(isoOf(d))) doneCount++;
+        }
+      }
+      return { pct: scheduledCount ? Math.round(doneCount / scheduledCount * 100) : null, diasSemUltimo };
+    };
     const clientesAtivos = this.state.clientes.filter(c => c.status === 'ativo');
     const clientesInativos = this.state.clientes.filter(c => c.status !== 'ativo');
 
@@ -860,14 +891,27 @@ class Component extends DCLogic {
       isMensagens: tab === 'mensagens', isTodos: tab === 'todos',
       isPrescricoes: tab === 'prescricoes', isRenovacoes: tab === 'renovacoes',
 
-      ativos: clientesAtivos.map(c => ({
-        initials: iniciais(c.nome), nome: c.nome, objetivo: c.plano || '',
-        plano: c.plano || '—',
-        aderenciaW: '0%', aderenciaColor: '#66707e', aderencia: '—',
-        ultimo: '—', ultimoColor: '#66707e', vencimento: '—',
-        onClick: () => this.abrirAluno(c.id, c.nome)
-      })),
+      ativos: clientesAtivos.map(c => {
+        const ad = adherenceFor(c.id);
+        const cor = ad.pct == null ? '#66707e' : ad.pct >= 70 ? '#4ade80' : ad.pct >= 40 ? '#f97316' : '#f87171';
+        return {
+          initials: iniciais(c.nome), nome: c.nome, objetivo: c.plano || '',
+          plano: c.plano || '—',
+          aderenciaW: (ad.pct == null ? 0 : ad.pct) + '%', aderenciaColor: cor, aderencia: ad.pct == null ? '—' : ad.pct + '%',
+          ultimo: ad.diasSemUltimo == null ? 'nunca' : ad.diasSemUltimo === 0 ? 'hoje' : 'há ' + ad.diasSemUltimo + ' dias',
+          ultimoColor: (ad.diasSemUltimo != null && ad.diasSemUltimo > 7) ? '#f87171' : '#9aa4b2',
+          vencimento: c.plano_data_expiracao ? new Date(c.plano_data_expiracao + 'T00:00:00').toLocaleDateString('pt-BR') : '—',
+          onClick: () => this.abrirAluno(c.id, c.nome)
+        };
+      }),
       semAtivos: clientesAtivos.length === 0, temAtivos: clientesAtivos.length > 0,
+      qtdAtivos: clientesAtivos.length,
+      aderenciaMediaLabel: (() => {
+        const vals = clientesAtivos.map(c => adherenceFor(c.id).pct).filter(v => v != null);
+        return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) + '%' : '—';
+      })(),
+      qtdRisco: clientesAtivos.filter(c => { const ad = adherenceFor(c.id); return ad.pct != null && ad.pct < 40; }).length,
+      qtdSemTreino7: clientesAtivos.filter(c => { const ad = adherenceFor(c.id); return ad.diasSemUltimo == null || ad.diasSemUltimo > 7; }).length,
 
       inativos: clientesInativos.map(c => ({
         initials: iniciais(c.nome), nome: c.nome, objetivo: c.plano || '',
