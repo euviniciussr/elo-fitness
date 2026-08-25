@@ -248,13 +248,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:14px;margin-bottom:12px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:32px;height:32px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
-          <div style="min-width:0;"><div style="font-size:12px;font-weight:700;">Seu personal</div><div style="font-size:10.5px;color:#66707e;">ainda não conectado</div></div>
+          <div style="min-width:0;"><div style="font-size:12px;font-weight:700;">Seu personal</div><div style="font-size:10.5px;color:#66707e;">{{ personalStatus }}</div></div>
         </div>
         <button sc-camel-on-click="{{ irMensagens }}" style="width:100%;margin-top:11px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:8px;border-radius:8px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> Falar com ele</button>
       </div>
       <div style="display:flex;align-items:center;gap:10px;padding:12px 8px 0;border-top:1px solid #171d29;">
         <div style="width:34px;height:34px;border-radius:50%;background:rgba(59,130,246,.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
-        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">Seu nome</div><div style="font-size:11px;color:#66707e;">seu@email.com</div></div>
+        <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">{{ meuNome }}</div><div style="font-size:11px;color:#66707e;">{{ meuEmail }}</div></div>
         <a href="login.html" style="display:flex;"><svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#66707e" stroke-width="2" style="cursor:pointer;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg></a>
       </div>
     </div>
@@ -305,49 +305,76 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
           <div>
             <h1 style="margin:0;font-size:23px;font-weight:800;">{{ saudacao }}</h1>
-            <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">sábado, 1 de agosto</div>
+            <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">{{ dataHoje }}</div>
           </div>
           <div style="display:flex;gap:14px;">
-            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;color:#f97316;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> 0</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">dias seguidos</div></div>
-            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;">0/0</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">treinos na semana</div></div>
+            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;color:#f97316;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> {{ diasSeguidos }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">dias seguidos</div></div>
+            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;">{{ treinosSemanaLabel }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">treinos na semana</div></div>
           </div>
         </div>
 
-        <section style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:22px 24px;margin-bottom:16px;text-align:center;">
-          <div style="font-size:28px;margin-bottom:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg></div>
-          <div style="font-size:15px;font-weight:800;">Nenhum treino liberado ainda</div>
-          <div style="font-size:12.5px;color:#9aa4b2;margin-top:5px;">Assim que seu personal montar seu plano, ele aparece aqui.</div>
-        </section>
+        <sc-if value="{{ semPlanoAlgum }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:22px 24px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:28px;margin-bottom:8px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg></div>
+            <div style="font-size:15px;font-weight:800;">Nenhum treino liberado ainda</div>
+            <div style="font-size:12.5px;color:#9aa4b2;margin-top:5px;">Assim que seu personal montar seu plano, ele aparece aqui.</div>
+          </section>
+        </sc-if>
+        <sc-if value="{{ temTreinoHoje }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#10151f;border:1px solid rgba(249,115,22,.3);border-radius:16px;padding:22px 24px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:15px;font-weight:800;">Hoje: {{ treinoHojeNome }}</div>
+            <div style="font-size:12.5px;color:#9aa4b2;margin-top:5px;">{{ treinoHojeQtd }} prescritos</div>
+            <button sc-camel-on-click="{{ irTreino }}" style="margin-top:14px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 18px;border-radius:9px;cursor:pointer;">Ver treino de hoje</button>
+          </section>
+        </sc-if>
+        <sc-if value="{{ diaDescanso }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:22px 24px;margin-bottom:16px;text-align:center;">
+            <div style="font-size:15px;font-weight:800;">Hoje é dia de descanso</div>
+            <div style="font-size:12.5px;color:#9aa4b2;margin-top:5px;">Aproveite pra recuperar — seu próximo treino aparece aqui no dia certo.</div>
+          </section>
+        </sc-if>
 
         <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:16px;">
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;">
             <div style="font-size:13px;font-weight:700;margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6 2v7a2 2 0 0 0 2 2v11"></path><path d="M6 2v7"></path><path d="M9 2v7"></path><path d="M17 22V15c-2 0-4-1.8-4-4V2s5 0 5 5v15"></path></svg> Próxima refeição</div>
-            <div style="font-size:12.5px;color:#66707e;">Nenhuma dieta ainda.</div>
+            <sc-if value="{{ temRefeicaoHoje }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12.5px;color:#e5e9f0;font-weight:700;">{{ refeicaoHojeNome }}</div>
+              <div style="font-size:11.5px;color:#66707e;margin-top:3px;">{{ refeicaoHojeItens }}</div>
+            </sc-if>
+            <sc-if value="{{ semRefeicaoHoje }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:12.5px;color:#66707e;">Nenhuma dieta ainda.</div>
+            </sc-if>
           </div>
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;">
             <div style="font-size:13px;font-weight:700;margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M12 3v18"></path><path d="M6 8l-4 8a4 4 0 0 0 8 0z"></path><path d="M18 8l-4 8a4 4 0 0 0 8 0z"></path><path d="M4 8h16"></path><path d="M9 21h6"></path></svg> Registro de hoje</div>
             <div style="display:flex;align-items:center;gap:10px;">
-              <input placeholder="0,0" style="width:76px;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:9px 12px;color:#e5e9f0;font-family:inherit;font-size:15px;font-weight:700;outline:none;text-align:center;">
+              <input value="{{ pesoInput }}" sc-camel-on-change="{{ onPesoInputChange }}" placeholder="0,0" style="width:76px;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:9px 12px;color:#e5e9f0;font-family:inherit;font-size:15px;font-weight:700;outline:none;text-align:center;">
               <span style="font-size:12px;color:#66707e;">kg</span>
               <button sc-camel-on-click="{{ salvarPeso }}" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;">{{ pesoLabel }}</button>
             </div>
           </div>
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:18px 20px;">
             <div style="font-size:13px;font-weight:700;margin-bottom:12px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg> Próxima sessão</div>
-            <div style="font-size:12.5px;color:#66707e;">Nenhuma sessão agendada.</div>
+            <sc-if value="{{ temProximaSessao }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12.5px;color:#e5e9f0;font-weight:700;">{{ proximaSessaoTitulo }}</div>
+              <div style="font-size:11.5px;color:#66707e;margin-top:3px;">{{ proximaSessaoData }}</div>
+            </sc-if>
+            <sc-if value="{{ semProximaSessao }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:12.5px;color:#66707e;">Nenhuma sessão agendada.</div>
+            </sc-if>
           </div>
         </section>
 
         <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div style="font-size:14px;font-weight:800;">Sua semana</div>
-            <span style="font-size:11.5px;color:#66707e;">27 jul — 2 ago</span>
+            <span style="font-size:11.5px;color:#66707e;">{{ semanaRange }}</span>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <sc-for list="{{ semana }}" as="d" hint-placeholder-count="7">
               <div style="flex:1;min-width:66px;text-align:center;background:{{ d.bg }};border:1px solid {{ d.border }};border-radius:11px;padding:12px 6px;">
                 <div style="font-size:10px;font-weight:700;color:{{ d.diaColor }};letter-spacing:.05em;">{{ d.dia }}</div>
-                <div style="font-size:17px;margin:6px 0 3px;">{{ d.icon }}</div>
+                <div style="font-size:17px;margin:6px 0 3px;color:{{ d.iconColor }};">{{ d.icon }}</div>
                 <div style="font-size:10px;color:#66707e;">{{ d.label }}</div>
               </div>
             </sc-for>
@@ -517,7 +544,14 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <div style="font-size:12.5px;color:#66707e;padding:20px 0;text-align:center;">Nenhum registro de peso ainda.</div>
             </sc-if>
             <sc-if value="{{ temPeso }}" hint-placeholder-val="{{ false }}">
-              <div>{{ graficoPeso }}</div>
+              <div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;">
+                <sc-for list="{{ pesoHistoricoList }}" as="p" hint-placeholder-count="4">
+                  <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid #171d29;">
+                    <span style="color:#66707e;">{{ p.data }}</span>
+                    <strong>{{ p.valor }}</strong>
+                  </div>
+                </sc-for>
+              </div>
             </sc-if>
           </div>
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:20px;">
@@ -667,7 +701,9 @@ class Component extends DCLogic {
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
-    convitesPendentes: [], alunoNome: '', notifOpen: false, notificacoes: []
+    convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', trainerNome: '',
+    notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
+    pesoInput: '', pesoHistorico: [], execucoes: []
   };
 
   componentDidMount() {
@@ -726,13 +762,30 @@ class Component extends DCLogic {
     const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) return;
     const alunoNome = (cliente.nome || '').trim().split(/\s+/)[0] || '';
-    this.setState({ clienteId: cliente.id, trainerId: cliente.trainer_id, alunoNome });
-    const [{ data: treinos }, { data: fotos }, { data: dietas }] = await Promise.all([
-      supabaseClient.from('treinos').select('id').eq('cliente_id', cliente.id).eq('habilitado', true),
+    this.setState({
+      clienteId: cliente.id, trainerId: cliente.trainer_id, alunoNome,
+      alunoNomeCompleto: cliente.nome || '', alunoEmail: user.email || ''
+    });
+    supabaseClient.from('trainers').select('nome').eq('id', cliente.trainer_id).maybeSingle()
+      .then(({ data: trainer }) => this.setState({ trainerNome: (trainer && trainer.nome) || '' }));
+    const desde90 = new Date(); desde90.setDate(desde90.getDate() - 90);
+    const desde90Str = desde90.toISOString().slice(0, 10);
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const [{ data: treinos }, { data: fotos }, { data: dietas }, { data: agendamentos }, { data: pesos }, { data: execucoes }] = await Promise.all([
+      supabaseClient.from('treinos').select('id, nome, dias_semana').eq('cliente_id', cliente.id).eq('habilitado', true),
       supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
-      supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1)
+      supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1),
+      supabaseClient.from('agendamentos').select('*').eq('cliente_id', cliente.id).eq('concluido', false).order('data_lembrete', { ascending: true }),
+      supabaseClient.from('registros_peso').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str).order('data', { ascending: false }),
+      supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str)
     ]);
-    this.setState({ fotosEvolucao: await this.resolveFotoUrls(fotos), dietaAtual: (dietas && dietas[0]) || null });
+    const pesoHoje = (pesos || []).find(p => p.data === hojeStr);
+    this.setState({
+      fotosEvolucao: await this.resolveFotoUrls(fotos), dietaAtual: (dietas && dietas[0]) || null,
+      treinosPlano: treinos || [], agendamentos: agendamentos || [],
+      pesoHistorico: pesos || [], execucoes: execucoes || [],
+      pesoInput: pesoHoje ? String(pesoHoje.peso) : '', pesoSalvo: !!pesoHoje
+    });
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
       .from('treino_exercicios')
@@ -746,6 +799,41 @@ class Component extends DCLogic {
       (tecnicas || []).forEach(t => { tecnicasPorId[t.id] = t; });
     }
     this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId });
+  }
+
+  onPesoInputChange(e) {
+    this.setState({ pesoInput: e.target.value });
+  }
+
+  async onSalvarPeso() {
+    const valor = parseFloat((this.state.pesoInput || '').replace(',', '.'));
+    if (!valor || valor <= 0) return;
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    const { error } = await supabaseClient.from('registros_peso')
+      .upsert({ cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, peso: valor, data: hojeStr }, { onConflict: 'cliente_id,data' });
+    if (error) { alert('Não foi possível salvar o peso: ' + error.message); return; }
+    const { data: pesos } = await supabaseClient.from('registros_peso').select('*').eq('cliente_id', this.state.clienteId).order('data', { ascending: false }).limit(90);
+    this.setState({ pesoHistorico: pesos || [], pesoSalvo: true });
+  }
+
+  async onFinalizarTreino() {
+    const exData = this.state.exerciciosDoTreino;
+    this.setState({ feitos: exData.map(() => true) });
+    const hoje = new Date();
+    const hojeDow = hoje.getDay();
+    const hojeStr = hoje.toISOString().slice(0, 10);
+    const treinoHoje = this.state.treinosPlano.find(tr => (tr.dias_semana || []).includes(hojeDow));
+    const { error } = await supabaseClient.from('treino_execucoes')
+      .upsert({ cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, treino_id: treinoHoje ? treinoHoje.id : null, data: hojeStr }, { onConflict: 'cliente_id,data' });
+    if (error) return;
+    const desde90 = new Date(); desde90.setDate(desde90.getDate() - 90);
+    const { data: execucoes } = await supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', this.state.clienteId).gte('data', desde90.toISOString().slice(0, 10));
+    this.setState({ execucoes: execucoes || [] });
+  }
+
+  async onConfirmarSessao(id) {
+    this.setState({ agendamentos: this.state.agendamentos.map(a => a.id === id ? { ...a, confirmado: true } : a) });
+    await supabaseClient.rpc('confirmar_agendamento', { p_id: id });
   }
 
   async onEnviarFeedback() {
@@ -819,12 +907,86 @@ class Component extends DCLogic {
         ptn: Math.round(ptn) + 'g'
       };
     }) : [];
-    const peso = [];
     const humorLabels = ['Muito bem', 'Tranquilo', 'Cansado', 'Com dor'];
     const refeitas = this.state.refeitas;
+    const pesoData = this.state.pesoHistorico.map(p => ({
+      data: new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      valor: String(p.peso).replace('.', ',') + ' kg'
+    }));
+
+    const DIA_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const hoje = new Date();
+    const hojeDow = hoje.getDay();
+    const hojeMeiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const isoOf = (d) => d.toISOString().slice(0, 10);
+    const weekStart = new Date(hoje); weekStart.setDate(hoje.getDate() - hojeDow);
+    const treinosPlano = this.state.treinosPlano;
+    const treinoHoje = treinosPlano.find(tr => (tr.dias_semana || []).includes(hojeDow));
+    const qtdExHoje = treinoHoje ? this.state.exerciciosDoTreino.filter(te => te.treino_id === treinoHoje.id).length : 0;
+    const execDates = new Set(this.state.execucoes.map(e => e.data));
+
+    const semanaReal = DIA_LABELS.map((label, i) => {
+      const dayDate = new Date(weekStart); dayDate.setDate(weekStart.getDate() + i);
+      const iso = isoOf(dayDate);
+      const temTreino = treinosPlano.some(tr => (tr.dias_semana || []).includes(i));
+      const feito = execDates.has(iso);
+      const isPassado = dayDate < hojeMeiaNoite;
+      const isHojeCel = i === hojeDow;
+      let icon = '·', lbl = 'descanso', iconColor = '#66707e';
+      if (temTreino) {
+        if (feito) { icon = '✓'; lbl = 'feito'; iconColor = '#4ade80'; }
+        else if (isPassado) { icon = '·'; lbl = 'perdido'; iconColor = '#f87171'; }
+        else { icon = '●'; lbl = 'treino'; iconColor = isHojeCel ? '#f97316' : '#9aa4b2'; }
+      }
+      return {
+        dia: label, icon, label: lbl, iconColor, temTreino,
+        bg: isHojeCel ? 'rgba(249,115,22,.08)' : '#0d1119',
+        border: isHojeCel ? 'rgba(249,115,22,.35)' : '#1a2130',
+        diaColor: isHojeCel ? '#f97316' : '#66707e'
+      };
+    });
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+    const fmtCurto = (d) => d.getDate() + ' ' + MESES[d.getMonth()].slice(0, 3);
+    const treinosNaSemanaTotal = semanaReal.filter(d => d.temTreino).length;
+    const treinosNaSemanaFeitos = semanaReal.filter(d => d.label === 'feito').length;
+
+    const scheduledDow = new Set();
+    treinosPlano.forEach(tr => (tr.dias_semana || []).forEach(d => scheduledDow.add(d)));
+    let diasSeguidos = 0;
+    if (scheduledDow.size > 0) {
+      let cursor = new Date(hojeMeiaNoite);
+      if (scheduledDow.has(cursor.getDay()) && !execDates.has(isoOf(cursor))) cursor.setDate(cursor.getDate() - 1);
+      for (let guard = 0; guard < 400; guard++) {
+        const dow = cursor.getDay();
+        if (scheduledDow.has(dow)) {
+          if (execDates.has(isoOf(cursor))) { diasSeguidos++; cursor.setDate(cursor.getDate() - 1); }
+          else break;
+        } else {
+          cursor.setDate(cursor.getDate() - 1);
+        }
+      }
+    }
+
+    const proximaSessao = this.state.agendamentos[0];
+    const sessoesData = this.state.agendamentos.map(a => {
+      const d = new Date(a.data_lembrete + 'T00:00:00');
+      return {
+        mes: MESES[d.getMonth()].slice(0, 3).toUpperCase(), dia: d.getDate(),
+        titulo: a.titulo, hora: '—', local: a.tipo || '',
+        status: a.confirmado ? 'Confirmada' : 'Aguardando confirmação',
+        statusColor: a.confirmado ? '#4ade80' : '#f97316',
+        statusBg: a.confirmado ? 'rgba(74,222,128,.12)' : 'rgba(249,115,22,.12)',
+        diaColor: '#e5e9f0', border: '#1a2130',
+        pendente: !a.confirmado, onConfirmar: () => this.onConfirmarSessao(a.id)
+      };
+    });
 
     return {
       saudacao: this.state.alunoNome ? ('Olá, ' + this.state.alunoNome + '!') : 'Olá!',
+      personalStatus: this.state.trainerId ? (this.state.trainerNome || 'conectado') : 'ainda não conectado',
+      meuNome: this.state.alunoNomeCompleto || 'Seu nome',
+      meuEmail: this.state.alunoEmail || 'seu@email.com',
       notifOpen: this.state.notifOpen,
       notifNaoLidas: this.state.notificacoes.some(n => !n.lida),
       semNotificacoes: this.state.notificacoes.length === 0,
@@ -842,24 +1004,41 @@ class Component extends DCLogic {
       isEvolucao: t === 'evolucao', isAgenda: t === 'agenda', isMensagens: t === 'mensagens', isPlano: t === 'plano',
       irTreino: go('treino'), irAgenda: go('agenda'), irMensagens: go('mensagens'),
 
-      salvarPeso: () => this.setState({ pesoSalvo: true }),
+      salvarPeso: () => this.onSalvarPeso(),
       pesoLabel: this.state.pesoSalvo ? 'Salvo ✓' : 'Salvar',
-      semana: [
-        { dia: 'DOM', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' },
-        { dia: 'SEG', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' },
-        { dia: 'TER', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' },
-        { dia: 'QUA', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' },
-        { dia: 'QUI', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' },
-        { dia: 'SEX', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' },
-        { dia: 'SÁB', icon: '·', label: '—', bg: '#0d1119', border: '#1a2130', diaColor: '#66707e' }
-      ],
+      pesoInput: this.state.pesoInput,
+      onPesoInputChange: (e) => this.onPesoInputChange(e),
+      diasSeguidos: diasSeguidos,
+      semana: semanaReal,
+      dataHoje: hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }),
+      semanaRange: fmtCurto(weekStart) + ' — ' + fmtCurto(weekEnd),
+      treinosSemanaLabel: treinosNaSemanaFeitos + '/' + treinosNaSemanaTotal,
+
+      semPlanoAlgum: treinosPlano.length === 0,
+      temTreinoHoje: treinosPlano.length > 0 && !!treinoHoje,
+      diaDescanso: treinosPlano.length > 0 && !treinoHoje,
+      treinoHojeNome: treinoHoje ? treinoHoje.nome : '',
+      treinoHojeQtd: qtdExHoje + (qtdExHoje === 1 ? ' exercício' : ' exercícios'),
+
+      temRefeicaoHoje: rfData.length > 0,
+      semRefeicaoHoje: rfData.length === 0,
+      refeicaoHojeNome: rfData.length ? rfData[0].nome : '',
+      refeicaoHojeItens: rfData.length ? rfData[0].itens : '',
+
+      temProximaSessao: !!proximaSessao,
+      semProximaSessao: !proximaSessao,
+      proximaSessaoTitulo: proximaSessao ? proximaSessao.titulo : '',
+      proximaSessaoData: proximaSessao ? new Date(proximaSessao.data_lembrete + 'T00:00:00').toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) : '',
+
+      semSessoes: sessoesData.length === 0,
+      sessoes: sessoesData,
 
       semTreino: exData.length === 0,
       treinoSubtitulo: exData.length === 0 ? 'Ainda não tem um treino prescrito' : exData.length + (exData.length === 1 ? ' exercício prescrito' : ' exercícios prescritos'),
       progressoTreino: doneCount + ' de ' + exData.length + ' exercícios',
       progressoW: exData.length ? Math.round(doneCount / exData.length * 100) + '%' : '0%',
       treinoConcluido: todos,
-      finalizarTreino: () => this.setState({ feitos: exData.map(() => true) }),
+      finalizarTreino: () => this.onFinalizarTreino(),
       finalizarLabel: todos ? 'Concluído ' : 'Concluir tudo',
       finalizarBg: todos ? 'rgba(74,222,128,.12)' : '#131a26',
       finalizarBorder: todos ? 'rgba(74,222,128,.3)' : '#1e2633',
@@ -919,9 +1098,9 @@ class Component extends DCLogic {
         onToggle: () => this.setState(s => { const f = s.refeitas.slice(); f[i] = !f[i]; return { refeitas: f }; })
       })),
 
-      semPeso: peso.length === 0,
-      temPeso: peso.length > 0,
-      graficoPeso: null,
+      semPeso: pesoData.length === 0,
+      temPeso: pesoData.length > 0,
+      pesoHistoricoList: pesoData,
       semMedidas: true,
       medidas: [],
       semRecordes: true,

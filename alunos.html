@@ -829,13 +829,16 @@ class Component extends DCLogic {
     const clientesAtivos = this.state.clientes.filter(c => c.status === 'ativo');
     const clientesInativos = this.state.clientes.filter(c => c.status !== 'ativo');
 
+    const clienteEmails = new Set(this.state.clientes.map(c => (c.email || '').toLowerCase()).filter(Boolean));
     let todosBase = this.state.clientes.map(c => ({
       id: c.id, nome: c.nome, email: c.email || '', initials: iniciais(c.nome),
       status: c.status === 'ativo' ? 'ATIVO' : 'INATIVO'
-    })).concat(this.state.convites.map(cv => ({
-      id: null, nome: cv.email, email: cv.email, initials: iniciais(cv.email),
-      status: 'LEAD'
-    })));
+    })).concat(this.state.convites
+      .filter(cv => !cv.cliente_id && !clienteEmails.has((cv.email || '').toLowerCase()))
+      .map(cv => ({
+        id: null, nome: cv.email, email: cv.email, initials: iniciais(cv.email),
+        status: 'LEAD'
+      })));
     const f = this.state.filtroTodos;
     if (f !== 'todos') todosBase = todosBase.filter(t => t.status.toLowerCase() === f);
 
