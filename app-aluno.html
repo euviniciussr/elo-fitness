@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/food-measures.js"></script>
 <script src="assets/app-aluno/64d5e401-7786-420f-9671-63290da489fe.js"></script>
 </head>
 <body>
@@ -405,43 +406,57 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Seu personal vai montar e liberar seu plano de treino em breve.</div>
           </div>
         </sc-if>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <sc-for list="{{ exercicios }}" as="e" hint-placeholder-count="6">
-            <div style="background:#10151f;border:1px solid {{ e.border }};border-radius:14px;padding:16px 20px;">
-              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                <div sc-camel-on-click="{{ e.onCheck }}" style="width:40px;height:40px;flex-shrink:0;border-radius:11px;background:{{ e.checkBg }};border:1px solid {{ e.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;">{{ e.check }}</div>
-                <div sc-camel-on-click="{{ e.onToggle }}" style="flex:1;min-width:0;cursor:pointer;">
-                  <div style="font-size:14.5px;font-weight:700;text-decoration:{{ e.decoration }};color:{{ e.nomeColor }};">{{ e.nome }}</div>
-                  <div style="font-size:12px;color:#66707e;margin-top:3px;">{{ e.series }} · descanso {{ e.descanso }}</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:10px;">
-                  <sc-if value="{{ e.tecnica }}" hint-placeholder-val="{{ true }}">
-                    <span style="font-size:10px;font-weight:800;color:#a855f7;background:rgba(168,85,247,.12);padding:3px 10px;border-radius:999px;">{{ e.tecnica }}</span>
-                  </sc-if>
-                  <sc-if value="{{ e.temVideo }}" hint-placeholder-val="{{ true }}">
-                    <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> vídeo</span>
-                  </sc-if>
-                </div>
+        <div style="display:flex;flex-direction:column;gap:28px;">
+          <sc-for list="{{ divisoes }}" as="dv" hint-placeholder-count="2">
+            <div>
+              <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1a2130;">
+                <div style="font-size:15.5px;font-weight:800;letter-spacing:.02em;">{{ dv.nome }}</div>
+                <sc-if value="{{ dv.subtitulo }}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:12px;color:#9aa4b2;">{{ dv.subtitulo }}</div>
+                </sc-if>
+                <sc-if value="{{ dv.diasLabel }}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:11px;color:#66707e;margin-left:auto;">{{ dv.diasLabel }}</div>
+                </sc-if>
               </div>
-              <sc-if value="{{ e.aberto }}" hint-placeholder-val="{{ false }}">
-                <div style="border-top:1px solid #171d29;margin-top:14px;padding-top:14px;display:flex;flex-direction:column;gap:8px;">
-                  <sc-for list="{{ e.sets }}" as="s" hint-placeholder-count="4">
-                    <div style="display:grid;grid-template-columns:56px 1fr 1fr auto;gap:12px;align-items:center;">
-                      <span style="font-size:12px;font-weight:700;color:#66707e;">Série {{ s.n }}</span>
-                      <div style="display:flex;align-items:center;gap:7px;"><input placeholder="{{ s.cargaPrev }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:8px;padding:8px 11px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;text-align:center;"><span style="font-size:11px;color:#66707e;">kg</span></div>
-                      <div style="display:flex;align-items:center;gap:7px;"><input placeholder="{{ s.repsPrev }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:8px;padding:8px 11px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;text-align:center;"><span style="font-size:11px;color:#66707e;">reps</span></div>
-                      <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:11.5px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;" style-hover="color:#4ade80;border-color:rgba(74,222,128,.3);">✓</button>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <sc-for list="{{ dv.exercicios }}" as="e" hint-placeholder-count="4">
+                  <div style="background:#10151f;border:1px solid {{ e.border }};border-radius:14px;padding:16px 20px;">
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                      <div sc-camel-on-click="{{ e.onCheck }}" style="width:36px;height:36px;flex-shrink:0;border-radius:10px;background:{{ e.checkBg }};border:1px solid {{ e.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:14px;color:#4ade80;font-weight:800;cursor:pointer;">{{ e.check }}</div>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:14.5px;font-weight:700;text-decoration:{{ e.decoration }};color:{{ e.nomeColor }};">{{ e.nome }}</div>
+                      </div>
+                      <sc-if value="{{ e.temVideo }}" hint-placeholder-val="{{ true }}">
+                        <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> vídeo</span>
+                      </sc-if>
                     </div>
-                  </sc-for>
-                  <sc-if value="{{ e.tecnicaObs }}" hint-placeholder-val="{{ true }}">
-                    <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;">
-                      <div style="font-size:11px;font-weight:800;color:#a855f7;margin-bottom:3px;">Como realizar · {{ e.tecnica }}</div>
-                      <div style="font-size:12px;color:#9aa4b2;line-height:1.5;">{{ e.tecnicaObs }}</div>
+                    <div style="border-top:1px solid #171d29;margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:5px;">
+                      <sc-for list="{{ e.seriesLinhas }}" as="ln" hint-placeholder-count="3">
+                        <div style="font-size:12.5px;color:#c7ccd6;">• {{ ln }}</div>
+                      </sc-for>
+                      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#9aa4b2;">
+                        <sc-if value="{{ e.carga }}" hint-placeholder-val="{{ true }}">
+                          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>Carga: {{ e.carga }}</span>
+                        </sc-if>
+                        <sc-if value="{{ e.descanso }}" hint-placeholder-val="{{ true }}">
+                          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg>Descanso {{ e.descanso }}</span>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{ e.observacoes }}" hint-placeholder-val="{{ true }}">
+                        <div style="font-size:12px;color:#9aa4b2;margin-top:4px;line-height:1.5;">Observação: {{ e.observacoes }}</div>
+                      </sc-if>
+                      <sc-if value="{{ e.tecnica }}" hint-placeholder-val="{{ true }}">
+                        <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;margin-top:6px;">
+                          <div style="font-size:11px;font-weight:800;color:#a855f7;margin-bottom:3px;">Variação: {{ e.tecnica }}</div>
+                          <sc-if value="{{ e.tecnicaObs }}" hint-placeholder-val="{{ true }}">
+                            <div style="font-size:12px;color:#9aa4b2;line-height:1.5;">Como realizar: {{ e.tecnicaObs }}</div>
+                          </sc-if>
+                        </div>
+                      </sc-if>
                     </div>
-                  </sc-if>
-                  <div style="font-size:11.5px;color:#66707e;margin-top:4px;">Último treino: {{ e.historico }}</div>
-                </div>
-              </sc-if>
+                  </div>
+                </sc-for>
+              </div>
             </div>
           </sc-for>
         </div>
@@ -486,23 +501,51 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Assim que seu personal montar seu plano alimentar, ele aparece aqui.</div>
           </div>
         </sc-if>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <sc-for list="{{ refeicoes }}" as="r" hint-placeholder-count="6">
-            <div style="background:#10151f;border:1px solid {{ r.border }};border-radius:14px;padding:16px 20px;">
-              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                <div sc-camel-on-click="{{ r.onToggle }}" style="width:40px;height:40px;flex-shrink:0;border-radius:11px;background:{{ r.checkBg }};border:1px solid {{ r.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;">{{ r.check }}</div>
-                <div style="flex:1;min-width:0;">
-                  <div style="font-size:14.5px;font-weight:700;">{{ r.nome }} <span style="font-size:12px;color:#66707e;font-weight:600;">· {{ r.hora }}</span></div>
-                  <div style="font-size:12px;color:#66707e;margin-top:3px;">{{ r.itens }}</div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-size:13.5px;font-weight:800;color:#f97316;">{{ r.kcal }}</div>
-                  <div style="font-size:10.5px;color:#66707e;">{{ r.ptn }} ptn</div>
-                </div>
+        <div style="display:flex;flex-direction:column;gap:22px;">
+          <sc-for list="{{ refeicoes }}" as="r" hint-placeholder-count="4">
+            <div>
+              <div style="font-size:14px;font-weight:800;letter-spacing:.02em;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1a2130;">{{ r.nome }}</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <sc-for list="{{ r.opcoes }}" as="op" hint-placeholder-count="1">
+                  <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 20px;">
+                    <sc-if value="{{ op.mostrarLabel }}" hint-placeholder-val="{{ true }}">
+                      <div style="font-size:11px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">{{ op.label }}</div>
+                    </sc-if>
+                    <sc-if value="{{ op.semItens }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:12.5px;color:#66707e;">Sem alimentos ainda.</div>
+                    </sc-if>
+                    <div style="display:flex;flex-direction:column;gap:7px;">
+                      <sc-for list="{{ op.itens }}" as="it" hint-placeholder-count="3">
+                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
+                          <span style="font-size:12.5px;color:#e5e9f0;">{{ it.nome }} <span style="color:#66707e;">— {{ it.qtdLabel }}</span></span>
+                          <span style="font-size:12.5px;font-weight:700;color:#c7ccd6;flex-shrink:0;">{{ it.kcal }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #171d29;">
+                      <span style="font-size:11.5px;font-weight:700;color:#9aa4b2;">Total da refeição</span>
+                      <span style="font-size:13px;font-weight:800;color:#f97316;">{{ op.totalOpcaoKcal }}</span>
+                    </div>
+                  </div>
+                </sc-for>
               </div>
             </div>
           </sc-for>
         </div>
+
+        <sc-if value="{{ temTotalDiario }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#10151f;border:1px solid rgba(249,115,22,.3);border-radius:16px;padding:20px 24px;margin-top:20px;">
+            <div style="font-size:13px;font-weight:800;margin-bottom:14px;">Total diário</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:14px;text-align:center;">
+              <div><div style="font-size:19px;font-weight:800;color:#f97316;">{{ totalDiarioKcal }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">Kcal</div></div>
+              <div><div style="font-size:19px;font-weight:800;">{{ totalDiarioProteina }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">Proteínas (g)</div></div>
+              <div><div style="font-size:19px;font-weight:800;">{{ totalDiarioCarboidrato }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">Carboidratos (g)</div></div>
+              <div><div style="font-size:19px;font-weight:800;">{{ totalDiarioGordura }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">Gorduras (g)</div></div>
+              <div><div style="font-size:19px;font-weight:800;">{{ totalDiarioFibra }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">Fibras (g)</div></div>
+            </div>
+          </div>
+        </sc-if>
+
         <div style="background:#10151f;border:1px dashed #1e2633;border-radius:14px;padding:16px 20px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div style="font-size:12.5px;color:#9aa4b2;">Comeu algo fora do plano? Registra que seu personal vê no seu diário.</div>
           <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;" style-hover="color:#e5e9f0;">+ Refeição livre</button>
@@ -697,18 +740,32 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </div>
     </sc-if>
   </main>
+
+  <sc-if value="{{ videoModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(6,8,12,.8);display:flex;align-items:center;justify-content:center;padding:5vh 16px;z-index:300;">
+      <div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:14px;width:100%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
+          <div style="font-size:13px;font-weight:800;">Vídeo do exercício</div>
+          <button sc-camel-on-click="{{ onFecharVideo }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:16px;font-weight:700;width:30px;height:30px;border-radius:8px;cursor:pointer;line-height:1;flex-shrink:0;">×</button>
+        </div>
+        <div style="position:relative;flex:1;min-height:280px;border-radius:10px;overflow:hidden;background:#000;">
+          <iframe src="{{ videoModalEmbedUrl }}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;hoje&quot;,&quot;options&quot;:[&quot;hoje&quot;,&quot;treino&quot;,&quot;dieta&quot;,&quot;evolucao&quot;,&quot;agenda&quot;,&quot;mensagens&quot;,&quot;plano&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 class Component extends DCLogic {
   state = {
-    tab: 'hoje', abertoEx: -1, feitos: [],
+    tab: 'hoje', feitos: [],
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
-    refeitas: [], exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
+    exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
     convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', alunoStatus: '', trainerNome: '',
     notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
-    pesoInput: '', pesoHistorico: [], execucoes: []
+    pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: ''
   };
 
   componentDidMount() {
@@ -755,6 +812,14 @@ class Component extends DCLogic {
     await this.loadConvitesPendentes();
   }
 
+  embedUrl(url) {
+    if (!url) return '';
+    if (url.includes('iframe.mediadelivery.net')) return url;
+    const yt = url.match(/(?:youtube\.com\/shorts\/|youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (yt) return 'https://www.youtube.com/embed/' + yt[1];
+    return url;
+  }
+
   async resolveFotoUrls(fotos) {
     if (!fotos || !fotos.length) return [];
     const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotos.map(f => f.url), 60 * 60 * 24 * 7);
@@ -777,7 +842,7 @@ class Component extends DCLogic {
     const desde90Str = desde90.toISOString().slice(0, 10);
     const hojeStr = new Date().toISOString().slice(0, 10);
     const [{ data: treinos }, { data: fotos }, { data: dietas }, { data: agendamentos }, { data: pesos }, { data: execucoes }] = await Promise.all([
-      supabaseClient.from('treinos').select('id, nome, dias_semana').eq('cliente_id', cliente.id).eq('habilitado', true),
+      supabaseClient.from('treinos').select('id, nome, dias_semana, ordem').eq('cliente_id', cliente.id).eq('habilitado', true).order('ordem', { ascending: true }),
       supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
       supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1),
       supabaseClient.from('agendamentos').select('*').eq('cliente_id', cliente.id).eq('concluido', false).order('data_lembrete', { ascending: true }),
@@ -794,7 +859,7 @@ class Component extends DCLogic {
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
       .from('treino_exercicios')
-      .select('*, exercicios(nome, video_url)')
+      .select('*, exercicios(nome, categoria, video_url)')
       .in('treino_id', treinos.map(t => t.id))
       .order('ordem', { ascending: true });
     const tecnicaIds = [...new Set((itens || []).map(te => te.tecnica_avancada).filter(id => id && id !== 'nenhuma'))];
@@ -887,33 +952,73 @@ class Component extends DCLogic {
     const doneCount = feitos.filter(Boolean).length;
     const todos = feitos.length > 0 && doneCount === feitos.length;
 
-    const exData = this.state.exerciciosDoTreino.map(te => {
+    const exData = this.state.exerciciosDoTreino.map((te, idx) => {
       const tecnica = this.state.tecnicasPorId[te.tecnica_avancada];
       return {
+        idx,
+        treinoId: te.treino_id,
         nome: (te.exercicios || {}).nome || 'Exercício',
-        series: te.series || 'sem séries definidas',
-        descanso: te.intervalo_descanso || '—',
+        categoria: (te.exercicios || {}).categoria || '',
+        seriesLinhas: (te.series || '').split('\n').map(s => s.trim()).filter(Boolean),
+        carga: te.carga || '',
+        descanso: te.intervalo_descanso || '',
+        observacoes: te.observacoes || '',
         tecnica: tecnica ? tecnica.nome : '',
         tecnicaObs: tecnica ? (tecnica.observacao || '') : '',
-        videoUrl: (te.exercicios || {}).video_url || '',
-        historico: '—', prev: [], reps: []
+        videoUrl: (te.exercicios || {}).video_url || ''
       };
     });
+    const DIA_LABELS_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+    const divisoesOrdenadas = this.state.treinosPlano.slice().sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    const divisoesData = divisoesOrdenadas.map(tr => {
+      const exs = exData.filter(e => e.treinoId === tr.id);
+      const contagem = {};
+      exs.forEach(e => { if (e.categoria) contagem[e.categoria] = (contagem[e.categoria] || 0) + 1; });
+      const grupos = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
+      const dias = (tr.dias_semana || []).slice().sort((a, b) => a - b).map(d => DIA_LABELS_LONGO[d]);
+      return { nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs };
+    });
+
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const somaItens = (itens) => (itens || []).reduce((acc, it) => {
+      acc.kcal += it.kcal || 0; acc.proteina_g += it.proteina_g || 0;
+      acc.carboidrato_g += it.carboidrato_g || 0; acc.gordura_g += it.gordura_g || 0;
+      acc.fibra_g += it.fibra_g || 0;
+      return acc;
+    }, { kcal: 0, proteina_g: 0, carboidrato_g: 0, gordura_g: 0, fibra_g: 0 });
+    const itemQtdLabel = (it) => {
+      const qtd = it.quantidade != null ? it.quantidade : it.quantidade_g;
+      const unidade = it.unidade || 'g';
+      return (qtd != null ? qtd + ' ' + (typeof foodMeasureLabel === 'function' ? foodMeasureLabel(unidade) : unidade) : '');
+    };
     const dietaAtual = this.state.dietaAtual;
-    const rfData = dietaAtual ? (dietaAtual.refeicoes || []).map(r => {
-      const itens = (r.opcoes && r.opcoes[0] && r.opcoes[0].itens) || [];
-      const kcal = itens.reduce((s, it) => s + (it.kcal || 0), 0);
-      const ptn = itens.reduce((s, it) => s + (it.proteina_g || 0), 0);
+    const refeicoesRaw = dietaAtual ? (dietaAtual.refeicoes || []) : [];
+    const refeicoesData = refeicoesRaw.map(r => {
+      const opcoesArr = r.opcoes || [];
       return {
         nome: r.nome,
-        hora: '—',
-        itens: itens.length ? itens.map(it => it.nome).join(', ') : 'Sem alimentos ainda',
-        kcal: Math.round(kcal) + ' kcal',
-        ptn: Math.round(ptn) + 'g'
+        opcoes: opcoesArr.map((op, oi) => {
+          const s = somaItens(op.itens);
+          return {
+            mostrarLabel: opcoesArr.length > 1,
+            label: op.nome || ('Opção ' + (oi + 1)),
+            semItens: !op.itens || op.itens.length === 0,
+            itens: (op.itens || []).map(it => ({ nome: it.nome, qtdLabel: itemQtdLabel(it), kcal: Math.round(it.kcal || 0) + ' kcal' })),
+            totalOpcaoKcal: Math.round(s.kcal) + ' kcal'
+          };
+        })
       };
-    }) : [];
+    });
+    const totalDiario = refeicoesRaw.reduce((acc, r) => {
+      const itens = (r.opcoes && r.opcoes[0] && r.opcoes[0].itens) || [];
+      const s = somaItens(itens);
+      acc.kcal += s.kcal; acc.proteina_g += s.proteina_g; acc.carboidrato_g += s.carboidrato_g;
+      acc.gordura_g += s.gordura_g; acc.fibra_g += s.fibra_g;
+      return acc;
+    }, { kcal: 0, proteina_g: 0, carboidrato_g: 0, gordura_g: 0, fibra_g: 0 });
+    const primeiraRefeicao = refeicoesRaw[0];
+    const primeiraRefeicaoItens = primeiraRefeicao ? ((primeiraRefeicao.opcoes && primeiraRefeicao.opcoes[0] && primeiraRefeicao.opcoes[0].itens) || []) : [];
     const humorLabels = ['Muito bem', 'Tranquilo', 'Cansado', 'Com dor'];
-    const refeitas = this.state.refeitas;
     const pesoData = this.state.pesoHistorico.map(p => ({
       data: new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       valor: String(p.peso).replace('.', ',') + ' kg'
@@ -1026,10 +1131,10 @@ class Component extends DCLogic {
       treinoHojeNome: treinoHoje ? treinoHoje.nome : '',
       treinoHojeQtd: qtdExHoje + (qtdExHoje === 1 ? ' exercício' : ' exercícios'),
 
-      temRefeicaoHoje: rfData.length > 0,
-      semRefeicaoHoje: rfData.length === 0,
-      refeicaoHojeNome: rfData.length ? rfData[0].nome : '',
-      refeicaoHojeItens: rfData.length ? rfData[0].itens : '',
+      temRefeicaoHoje: refeicoesData.length > 0,
+      semRefeicaoHoje: refeicoesData.length === 0,
+      refeicaoHojeNome: primeiraRefeicao ? primeiraRefeicao.nome : '',
+      refeicaoHojeItens: primeiraRefeicaoItens.length ? primeiraRefeicaoItens.map(it => it.nome).join(', ') : 'Sem alimentos ainda',
 
       temProximaSessao: !!proximaSessao,
       semProximaSessao: !proximaSessao,
@@ -1049,25 +1154,31 @@ class Component extends DCLogic {
       finalizarBg: todos ? 'rgba(74,222,128,.12)' : '#131a26',
       finalizarBorder: todos ? 'rgba(74,222,128,.3)' : '#1e2633',
       finalizarColor: todos ? '#4ade80' : '#9aa4b2',
-      exercicios: exData.map((e, i) => {
-        const done = feitos[i];
-        const aberto = this.state.abertoEx === i;
-        return {
-          nome: e.nome, series: e.series, descanso: e.descanso, tecnica: e.tecnica, tecnicaObs: e.tecnicaObs, historico: e.historico,
-          temVideo: !!e.videoUrl,
-          onVerVideo: () => { if (e.videoUrl) window.open(e.videoUrl, '_blank', 'noopener'); },
-          aberto,
-          border: aberto ? 'rgba(249,115,22,.35)' : done ? 'rgba(74,222,128,.2)' : '#1a2130',
-          check: done ? '' : '',
-          checkBg: done ? 'rgba(74,222,128,.12)' : '#131a26',
-          checkBorder: done ? 'rgba(74,222,128,.3)' : '#1e2633',
-          decoration: done ? 'line-through' : 'none',
-          nomeColor: done ? '#66707e' : '#e5e9f0',
-          onCheck: () => this.setState(s => { const f = s.feitos.slice(); f[i] = !f[i]; return { feitos: f }; }),
-          onToggle: () => this.setState(s => ({ abertoEx: s.abertoEx === i ? -1 : i })),
-          sets: e.prev.map((c, j) => ({ n: String(j + 1), cargaPrev: c, repsPrev: e.reps[j] }))
-        };
-      }),
+      divisoes: divisoesData.map(dv => ({
+        nome: dv.nome,
+        subtitulo: dv.subtitulo,
+        diasLabel: dv.diasLabel,
+        exercicios: dv.exercicios.map(e => {
+          const i = e.idx;
+          const done = feitos[i];
+          return {
+            nome: e.nome, seriesLinhas: e.seriesLinhas, carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
+            tecnica: e.tecnica, tecnicaObs: e.tecnicaObs,
+            temVideo: !!e.videoUrl,
+            onVerVideo: () => { if (e.videoUrl) this.setState({ videoModalUrl: e.videoUrl }); },
+            border: done ? 'rgba(74,222,128,.2)' : '#1a2130',
+            check: done ? '✓' : '',
+            checkBg: done ? 'rgba(74,222,128,.12)' : '#131a26',
+            checkBorder: done ? 'rgba(74,222,128,.3)' : '#1e2633',
+            decoration: done ? 'line-through' : 'none',
+            nomeColor: done ? '#66707e' : '#e5e9f0',
+            onCheck: () => this.setState(s => { const f = s.feitos.slice(); f[i] = !f[i]; return { feitos: f }; })
+          };
+        })
+      })),
+      videoModalOpen: !!this.state.videoModalUrl,
+      videoModalEmbedUrl: this.embedUrl(this.state.videoModalUrl),
+      onFecharVideo: () => this.setState({ videoModalUrl: '' }),
       humores: humorLabels.map((label, i) => ({
         label,
         onClick: () => this.setState({ humor: i }),
@@ -1092,17 +1203,15 @@ class Component extends DCLogic {
       onFotoUpload: (e) => this.onFotoUpload(e),
       fotoUploadLabel: this.state.fotoUploadBusy ? 'Enviando…' : '+ Fotos',
 
-      semDieta: rfData.length === 0,
+      semDieta: refeicoesData.length === 0,
       dietaSubtitulo: dietaAtual ? (dietaAtual.nome + (dietaAtual.meta_calorica ? ' · ' + dietaAtual.meta_calorica : '')) : 'Você ainda não tem uma dieta',
-      macros: [],
-      refeicoes: rfData.map((r, i) => ({
-        ...r,
-        border: refeitas[i] ? 'rgba(74,222,128,.2)' : '#1a2130',
-        check: refeitas[i] ? '' : '',
-        checkBg: refeitas[i] ? 'rgba(74,222,128,.12)' : '#131a26',
-        checkBorder: refeitas[i] ? 'rgba(74,222,128,.3)' : '#1e2633',
-        onToggle: () => this.setState(s => { const f = s.refeitas.slice(); f[i] = !f[i]; return { refeitas: f }; })
-      })),
+      refeicoes: refeicoesData,
+      temTotalDiario: refeicoesData.length > 0,
+      totalDiarioKcal: Math.round(totalDiario.kcal),
+      totalDiarioProteina: round1(totalDiario.proteina_g),
+      totalDiarioCarboidrato: round1(totalDiario.carboidrato_g),
+      totalDiarioGordura: round1(totalDiario.gordura_g),
+      totalDiarioFibra: round1(totalDiario.fibra_g),
 
       semPeso: pesoData.length === 0,
       temPeso: pesoData.length > 0,

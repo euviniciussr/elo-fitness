@@ -549,7 +549,8 @@ function rowToNormalizedTaco(row) {
     id: 'APP:taco:' + row.id, source: 'APP', sourceId: 'taco:' + row.id, alimentoId: null,
     nome: row.nome, brandName: null, categoria: row.categoria, barcode: null,
     kcal: row.kcal, proteinaG: row.proteina_g, carboidratoG: row.carboidrato_g, gorduraG: row.gordura_g,
-    fibraG: row.fibra_g, sodioMg: row.sodio_mg, otherNutrients: {}, defaultUnit: 'g', measures: [], isLiquid: false
+    fibraG: row.fibra_g, sodioMg: row.sodio_mg, otherNutrients: {},
+    defaultUnit: row.default_unit || 'g', measures: row.measures || [], isLiquid: (row.default_unit || 'g') === 'ml'
   };
 }
 
@@ -577,7 +578,7 @@ async function fpFetchSearch(q) {
         .limit(200),
       supabaseClient
         .from('taco_alimentos')
-        .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg')
+        .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, default_unit, measures')
         .or(orTaco)
         .limit(1000)
     ]);
