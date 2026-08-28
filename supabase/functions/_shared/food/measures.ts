@@ -92,3 +92,34 @@ export function computeNutrients(
     sodioMg: round1((food.sodioMg || 0) * f),
   };
 }
+
+// kcal entregue por 1 unidade de `unidade` deste alimento, sem o
+// arredondamento de computeNutrients (arredondar a taxa antes de escalar
+// pra uma quantidade grande amplificaria o erro) — usada só por
+// solveQuantityForKcal, que resolve a quantidade de um substituto
+// equivalente em calorias ao alimento original ("Substituíveis").
+export function kcalPerUnit(
+  food: Pick<NormalizedFood, "isLiquid" | "measures" | "kcal">,
+  unidade: string,
+): number | null {
+  if (food.isLiquid && unidade === "ml") return (food.kcal || 0) / 100;
+  const gramsPerUnit = toGrams(food, 1, unidade);
+  if (gramsPerUnit == null) return null;
+  return (food.kcal || 0) / 100 * gramsPerUnit;
+}
+
+// Dado um alimento substituto e uma meta de kcal (a kcal do alimento
+// original que ele vai substituir), resolve quantos `unidade` desse
+// substituto entregam a mesma kcal. kcal é linear em quantidade pra uma
+// unidade fixa, então isso é só inverter kcalPerUnit — nenhuma lógica de
+// conversão nova além da já usada em toGrams/computeNutrients.
+export function solveQuantityForKcal(
+  food: Pick<NormalizedFood, "isLiquid" | "measures" | "kcal">,
+  targetKcal: number,
+  unidade: string,
+): number | null {
+  const rate = kcalPerUnit(food, unidade);
+  if (!rate || !isFinite(rate)) return null;
+  const qtd = targetKcal / rate;
+  return isFinite(qtd) && qtd > 0 ? round1(qtd) : null;
+}

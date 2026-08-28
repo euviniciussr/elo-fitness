@@ -62,6 +62,8 @@ input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;bor
 .item-remove:hover{color:#f87171;}
 .item-edit{background:none;border:none;color:#4a5364;font-size:13px;padding:2px 6px;line-height:1;cursor:pointer;}
 .item-edit:hover{color:#f97316;}
+.item-sub-btn{background:none;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:10.5px;font-weight:700;padding:4px 9px;border-radius:7px;cursor:pointer;flex-shrink:0;}
+.item-sub-btn:hover{color:#f97316;border-color:rgba(249,115,22,.3);}
 
 .add-item-row{display:flex;gap:8px;margin-top:10px;}
 .add-item-row input:first-child{flex:1;}
@@ -460,6 +462,10 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
     row.appendChild(left);
     const right = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
     right.appendChild(el('<div class="item-macros">' + it.kcal + ' kcal · P ' + it.proteina_g + 'g · C ' + it.carboidrato_g + 'g · G ' + it.gordura_g + 'g · F ' + it.fibra_g + 'g</div>'));
+    const subCount = (it.substituiveis || []).length;
+    const subBtn = el('<button type="button" class="item-sub-btn" title="Alimentos substitutos equivalentes">Substituíveis' + (subCount ? ' (' + subCount + ')' : '') + '</button>');
+    subBtn.addEventListener('click', () => abrirGerenciarSubstituiveis(it, render));
+    right.appendChild(subBtn);
     const editBtn = el('<button type="button" class="item-edit" title="Editar quantidade">✎</button>');
     editBtn.addEventListener('click', () => abrirEditarItem(opcao, ii, render));
     right.appendChild(editBtn);
@@ -468,6 +474,22 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
     right.appendChild(rmBtn);
     row.appendChild(right);
     box.appendChild(row);
+
+    if (it.substituiveis && it.substituiveis.length) {
+      const subList = el('<div style="margin:2px 0 6px 0;padding-left:4px;border-left:2px solid #1e2633;"></div>');
+      it.substituiveis.forEach((s, si) => {
+        const subRow = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:3px 0 3px 10px;"></div>');
+        const subQtdLabel = (s.quantidade != null && s.unidade)
+          ? s.quantidade + ' ' + foodMeasureLabel(s.unidade)
+          : s.quantidade_g + 'g';
+        subRow.appendChild(el('<span style="font-size:11.5px;color:#9aa4b2;">↳ ' + s.nome + ' — ' + subQtdLabel + ' · ' + s.kcal + ' kcal</span>'));
+        const subRmBtn = el('<button type="button" class="item-remove" style="font-size:11px;">×</button>');
+        subRmBtn.addEventListener('click', () => { it.substituiveis.splice(si, 1); render(); });
+        subRow.appendChild(subRmBtn);
+        subList.appendChild(subRow);
+      });
+      box.appendChild(subList);
+    }
   });
 
   const addBtn2 = el('<button type="button" class="add-item-btn2">+ Adicionar alimento</button>');
@@ -741,6 +763,7 @@ function abrirEditarItem(opcao, index, onSaved) {
       if (!qtd || qtd <= 0) { state.erro = 'Informe uma quantidade válida.'; renderForm(); return; }
       const novoItem = buildItemFromFood(state.food, qtd, state.unidade);
       if (!novoItem) { state.erro = 'Sem conversão disponível pra essa unidade.'; renderForm(); return; }
+      novoItem.substituiveis = it.substituiveis || [];
       opcao.itens[index] = novoItem;
       overlay.remove();
       if (onSaved) onSaved();
@@ -1090,6 +1113,226 @@ function abrirFoodPicker(opcao, onAdded) {
     else renderFormPersonalizado();
   }
 
+  renderModal();
+}
+
+// Fluxo de "Substituíveis": igual ao seletor de alimentos (abrirFoodPicker),
+// mas escopado a UM item já salvo na refeição — em vez de perguntar a
+// quantidade, sugere automaticamente quantos g/ml/unidade do substituto
+// equivalem à kcal do alimento original (solveQuantityForKcal, js/food-measures.js),
+// deixando o profissional revisar/ajustar antes de salvar. Empurra pra
+// it.substituiveis — nunca pra opcao.itens, então nunca entra nos totais
+// (somaItens só itera itens). Não modifica abrirFoodPicker.
+function abrirGerenciarSubstituiveis(item, onChange) {
+  const state = { step: 'lista', query: '', results: [], favoritos: [], recentes: [], loading: false, warning: null, selected: null, qtd: null, unidade: 'g', erro: '' };
+  if (!item.substituiveis) item.substituiveis = [];
+
+  const overlay = el('<div class="fp-overlay"></div>');
+  const modal = el('<div class="fp-modal"></div>');
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) fechar(); });
+  document.body.appendChild(overlay);
+
+  let bodyEl = null;
+
+  function fechar() { overlay.remove(); onChange(); }
+
+  function buscar(q) {
+    state.query = q;
+    clearTimeout(fpDebounceTimer);
+    if (!q.trim()) { state.results = []; state.warning = null; renderResultsBody(); return; }
+    state.loading = true; renderResultsBody();
+    fpDebounceTimer = setTimeout(async () => {
+      const r = await fpFetchSearch(q.trim());
+      if (state.query !== q) return;
+      state.results = r.results; state.warning = r.warning; state.loading = false; renderResultsBody();
+    }, 400);
+  }
+
+  async function selecionar(food) {
+    let full = food;
+    if (food.source === 'FATSECRET' && (!food.measures || !food.measures.length)) {
+      state.loading = true; renderModal();
+      try {
+        const { data, error } = await supabaseClient.functions.invoke('food-get', { body: { source: food.source, source_id: food.sourceId } });
+        if (error || !data || !data.food) throw error || new Error('sem dados');
+        full = data.food;
+      } catch (err) {
+        state.loading = false; state.erro = 'Não deu pra carregar os detalhes desse alimento agora.'; renderModal(); return;
+      }
+    }
+    state.selected = full;
+    state.unidade = full.isLiquid ? 'ml' : 'g';
+    const sugestao = solveQuantityForKcal(full, item.kcal || 0, state.unidade);
+    state.qtd = sugestao != null ? sugestao : (full.isLiquid ? 200 : 100);
+    state.step = 'quantidade';
+    state.loading = false;
+    state.erro = '';
+    renderModal();
+  }
+
+  function confirmarSubstituto() {
+    const qtd = Number(state.qtd);
+    if (!qtd || qtd <= 0) { state.erro = 'Informe uma quantidade válida.'; renderModal(); return; }
+    const novoSub = buildItemFromFood(state.selected, qtd, state.unidade);
+    if (!novoSub) { state.erro = 'Sem conversão disponível pra essa unidade.'; renderModal(); return; }
+    item.substituiveis.push(novoSub);
+    state.step = 'lista';
+    state.selected = null;
+    renderModal();
+  }
+
+  function renderResultRow(food) {
+    const row = el('<div class="fp-result"></div>');
+    const left = el('<div style="min-width:0;"></div>');
+    left.appendChild(el('<div class="fp-result-nome">' + food.nome + (food.brandName ? ' — ' + food.brandName : '') + '</div>'));
+    const subParts = [];
+    if (food.kcal != null) subParts.push(round1(food.kcal) + ' kcal/100' + (food.isLiquid ? 'ml' : 'g'));
+    subParts.push(food.source === 'APP' ? 'sua base' : (food.source === 'TBCA' ? 'TBCA' : 'FatSecret'));
+    left.appendChild(el('<div class="fp-result-sub">' + subParts.join(' · ') + '</div>'));
+    row.appendChild(left);
+    row.addEventListener('click', () => selecionar(food));
+    return row;
+  }
+
+  function renderResultsBody() {
+    if (!bodyEl) return;
+    bodyEl.innerHTML = '';
+    if (state.warning === 'fatsecret_unavailable' || state.warning === 'fatsecret_unavailable_stale_cache' || state.warning === 'edge_function_unavailable') {
+      bodyEl.appendChild(el('<div class="fp-warning">Não foi possível consultar produtos externos no momento. Mostrando só a sua base local.</div>'));
+    }
+    if (!state.query.trim()) {
+      if (state.favoritos.length) {
+        bodyEl.appendChild(el('<div class="fp-section-label">Favoritos</div>'));
+        state.favoritos.forEach((f) => bodyEl.appendChild(renderResultRow(hydrate(f))));
+      }
+      if (state.recentes.length) {
+        bodyEl.appendChild(el('<div class="fp-section-label">Recentes</div>'));
+        state.recentes.forEach((r) => bodyEl.appendChild(renderResultRow(hydrate(r))));
+      }
+      if (!state.favoritos.length && !state.recentes.length) {
+        bodyEl.appendChild(el('<div class="fp-empty">Digite pra buscar um alimento substituto.</div>'));
+      }
+    } else if (state.loading) {
+      bodyEl.appendChild(el('<div class="fp-empty">Buscando…</div>'));
+    } else if (!state.results.length) {
+      bodyEl.appendChild(el('<div class="fp-empty">Nenhum alimento encontrado pra "' + state.query + '".</div>'));
+    } else {
+      state.results.forEach((f) => bodyEl.appendChild(renderResultRow(f)));
+    }
+  }
+
+  function renderListaStep() {
+    modal.appendChild(el('<div style="font-size:14.5px;font-weight:800;">' + item.nome + '</div>'));
+    modal.appendChild(el('<div style="font-size:12px;color:#66707e;margin-top:2px;">' + item.kcal + ' kcal — os substitutos abaixo entregam a mesma kcal, o aluno escolhe um, nunca soma ao total.</div>'));
+
+    if (item.substituiveis.length) {
+      const list = el('<div style="margin-top:12px;"></div>');
+      item.substituiveis.forEach((s, si) => {
+        const row = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:9px 12px;margin-bottom:7px;"></div>');
+        const qtdLabel = (s.quantidade != null && s.unidade) ? s.quantidade + ' ' + foodMeasureLabel(s.unidade) : s.quantidade_g + 'g';
+        const info = el('<div></div>');
+        info.appendChild(el('<div style="font-size:13px;font-weight:700;">' + s.nome + '</div>'));
+        info.appendChild(el('<div style="font-size:11px;color:#66707e;margin-top:2px;">' + qtdLabel + ' · ' + s.kcal + ' kcal</div>'));
+        row.appendChild(info);
+        const rmBtn = el('<button type="button" class="item-remove">×</button>');
+        rmBtn.addEventListener('click', () => { item.substituiveis.splice(si, 1); renderModal(); });
+        row.appendChild(rmBtn);
+        list.appendChild(row);
+      });
+      modal.appendChild(list);
+    }
+
+    const addBtn = el('<button type="button" class="btn btn-secondary" style="width:100%;margin-top:4px;">+ Adicionar substituível</button>');
+    addBtn.addEventListener('click', () => { state.step = 'busca'; renderModal(); });
+    modal.appendChild(addBtn);
+
+    const doneBtn = el('<button type="button" class="btn btn-primary" style="width:100%;margin-top:8px;">Concluir</button>');
+    doneBtn.addEventListener('click', fechar);
+    modal.appendChild(doneBtn);
+  }
+
+  function renderBuscaStep() {
+    const backBtn = el('<button type="button" class="fp-link-btn" style="margin-bottom:8px;">← Voltar</button>');
+    backBtn.addEventListener('click', () => { state.step = 'lista'; renderModal(); });
+    modal.appendChild(backBtn);
+
+    const searchInput = el('<input class="fp-search" placeholder="Buscar alimento substituto… (ex: tapioca, batata-doce)" autocomplete="off">');
+    searchInput.value = state.query;
+    searchInput.addEventListener('input', () => buscar(searchInput.value));
+    modal.appendChild(searchInput);
+    setTimeout(() => searchInput.focus(), 0);
+
+    bodyEl = el('<div class="fp-body"></div>');
+    modal.appendChild(bodyEl);
+    renderResultsBody();
+  }
+
+  function renderQuantidadeStep() {
+    const food = state.selected;
+    const backBtn = el('<button type="button" class="fp-link-btn" style="margin-bottom:8px;">← Voltar</button>');
+    backBtn.addEventListener('click', () => { state.step = 'busca'; renderModal(); });
+    modal.appendChild(backBtn);
+
+    modal.appendChild(el('<div style="font-size:14.5px;font-weight:800;">' + food.nome + (food.brandName ? ' — ' + food.brandName : '') + '</div>'));
+    modal.appendChild(el('<div style="font-size:11.5px;color:#66707e;margin-top:2px;">Quantidade sugerida pra equivaler a ' + (item.kcal || 0) + ' kcal — ajuste se quiser.</div>'));
+
+    const measures = availableMeasures(food);
+    const row = el('<div class="fp-qty-row"></div>');
+    const qtdInput = el('<input type="number" min="0" step="any">');
+    qtdInput.value = state.qtd;
+    qtdInput.addEventListener('input', () => { state.qtd = qtdInput.value; renderPreview(); });
+    const unidadeSelect = el('<select></select>');
+    measures.forEach((m) => {
+      const opt = el('<option value="' + m.unidade + '">' + foodMeasureLabel(m.unidade, m.label) + '</option>');
+      if (m.unidade === state.unidade) opt.selected = true;
+      unidadeSelect.appendChild(opt);
+    });
+    unidadeSelect.addEventListener('change', () => {
+      state.unidade = unidadeSelect.value;
+      const sugestao = solveQuantityForKcal(food, item.kcal || 0, state.unidade);
+      if (sugestao != null) { state.qtd = sugestao; qtdInput.value = sugestao; }
+      renderPreview();
+    });
+    row.appendChild(qtdInput); row.appendChild(unidadeSelect);
+    modal.appendChild(row);
+
+    const previewBox = el('<div></div>');
+    modal.appendChild(previewBox);
+    function renderPreview() {
+      const n = computeNutrients(food, Number(state.qtd) || 0, state.unidade);
+      previewBox.innerHTML = '';
+      if (!n) { previewBox.appendChild(el('<div class="erro" style="margin-top:10px;">Sem conversão pra essa unidade.</div>')); return; }
+      const box = el('<div class="fp-macros-preview"></div>');
+      [['Kcal', n.kcal, ''], ['Proteínas', n.proteinaG, 'g'], ['Carboidratos', n.carboidratoG, 'g'], ['Gorduras', n.gorduraG, 'g'], ['Fibras', n.fibraG, 'g']]
+        .forEach(([label, val, suf]) => box.appendChild(el('<div class="t">' + label + ': <b>' + val + suf + '</b></div>')));
+      previewBox.appendChild(box);
+    }
+    renderPreview();
+
+    if (state.erro) modal.appendChild(el('<div class="erro">' + state.erro + '</div>'));
+
+    const confirmBtn = el('<button type="button" class="btn btn-primary" style="width:100%;margin-top:16px;">Salvar substituível</button>');
+    confirmBtn.addEventListener('click', confirmarSubstituto);
+    modal.appendChild(confirmBtn);
+  }
+
+  function renderModal() {
+    modal.innerHTML = '';
+    const head = el('<div class="fp-head"></div>');
+    head.appendChild(el('<div class="fp-title">Substituíveis</div>'));
+    const closeBtn = el('<button type="button" class="fp-close">×</button>');
+    closeBtn.addEventListener('click', fechar);
+    head.appendChild(closeBtn);
+    modal.appendChild(head);
+
+    if (state.loading && state.step === 'busca' && !state.selected) { modal.appendChild(el('<div class="fp-empty">Carregando…</div>')); return; }
+    if (state.step === 'lista') renderListaStep();
+    else if (state.step === 'busca') renderBuscaStep();
+    else if (state.step === 'quantidade') renderQuantidadeStep();
+  }
+
+  fpCarregarFavoritosRecentes().then((r) => { state.favoritos = r.favoritos; state.recentes = r.recentes; if (bodyEl) renderResultsBody(); });
   renderModal();
 }
 

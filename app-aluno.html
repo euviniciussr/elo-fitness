@@ -406,63 +406,89 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Seu personal vai montar e liberar seu plano de treino em breve.</div>
           </div>
         </sc-if>
-        <div style="display:flex;flex-direction:column;gap:28px;">
-          <sc-for list="{{ divisoes }}" as="dv" hint-placeholder-count="2">
-            <div>
-              <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1a2130;">
-                <div style="font-size:15.5px;font-weight:800;letter-spacing:.02em;">{{ dv.nome }}</div>
-                <sc-if value="{{ dv.subtitulo }}" hint-placeholder-val="{{ true }}">
-                  <div style="font-size:12px;color:#9aa4b2;">{{ dv.subtitulo }}</div>
-                </sc-if>
-                <sc-if value="{{ dv.diasLabel }}" hint-placeholder-val="{{ true }}">
-                  <div style="font-size:11px;color:#66707e;margin-left:auto;">{{ dv.diasLabel }}</div>
-                </sc-if>
+
+        <sc-if value="{{ mostrarListaTreinos }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ divisoesLista }}" as="dv" hint-placeholder-count="4">
+              <div sc-camel-on-click="{{ dv.onSelecionar }}" style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;">
+                <div style="min-width:0;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <div style="font-size:15px;font-weight:800;">{{ dv.nome }}</div>
+                    <sc-if value="{{ dv.isHoje }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:10px;font-weight:800;color:#f97316;background:rgba(249,115,22,.12);padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;">hoje</span>
+                    </sc-if>
+                  </div>
+                  <div style="font-size:12px;color:#9aa4b2;margin-top:4px;">{{ dv.subtitulo }}<sc-if value="{{ dv.diasLabel }}" hint-placeholder-val="{{ false }}"> · {{ dv.diasLabel }}</sc-if></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                  <span style="font-size:11.5px;color:#66707e;">{{ dv.qtdLabel }}</span>
+                  <span style="color:#4a5364;">›</span>
+                </div>
               </div>
-              <sc-if value="{{ dv.semExercicios }}" hint-placeholder-val="{{ false }}">
-                <div style="font-size:12.5px;color:#66707e;">Seu personal ainda não adicionou exercícios nesta divisão.</div>
-              </sc-if>
-              <div style="display:flex;flex-direction:column;gap:12px;">
-                <sc-for list="{{ dv.exercicios }}" as="e" hint-placeholder-count="4">
-                  <div style="background:#10151f;border:1px solid {{ e.border }};border-radius:14px;padding:16px 20px;">
-                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-                      <div sc-camel-on-click="{{ e.onCheck }}" style="width:36px;height:36px;flex-shrink:0;border-radius:10px;background:{{ e.checkBg }};border:1px solid {{ e.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:14px;color:#4ade80;font-weight:800;cursor:pointer;">{{ e.check }}</div>
-                      <div style="flex:1;min-width:0;">
-                        <div style="font-size:14.5px;font-weight:700;text-decoration:{{ e.decoration }};color:{{ e.nomeColor }};">{{ e.nome }}</div>
-                      </div>
-                      <sc-if value="{{ e.temVideo }}" hint-placeholder-val="{{ true }}">
-                        <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> vídeo</span>
-                      </sc-if>
-                    </div>
-                    <div style="border-top:1px solid #171d29;margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:5px;">
-                      <sc-for list="{{ e.seriesLinhas }}" as="ln" hint-placeholder-count="3">
-                        <div style="font-size:12.5px;color:#c7ccd6;">• {{ ln }}</div>
-                      </sc-for>
-                      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#9aa4b2;">
-                        <sc-if value="{{ e.carga }}" hint-placeholder-val="{{ true }}">
-                          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>Carga: {{ e.carga }}</span>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ mostrarDetalheTreino }}" hint-placeholder-val="{{ false }}">
+          <button type="button" sc-camel-on-click="{{ onVoltarListaTreinos }}" style="background:none;border:none;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:0 0 14px;cursor:pointer;display:flex;align-items:center;gap:5px;">← Meus treinos</button>
+          <div style="display:flex;flex-direction:column;gap:28px;">
+            <sc-for list="{{ divisoes }}" as="dv" hint-placeholder-count="1">
+              <div>
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #1a2130;">
+                  <div style="font-size:15.5px;font-weight:800;letter-spacing:.02em;">{{ dv.nome }}</div>
+                  <sc-if value="{{ dv.subtitulo }}" hint-placeholder-val="{{ true }}">
+                    <div style="font-size:12px;color:#9aa4b2;">{{ dv.subtitulo }}</div>
+                  </sc-if>
+                  <sc-if value="{{ dv.diasLabel }}" hint-placeholder-val="{{ true }}">
+                    <div style="font-size:11px;color:#66707e;margin-left:auto;">{{ dv.diasLabel }}</div>
+                  </sc-if>
+                </div>
+                <sc-if value="{{ dv.semExercicios }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:12.5px;color:#66707e;">Seu personal ainda não adicionou exercícios nesta divisão.</div>
+                </sc-if>
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <sc-for list="{{ dv.exercicios }}" as="e" hint-placeholder-count="4">
+                    <div style="background:#10151f;border:1px solid {{ e.border }};border-radius:14px;padding:16px 20px;">
+                      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                        <div sc-camel-on-click="{{ e.onCheck }}" style="width:36px;height:36px;flex-shrink:0;border-radius:10px;background:{{ e.checkBg }};border:1px solid {{ e.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:14px;color:#4ade80;font-weight:800;cursor:pointer;">{{ e.check }}</div>
+                        <div style="flex:1;min-width:0;">
+                          <div style="font-size:14.5px;font-weight:700;text-decoration:{{ e.decoration }};color:{{ e.nomeColor }};">{{ e.nome }}</div>
+                        </div>
+                        <sc-if value="{{ e.temVideo }}" hint-placeholder-val="{{ true }}">
+                          <span sc-camel-on-click="{{ e.onVerVideo }}" style="font-size:12px;font-weight:700;color:#3b82f6;background:rgba(59,130,246,.1);padding:6px 13px;border-radius:8px;cursor:pointer;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> vídeo</span>
                         </sc-if>
-                        <sc-if value="{{ e.descanso }}" hint-placeholder-val="{{ true }}">
-                          <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg>Descanso {{ e.descanso }}</span>
-                        </sc-if>
                       </div>
-                      <sc-if value="{{ e.observacoes }}" hint-placeholder-val="{{ true }}">
-                        <div style="font-size:12px;color:#9aa4b2;margin-top:4px;line-height:1.5;">Observação: {{ e.observacoes }}</div>
-                      </sc-if>
-                      <sc-if value="{{ e.tecnica }}" hint-placeholder-val="{{ true }}">
-                        <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;margin-top:6px;">
-                          <div style="font-size:11px;font-weight:800;color:#a855f7;margin-bottom:3px;">Variação: {{ e.tecnica }}</div>
-                          <sc-if value="{{ e.tecnicaObs }}" hint-placeholder-val="{{ true }}">
-                            <div style="font-size:12px;color:#9aa4b2;line-height:1.5;">Como realizar: {{ e.tecnicaObs }}</div>
+                      <div style="border-top:1px solid #171d29;margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:5px;">
+                        <sc-for list="{{ e.seriesLinhas }}" as="ln" hint-placeholder-count="3">
+                          <div style="font-size:12.5px;color:#c7ccd6;">• {{ ln }}</div>
+                        </sc-for>
+                        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#9aa4b2;">
+                          <sc-if value="{{ e.carga }}" hint-placeholder-val="{{ true }}">
+                            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>Carga: {{ e.carga }}</span>
+                          </sc-if>
+                          <sc-if value="{{ e.descanso }}" hint-placeholder-val="{{ true }}">
+                            <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg>Descanso {{ e.descanso }}</span>
                           </sc-if>
                         </div>
-                      </sc-if>
+                        <sc-if value="{{ e.observacoes }}" hint-placeholder-val="{{ true }}">
+                          <div style="font-size:12px;color:#9aa4b2;margin-top:4px;line-height:1.5;">Observação: {{ e.observacoes }}</div>
+                        </sc-if>
+                        <sc-if value="{{ e.tecnica }}" hint-placeholder-val="{{ true }}">
+                          <div style="background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:10px;padding:10px 12px;margin-top:6px;">
+                            <div style="font-size:11px;font-weight:800;color:#a855f7;margin-bottom:3px;">Variação: {{ e.tecnica }}</div>
+                            <sc-if value="{{ e.tecnicaObs }}" hint-placeholder-val="{{ true }}">
+                              <div style="font-size:12px;color:#9aa4b2;line-height:1.5;">Como realizar: {{ e.tecnicaObs }}</div>
+                            </sc-if>
+                          </div>
+                        </sc-if>
+                      </div>
                     </div>
-                  </div>
-                </sc-for>
+                  </sc-for>
+                </div>
               </div>
-            </div>
-          </sc-for>
-        </div>
+            </sc-for>
+          </div>
+        </sc-if>
 
         <sc-if value="{{ treinoConcluido }}" hint-placeholder-val="{{ false }}">
           <section style="background:linear-gradient(160deg,#0a1a10,#10151f);border:1px solid rgba(74,222,128,.35);border-radius:16px;padding:22px 24px;margin-top:16px;">
@@ -525,9 +551,19 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                     </sc-if>
                     <div style="display:flex;flex-direction:column;gap:7px;">
                       <sc-for list="{{ op.itens }}" as="it" hint-placeholder-count="3">
-                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
-                          <span style="font-size:12.5px;color:#e5e9f0;">{{ it.nome }} <span style="color:#66707e;">— {{ it.qtdLabel }}</span></span>
-                          <span style="font-size:12.5px;font-weight:700;color:#c7ccd6;flex-shrink:0;">{{ it.kcal }}</span>
+                        <div>
+                          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
+                            <span style="font-size:12.5px;color:#e5e9f0;">{{ it.nome }} <span style="color:#66707e;">— {{ it.qtdLabel }}</span></span>
+                            <span style="font-size:12.5px;font-weight:700;color:#c7ccd6;flex-shrink:0;">{{ it.kcal }}</span>
+                          </div>
+                          <sc-if value="{{ it.temSubstituiveis }}" hint-placeholder-val="{{ false }}">
+                            <div style="margin:3px 0 0 4px;padding-left:8px;border-left:2px solid #1e2633;">
+                              <div style="font-size:10px;color:#66707e;margin-bottom:1px;">substituíveis (escolha um, não some ao total)</div>
+                              <sc-for list="{{ it.substituiveis }}" as="s" hint-placeholder-count="2">
+                                <div style="font-size:11.5px;color:#9aa4b2;">• {{ s.nome }} — {{ s.qtdLabel }}</div>
+                              </sc-for>
+                            </div>
+                          </sc-if>
                         </div>
                       </sc-for>
                     </div>
@@ -768,7 +804,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;hoje&quot;,&quot;options&quot;:[&quot;hoje&quot;,&quot;treino&quot;,&quot;dieta&quot;,&quot;evolucao&quot;,&quot;agenda&quot;,&quot;mensagens&quot;,&quot;plano&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 class Component extends DCLogic {
   state = {
-    tab: 'hoje', feitos: [],
+    tab: 'hoje', feitos: [], treinoSelecionadoId: null,
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
@@ -975,7 +1011,7 @@ class Component extends DCLogic {
         descanso: te.intervalo_descanso || '',
         observacoes: te.observacoes || '',
         tecnica: tecnica ? tecnica.nome : '',
-        tecnicaObs: tecnica ? (tecnica.observacao || '') : '',
+        tecnicaObs: te.tecnica_instrucoes || (tecnica ? tecnica.observacao : '') || '',
         videoUrl: (te.exercicios || {}).video_url || ''
       };
     });
@@ -987,7 +1023,7 @@ class Component extends DCLogic {
       exs.forEach(e => { if (e.categoria) contagem[e.categoria] = (contagem[e.categoria] || 0) + 1; });
       const grupos = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
       const dias = (tr.dias_semana || []).slice().sort((a, b) => a - b).map(d => DIA_LABELS_LONGO[d]);
-      return { nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs, semExercicios: exs.length === 0 };
+      return { id: tr.id, nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs, semExercicios: exs.length === 0 };
     });
 
     const round1 = (n) => Math.round(n * 10) / 10;
@@ -1014,7 +1050,11 @@ class Component extends DCLogic {
             mostrarLabel: opcoesArr.length > 1,
             label: op.nome || ('Opção ' + (oi + 1)),
             semItens: !op.itens || op.itens.length === 0,
-            itens: (op.itens || []).map(it => ({ nome: it.nome, qtdLabel: itemQtdLabel(it), kcal: Math.round(it.kcal || 0) + ' kcal' })),
+            itens: (op.itens || []).map(it => ({
+              nome: it.nome, qtdLabel: itemQtdLabel(it), kcal: Math.round(it.kcal || 0) + ' kcal',
+              temSubstituiveis: !!(it.substituiveis && it.substituiveis.length),
+              substituiveis: (it.substituiveis || []).map(s => ({ nome: s.nome, qtdLabel: itemQtdLabel(s) }))
+            })),
             totalOpcaoKcal: Math.round(s.kcal) + ' kcal'
           };
         })
@@ -1124,7 +1164,8 @@ class Component extends DCLogic {
       navComigo: [navItem('mensagens', '', 'Mensagens', ''), navItem('plano', '', 'Meu plano', '')],
       isHoje: t === 'hoje', isTreino: t === 'treino', isDieta: t === 'dieta',
       isEvolucao: t === 'evolucao', isAgenda: t === 'agenda', isMensagens: t === 'mensagens', isPlano: t === 'plano',
-      irTreino: go('treino'), irAgenda: go('agenda'), irMensagens: go('mensagens'),
+      irTreino: () => this.setState({ tab: 'treino', treinoSelecionadoId: treinoHoje ? treinoHoje.id : null }),
+      irAgenda: go('agenda'), irMensagens: go('mensagens'),
 
       salvarPeso: () => this.onSalvarPeso(),
       pesoLabel: this.state.pesoSalvo ? 'Salvo ✓' : 'Salvar',
@@ -1167,7 +1208,19 @@ class Component extends DCLogic {
       finalizarBg: todos ? 'rgba(74,222,128,.12)' : '#131a26',
       finalizarBorder: todos ? 'rgba(74,222,128,.3)' : '#1e2633',
       finalizarColor: todos ? '#4ade80' : '#9aa4b2',
-      divisoes: divisoesData.map(dv => ({
+      mostrarListaTreinos: !this.state.treinoSelecionadoId && divisoesData.length > 0,
+      divisoesLista: divisoesData.map(dv => ({
+        id: dv.id,
+        nome: dv.nome,
+        subtitulo: dv.subtitulo,
+        diasLabel: dv.diasLabel,
+        qtdLabel: dv.exercicios.length + (dv.exercicios.length === 1 ? ' exercício' : ' exercícios'),
+        isHoje: !!(treinoHoje && dv.id === treinoHoje.id),
+        onSelecionar: () => this.setState({ treinoSelecionadoId: dv.id })
+      })),
+      onVoltarListaTreinos: () => this.setState({ treinoSelecionadoId: null }),
+      mostrarDetalheTreino: !!this.state.treinoSelecionadoId,
+      divisoes: divisoesData.filter(dv => dv.id === this.state.treinoSelecionadoId).map(dv => ({
         nome: dv.nome,
         subtitulo: dv.subtitulo,
         diasLabel: dv.diasLabel,

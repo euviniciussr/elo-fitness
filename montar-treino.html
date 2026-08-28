@@ -122,7 +122,6 @@ textarea{resize:vertical;min-height:52px;}
 .tecnica-row-nome{font-size:13px;font-weight:700;}
 .tecnica-row-obs{font-size:11.5px;color:#66707e;margin-top:2px;}
 .tecnica-row-actions{display:flex;gap:2px;flex-shrink:0;}
-.tecnica-obs-preview{font-size:11.5px;color:#9aa4b2;background:#0d1119;border:1px solid #1a2130;border-radius:8px;padding:9px 11px;margin-top:8px;font-style:italic;}
 
 .serie-tmpl-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0d1119;border:1px solid #1a2130;border-radius:10px;padding:10px 13px;margin-bottom:8px;cursor:pointer;}
 .serie-tmpl-row:hover{border-color:rgba(249,115,22,.35);}
@@ -1173,7 +1172,11 @@ function renderAddExForm(treino) {
 
   const tecWrap = el('<div><label>Técnica avançada</label></div>');
   const tecSel = el('<select></select>');
-  const tecObsPreview = el('<div class="tecnica-obs-preview" style="display:none;"></div>');
+  const tecObsWrap = el('<div style="display:none;"></div>');
+  const tecObsLabel = el('<label style="margin-top:10px;display:block;">Como realizar esta técnica? (edite se, nesta prescrição, for diferente do padrão)</label>');
+  const tecObsTa = el('<textarea maxlength="500" placeholder="Ex: realizar a série até a falha, reduzir a carga em 20% e continuar até a falha novamente…"></textarea>');
+  tecObsWrap.appendChild(tecObsLabel);
+  tecObsWrap.appendChild(tecObsTa);
 
   const NOVA_TECNICA_VALUE = '__nova__';
 
@@ -1191,13 +1194,18 @@ function renderAddExForm(treino) {
     if (tecSel.value !== valorSelecionado) tecSel.value = 'nenhuma';
   };
 
-  const atualizarObsPreview = () => {
+  // Ao trocar de técnica, a caixa de instruções é reiniciada com o padrão
+  // daquela técnica (o trainer pode editar livremente a partir daí). Só na
+  // carga inicial de um exercício já salvo é que usamos o texto específico
+  // já gravado nesta prescrição (editTe.tecnica_instrucoes), se houver.
+  const atualizarObsBox = (usarInstrucoesSalvas) => {
     const t = tecnicaPorId(tecSel.value);
-    if (t && t.observacao) {
-      tecObsPreview.textContent = 'Como realizar: ' + t.observacao;
-      tecObsPreview.style.display = '';
+    if (!t) { tecObsWrap.style.display = 'none'; tecObsTa.value = ''; return; }
+    tecObsWrap.style.display = '';
+    if (usarInstrucoesSalvas && editTe && editTe.tecnica_instrucoes) {
+      tecObsTa.value = editTe.tecnica_instrucoes;
     } else {
-      tecObsPreview.style.display = 'none';
+      tecObsTa.value = t.observacao || '';
     }
   };
 
@@ -1207,24 +1215,24 @@ function renderAddExForm(treino) {
   };
 
   popularTecSel(editTe ? (editTe.tecnica_avancada || 'nenhuma') : (isCombo ? isComboDefault() : 'nenhuma'));
-  atualizarObsPreview();
+  atualizarObsBox(true);
 
   tecSel.addEventListener('change', () => {
     if (tecSel.value === NOVA_TECNICA_VALUE) {
       const valorAnterior = 'nenhuma';
       abrirModalTecnica({
         tecnica: null,
-        onSaved: (nova) => { popularTecSel(nova.id); atualizarObsPreview(); }
+        onSaved: (nova) => { popularTecSel(nova.id); atualizarObsBox(false); }
       });
       tecSel.value = valorAnterior;
       return;
     }
-    atualizarObsPreview();
+    atualizarObsBox(false);
   });
 
   tecWrap.appendChild(tecSel);
   form.appendChild(tecWrap);
-  form.appendChild(tecObsPreview);
+  form.appendChild(tecObsWrap);
 
   const obsWrap = el('<div><label>Observações (opcional)</label></div>');
   const obsTa = el('<textarea maxlength="250" placeholder="Ex: cuidado com o joelho, ajustar banco no nível 4…"></textarea>');
@@ -1255,6 +1263,7 @@ function renderAddExForm(treino) {
       carga: cargaInput.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
       tecnica_avancada: tecSel.value,
+      tecnica_instrucoes: tecSel.value === 'nenhuma' ? null : (tecObsTa.value.trim() || null),
       observacoes: obsTa.value.trim() || null
     };
 
