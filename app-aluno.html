@@ -418,6 +418,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                   <div style="font-size:11px;color:#66707e;margin-left:auto;">{{ dv.diasLabel }}</div>
                 </sc-if>
               </div>
+              <sc-if value="{{ dv.semExercicios }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12.5px;color:#66707e;">Seu personal ainda não adicionou exercícios nesta divisão.</div>
+              </sc-if>
               <div style="display:flex;flex-direction:column;gap:12px;">
                 <sc-for list="{{ dv.exercicios }}" as="e" hint-placeholder-count="4">
                   <div style="background:#10151f;border:1px solid {{ e.border }};border-radius:14px;padding:16px 20px;">
@@ -499,6 +502,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6 2v7a2 2 0 0 0 2 2v11"></path><path d="M6 2v7"></path><path d="M9 2v7"></path><path d="M17 22V15c-2 0-4-1.8-4-4V2s5 0 5 5v15"></path></svg></div>
             <div style="font-size:14.5px;font-weight:800;">Nenhuma dieta ainda</div>
             <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Assim que seu personal montar seu plano alimentar, ele aparece aqui.</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ dietaSemRefeicoes }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
+            <div style="font-size:14.5px;font-weight:800;">Seu personal está montando suas refeições</div>
+            <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Assim que ele adicionar as refeições, elas aparecem aqui.</div>
           </div>
         </sc-if>
         <div style="display:flex;flex-direction:column;gap:22px;">
@@ -817,6 +826,8 @@ class Component extends DCLogic {
     if (url.includes('iframe.mediadelivery.net')) return url;
     const yt = url.match(/(?:youtube\.com\/shorts\/|youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
     if (yt) return 'https://www.youtube.com/embed/' + yt[1];
+    const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (vimeo) return 'https://player.vimeo.com/video/' + vimeo[1];
     return url;
   }
 
@@ -976,7 +987,7 @@ class Component extends DCLogic {
       exs.forEach(e => { if (e.categoria) contagem[e.categoria] = (contagem[e.categoria] || 0) + 1; });
       const grupos = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
       const dias = (tr.dias_semana || []).slice().sort((a, b) => a - b).map(d => DIA_LABELS_LONGO[d]);
-      return { nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs };
+      return { nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs, semExercicios: exs.length === 0 };
     });
 
     const round1 = (n) => Math.round(n * 10) / 10;
@@ -1144,8 +1155,10 @@ class Component extends DCLogic {
       semSessoes: sessoesData.length === 0,
       sessoes: sessoesData,
 
-      semTreino: exData.length === 0,
-      treinoSubtitulo: exData.length === 0 ? 'Ainda não tem um treino prescrito' : exData.length + (exData.length === 1 ? ' exercício prescrito' : ' exercícios prescritos'),
+      semTreino: divisoesData.length === 0,
+      treinoSubtitulo: exData.length === 0
+        ? (divisoesData.length === 0 ? 'Ainda não tem um treino prescrito' : 'Seu personal está montando os exercícios do seu treino')
+        : exData.length + (exData.length === 1 ? ' exercício prescrito' : ' exercícios prescritos'),
       progressoTreino: doneCount + ' de ' + exData.length + ' exercícios',
       progressoW: exData.length ? Math.round(doneCount / exData.length * 100) + '%' : '0%',
       treinoConcluido: todos,
@@ -1158,6 +1171,7 @@ class Component extends DCLogic {
         nome: dv.nome,
         subtitulo: dv.subtitulo,
         diasLabel: dv.diasLabel,
+        semExercicios: dv.semExercicios,
         exercicios: dv.exercicios.map(e => {
           const i = e.idx;
           const done = feitos[i];
@@ -1203,7 +1217,8 @@ class Component extends DCLogic {
       onFotoUpload: (e) => this.onFotoUpload(e),
       fotoUploadLabel: this.state.fotoUploadBusy ? 'Enviando…' : '+ Fotos',
 
-      semDieta: refeicoesData.length === 0,
+      semDieta: !dietaAtual,
+      dietaSemRefeicoes: !!dietaAtual && refeicoesData.length === 0,
       dietaSubtitulo: dietaAtual ? (dietaAtual.nome + (dietaAtual.meta_calorica ? ' · ' + dietaAtual.meta_calorica : '')) : 'Você ainda não tem uma dieta',
       refeicoes: refeicoesData,
       temTotalDiario: refeicoesData.length > 0,
