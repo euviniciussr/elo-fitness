@@ -199,6 +199,21 @@ html,body{margin:0;padding:0;background:#0a0d13;font-family:'Plus Jakarta Sans',
 a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 *{box-sizing:border-box;}
 ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+.opcao-card{background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 20px;}
+.opcao-label{font-size:11px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+.opcao-item-nome{font-size:12.5px;color:#e5e9f0;}
+.opcao-item-kcal{font-size:12.5px;font-weight:700;color:#c7ccd6;flex-shrink:0;}
+.opcao-sub-item{font-size:11.5px;color:#9aa4b2;}
+.opcao-total-label{font-size:11.5px;font-weight:700;color:#9aa4b2;}
+.opcao-total-value{font-size:13px;font-weight:800;color:#f97316;}
+/* Opção 2+ : levemente menor e recuada, só pra sugerir "alternativa" sem prejudicar leitura. */
+.opcao-alt{margin-left:16px;}
+.opcao-alt .opcao-label{font-size:10.5px;}
+.opcao-alt .opcao-item-nome{font-size:12px;}
+.opcao-alt .opcao-item-kcal{font-size:12px;}
+.opcao-alt .opcao-sub-item{font-size:11px;}
+.opcao-alt .opcao-total-label{font-size:11px;}
+.opcao-alt .opcao-total-value{font-size:12.5px;}
 </style>
 </helmet>
 <div style="display:flex;min-height:100vh;background:#0a0d13;">
@@ -549,9 +564,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <div style="font-size:14px;font-weight:800;letter-spacing:.02em;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #1a2130;">{{ r.nome }}</div>
               <div style="display:flex;flex-direction:column;gap:10px;">
                 <sc-for list="{{ r.opcoes }}" as="op" hint-placeholder-count="1">
-                  <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 20px;">
+                  <div class="opcao-card{{ op.altClass }}">
                     <sc-if value="{{ op.mostrarLabel }}" hint-placeholder-val="{{ true }}">
-                      <div style="font-size:11px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">{{ op.label }}</div>
+                      <div class="opcao-label">{{ op.label }}</div>
                     </sc-if>
                     <sc-if value="{{ op.semItens }}" hint-placeholder-val="{{ false }}">
                       <div style="font-size:12.5px;color:#66707e;">Sem alimentos ainda.</div>
@@ -560,14 +575,14 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                       <sc-for list="{{ op.itens }}" as="it" hint-placeholder-count="3">
                         <div>
                           <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
-                            <span style="font-size:12.5px;color:#e5e9f0;">{{ it.nome }} <span style="color:#66707e;">— {{ it.qtdLabel }}</span></span>
-                            <span style="font-size:12.5px;font-weight:700;color:#c7ccd6;flex-shrink:0;">{{ it.kcal }}</span>
+                            <span class="opcao-item-nome">{{ it.nome }} <span style="color:#66707e;">— {{ it.qtdLabel }}</span></span>
+                            <span class="opcao-item-kcal">{{ it.kcal }}</span>
                           </div>
                           <sc-if value="{{ it.temSubstituiveis }}" hint-placeholder-val="{{ false }}">
                             <div style="margin:3px 0 0 4px;padding-left:8px;border-left:2px solid #1e2633;">
                               <div style="font-size:10px;color:#66707e;margin-bottom:1px;">substituíveis (escolha um, não some ao total)</div>
                               <sc-for list="{{ it.substituiveis }}" as="s" hint-placeholder-count="2">
-                                <div style="font-size:11.5px;color:#9aa4b2;">• {{ s.nome }} — {{ s.qtdLabel }}</div>
+                                <div class="opcao-sub-item">• {{ s.nome }} — {{ s.qtdLabel }}</div>
                               </sc-for>
                             </div>
                           </sc-if>
@@ -575,8 +590,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                       </sc-for>
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid #171d29;">
-                      <span style="font-size:11.5px;font-weight:700;color:#9aa4b2;">Total da refeição</span>
-                      <span style="font-size:13px;font-weight:800;color:#f97316;">{{ op.totalOpcaoKcal }}</span>
+                      <span class="opcao-total-label">Total da refeição</span>
+                      <span class="opcao-total-value">{{ op.totalOpcaoKcal }}</span>
                     </div>
                   </div>
                 </sc-for>
@@ -1056,6 +1071,7 @@ class Component extends DCLogic {
           const s = somaItens(op.itens);
           return {
             mostrarLabel: opcoesArr.length > 1,
+            altClass: oi > 0 ? ' opcao-alt' : '',
             label: op.nome || ('Opção ' + (oi + 1)),
             semItens: !op.itens || op.itens.length === 0,
             itens: (op.itens || []).map(it => ({
