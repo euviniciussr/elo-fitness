@@ -459,6 +459,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                         </sc-if>
                       </div>
                       <div style="border-top:1px solid #171d29;margin-top:12px;padding-top:12px;display:flex;flex-direction:column;gap:5px;">
+                        <sc-if value="{{ e.temAquecimento }}" hint-placeholder-val="{{ false }}">
+                          <div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;color:#66707e;text-transform:uppercase;margin-bottom:1px;">Aquecimento</div>
+                          <sc-for list="{{ e.seriesAquecimentoLinhas }}" as="ln" hint-placeholder-count="2">
+                            <div style="font-size:12.5px;color:#9aa4b2;">• {{ ln }}</div>
+                          </sc-for>
+                          <div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;color:#66707e;text-transform:uppercase;margin:6px 0 1px;">Séries válidas</div>
+                        </sc-if>
                         <sc-for list="{{ e.seriesLinhas }}" as="ln" hint-placeholder-count="3">
                           <div style="font-size:12.5px;color:#c7ccd6;">• {{ ln }}</div>
                         </sc-for>
@@ -1006,6 +1013,7 @@ class Component extends DCLogic {
         treinoId: te.treino_id,
         nome: (te.exercicios || {}).nome || 'Exercício',
         categoria: (te.exercicios || {}).categoria || '',
+        seriesAquecimentoLinhas: (te.series_aquecimento || '').split('\n').map(s => s.trim()).filter(Boolean),
         seriesLinhas: (te.series || '').split('\n').map(s => s.trim()).filter(Boolean),
         carga: te.carga || '',
         descanso: te.intervalo_descanso || '',
@@ -1229,7 +1237,10 @@ class Component extends DCLogic {
           const i = e.idx;
           const done = feitos[i];
           return {
-            nome: e.nome, seriesLinhas: e.seriesLinhas, carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
+            nome: e.nome,
+            temAquecimento: e.seriesAquecimentoLinhas.length > 0,
+            seriesAquecimentoLinhas: e.seriesAquecimentoLinhas,
+            seriesLinhas: e.seriesLinhas, carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
             tecnica: e.tecnica, tecnicaObs: e.tecnicaObs,
             temVideo: !!e.videoUrl,
             onVerVideo: () => { if (e.videoUrl) this.setState({ videoModalUrl: e.videoUrl }); },

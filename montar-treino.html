@@ -108,7 +108,7 @@ textarea{resize:vertical;min-height:52px;}
 
 .quick-ex{background:#0a0d13;border:1px solid #171d29;border-radius:9px;padding:10px 12px;margin-top:8px;}
 .quick-ex-nome{font-size:12.5px;font-weight:700;margin-bottom:6px;}
-.quick-ex-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.quick-ex-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
 .quick-ex-fields label{margin-bottom:3px;}
 .quick-ex-fields input{font-size:12.5px;padding:7px 9px;}
 
@@ -305,22 +305,30 @@ function abrirGerenciarTecnicas(onChange) {
   document.body.appendChild(overlay);
 }
 
-function formatarSerieTemplate(tmpl) {
+// Templates antigos não têm `tipo` gravado — infere pelo nome da linha
+// (a convenção já usada era nomear a linha como "Aquecimento").
+function tipoDaLinha(l) {
+  if (l.tipo === 'aquecimento' || l.tipo === 'valida') return l.tipo;
+  return /aquec/i.test(l.nome || '') ? 'aquecimento' : 'valida';
+}
+
+function formatarSerieTemplatePorTipo(tmpl, tipo) {
   return (tmpl.linhas || [])
+    .filter(l => tipoDaLinha(l) === tipo)
     .filter(l => (l.nome || '').trim() || (l.reps || '').trim())
     .map(l => (l.nome || '').trim() ? (l.nome.trim() + ': ' + (l.reps || '').trim()) : (l.reps || '').trim())
     .join('\n');
 }
 
-// Cada linha já preenchida no textarea de séries (ex.: "1x10 aquecimento")
+// Cada linha já preenchida num textarea de séries (aquecimento ou válidas)
 // vira uma linha do modelo tal como está — sem tentar separar nome/reps,
 // que na prática vêm misturados no texto livre do treinador.
-function parseSeriesTextoParaLinhas(texto) {
+function parseSeriesTextoParaLinhas(texto, tipo) {
   return (texto || '')
     .split('\n')
     .map(l => l.trim())
     .filter(Boolean)
-    .map(l => ({ nome: '', reps: l }));
+    .map(l => ({ nome: '', reps: l, tipo: tipo || 'valida' }));
 }
 
 function abrirModalSalvarSerieRapido({ linhas, onSaved }) {
@@ -391,14 +399,17 @@ function abrirModalSerieTemplate({ template, linhasIniciais, onSaved }) {
   linhasWrap.appendChild(linhasList);
   box.appendChild(linhasWrap);
 
-  const linhasIniciaisReais = template ? (template.linhas || []) : (linhasIniciais || [{ nome: '', reps: '' }]);
-  const linhas = linhasIniciaisReais.length ? linhasIniciaisReais.map(l => ({ ...l })) : [{ nome: '', reps: '' }];
+  const linhasIniciaisReais = template ? (template.linhas || []) : (linhasIniciais || [{ nome: '', reps: '', tipo: 'valida' }]);
+  const linhas = linhasIniciaisReais.length ? linhasIniciaisReais.map(l => ({ ...l })) : [{ nome: '', reps: '', tipo: 'valida' }];
 
   const renderLinhas = () => {
     linhasList.innerHTML = '';
     linhas.forEach((l, i) => {
       const row = el('<div class="serie-tmpl-linha"></div>');
-      const nomeI = el('<input placeholder="Ex: Aquecimento, Trabalho, Drop…">');
+      const tipoSel = el('<select style="flex:0 0 118px;"><option value="valida">Válida</option><option value="aquecimento">Aquecimento</option></select>');
+      tipoSel.value = tipoDaLinha(l);
+      tipoSel.addEventListener('change', () => l.tipo = tipoSel.value);
+      const nomeI = el('<input placeholder="Ex: Drop set, Variação…">');
       nomeI.value = l.nome || '';
       nomeI.addEventListener('input', () => l.nome = nomeI.value);
       const repsI = el('<input placeholder="Ex: 10 reps, 8-10, 12">');
@@ -406,6 +417,7 @@ function abrirModalSerieTemplate({ template, linhasIniciais, onSaved }) {
       repsI.addEventListener('input', () => l.reps = repsI.value);
       const rmBtn = el('<button type="button" class="ex-remove">✕</button>');
       rmBtn.addEventListener('click', () => { linhas.splice(i, 1); renderLinhas(); });
+      row.appendChild(tipoSel);
       row.appendChild(nomeI);
       row.appendChild(repsI);
       row.appendChild(rmBtn);
@@ -415,7 +427,7 @@ function abrirModalSerieTemplate({ template, linhasIniciais, onSaved }) {
   renderLinhas();
 
   const addLinhaBtn = el('<button type="button" class="add-serie-btn">+ Adicionar série</button>');
-  addLinhaBtn.addEventListener('click', () => { linhas.push({ nome: '', reps: '' }); renderLinhas(); });
+  addLinhaBtn.addEventListener('click', () => { linhas.push({ nome: '', reps: '', tipo: 'valida' }); renderLinhas(); });
   box.appendChild(addLinhaBtn);
 
   const erro = el('<div class="erro" style="display:none;"></div>');
@@ -429,7 +441,9 @@ function abrirModalSerieTemplate({ template, linhasIniciais, onSaved }) {
 
   saveBtn.addEventListener('click', async () => {
     const nome = nomeInput.value.trim();
-    const linhasValidas = linhas.filter(l => (l.nome || '').trim() || (l.reps || '').trim());
+    const linhasValidas = linhas
+      .filter(l => (l.nome || '').trim() || (l.reps || '').trim())
+      .map(l => ({ nome: l.nome || '', reps: l.reps || '', tipo: tipoDaLinha(l) }));
     if (!nome) { erro.textContent = 'Digite um nome pra série pré-definida.'; erro.style.display = ''; return; }
     if (!linhasValidas.length) { erro.textContent = 'Adicione ao menos uma série.'; erro.style.display = ''; return; }
     erro.style.display = 'none';
@@ -481,8 +495,10 @@ function abrirEscolherSerieTemplate({ onAplicar }) {
       const row = el('<div class="serie-tmpl-row"></div>');
       const info = el('<div style="min-width:0;"></div>');
       info.appendChild(el('<div class="serie-tmpl-nome"></div>')).textContent = tmpl.nome;
-      const n = (tmpl.linhas || []).length;
-      info.appendChild(el('<div class="serie-tmpl-sub"></div>')).textContent = n + (n === 1 ? ' série' : ' séries');
+      const nAquec = (tmpl.linhas || []).filter(l => tipoDaLinha(l) === 'aquecimento').length;
+      const nValida = (tmpl.linhas || []).filter(l => tipoDaLinha(l) === 'valida').length;
+      const subTexto = (nAquec ? nAquec + ' aquec. + ' : '') + nValida + (nValida === 1 ? ' válida' : ' válidas');
+      info.appendChild(el('<div class="serie-tmpl-sub"></div>')).textContent = subTexto;
       row.appendChild(info);
 
       const actions = el('<div class="serie-tmpl-actions"></div>');
@@ -621,6 +637,43 @@ function gruposMusculares(treino) {
   return Object.entries(contagem);
 }
 
+// Conta quantas séries um campo de texto livre (1 linha = 1 série) representa.
+// Compat com notação antiga tipo "3x12" numa linha só = 3 séries.
+function contarLinhasSerie(texto) {
+  return (texto || '')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .reduce((total, linha) => {
+      const m = linha.match(/^(\d+)\s*x\s*\d/i);
+      return total + (m ? parseInt(m[1], 10) : 1);
+    }, 0);
+}
+
+// Resumo compacto exibido na lista de exercícios (nunca o texto cru das
+// séries, pra deixar claro o que é aquecimento e o que conta como volume).
+function resumoSeries(te) {
+  const validas = contarLinhasSerie(te.series);
+  const aquecimento = contarLinhasSerie(te.series_aquecimento);
+  if (!validas && !aquecimento) return 'sem séries definidas';
+  const partes = [];
+  if (aquecimento) partes.push(aquecimento + (aquecimento === 1 ? ' série de aquecimento' : ' séries de aquecimento'));
+  partes.push(validas ? (validas + (validas === 1 ? ' série válida' : ' séries válidas')) : 'sem séries válidas');
+  return partes.join(' + ');
+}
+
+// Volume de treinamento = soma das séries VÁLIDAS por grupamento muscular.
+// Séries de aquecimento nunca entram aqui (regra central da feature).
+function volumeSeriesPorGrupo(treinosArr) {
+  const contagem = {};
+  treinosArr.flatMap(t => t._exercicios || []).forEach(te => {
+    const cat = (te.exercicios || {}).categoria;
+    if (!cat) return;
+    contagem[cat] = (contagem[cat] || 0) + contarLinhasSerie(te.series);
+  });
+  return contagem;
+}
+
 async function duplicarTreino(treino) {
   const usados = new Set(treinos.map(t => t.nome));
   let novoNome = null;
@@ -642,7 +695,7 @@ async function duplicarTreino(treino) {
   if (exs.length) {
     await supabaseClient.from('treino_exercicios').insert(exs.map((te, i) => ({
       treino_id: novo.id, exercicio_id: te.exercicio_id,
-      ordem: i, series: te.series, intervalo_descanso: te.intervalo_descanso,
+      ordem: i, series_aquecimento: te.series_aquecimento, series: te.series, intervalo_descanso: te.intervalo_descanso,
       tecnica_avancada: te.tecnica_avancada
     })));
   }
@@ -734,7 +787,7 @@ async function usarTemplate(template) {
       }
       return {
         treino_id: novosOrdenados[i].id, exercicio_id: te.exercicio_id, ordem: te.ordem,
-        series: te.series, intervalo_descanso: te.intervalo_descanso,
+        series_aquecimento: te.series_aquecimento, series: te.series, intervalo_descanso: te.intervalo_descanso,
         tecnica_avancada: te.tecnica_avancada, observacoes: te.observacoes, grupo_id: novoGrupoId
       };
     }));
@@ -845,6 +898,26 @@ function renderAnalise() {
     analise.appendChild(distWrap);
   }
 
+  const volumePorGrupo = volumeSeriesPorGrupo(treinos);
+  const volumeEntradas = Object.entries(volumePorGrupo).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  if (volumeEntradas.length) {
+    analise.appendChild(el('<label>Volume de séries válidas por grupamento muscular</label>'));
+    analise.appendChild(el('<p class="sub" style="margin-top:-8px;">Séries de aquecimento não entram nessa contagem.</p>'));
+    const volWrap = el('<div style="margin-bottom:24px;"></div>');
+    const maxVol = volumeEntradas[0][1];
+    volumeEntradas.forEach(([cat, n]) => {
+      const row = el(
+        '<div class="dist-row">' +
+        '<div class="dist-label">' + cat + '</div>' +
+        '<div class="dist-bar-track"><div class="dist-bar-fill" style="width:' + (n / maxVol * 100) + '%;"></div></div>' +
+        '<div class="dist-count">' + n + (n === 1 ? ' série' : ' séries') + '</div>' +
+        '</div>'
+      );
+      volWrap.appendChild(row);
+    });
+    analise.appendChild(volWrap);
+  }
+
   analise.appendChild(el('<label>Detalhamento por treino — clique pra expandir e ajustar rápido</label>'));
   treinos.forEach(tr => {
     const grupos = gruposMusculares(tr);
@@ -888,8 +961,16 @@ function renderQuickEditItem(treino, te) {
   row.appendChild(el('<div class="quick-ex-nome">' + (te.exercicios || {}).nome + '</div>'));
   const fields = el('<div class="quick-ex-fields"></div>');
 
-  const seriesWrap = el('<div><label>Séries</label></div>');
-  const seriesInput = el('<input value="' + (te.series || '').replace(/"/g, '&quot;') + '" placeholder="Ex: 3x12">');
+  const seriesAquecWrap = el('<div><label>Aquecimento</label></div>');
+  const seriesAquecInput = el('<input value="' + (te.series_aquecimento || '').replace(/"/g, '&quot;') + '" placeholder="Opcional">');
+  seriesAquecInput.addEventListener('change', async () => {
+    te.series_aquecimento = seriesAquecInput.value.trim() || null;
+    await supabaseClient.from('treino_exercicios').update({ series_aquecimento: te.series_aquecimento }).eq('id', te.id);
+  });
+  seriesAquecWrap.appendChild(seriesAquecInput);
+
+  const seriesWrap = el('<div><label>Séries válidas</label></div>');
+  const seriesInput = el('<input value="' + (te.series || '').replace(/"/g, '&quot;') + '" placeholder="Ex: 10 reps">');
   seriesInput.addEventListener('change', async () => {
     te.series = seriesInput.value.trim() || null;
     await supabaseClient.from('treino_exercicios').update({ series: te.series }).eq('id', te.id);
@@ -904,6 +985,7 @@ function renderQuickEditItem(treino, te) {
   });
   descansoWrap.appendChild(descansoInput);
 
+  fields.appendChild(seriesAquecWrap);
   fields.appendChild(seriesWrap);
   fields.appendChild(descansoWrap);
   row.appendChild(fields);
@@ -1024,7 +1106,7 @@ function renderExItem(treino, te) {
 
   const info = el('<div style="min-width:0;"></div>');
   info.appendChild(el('<div class="ex-nome">' + (te.exercicios || {}).nome + '</div>'));
-  info.appendChild(el('<div class="ex-meta">' + (te.series || 'sem séries definidas') + (te.carga ? ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg> ' + te.carga : '') + ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg> descanso ' + (te.intervalo_descanso || '—') + '</div>'));
+  info.appendChild(el('<div class="ex-meta">' + resumoSeries(te) + (te.carga ? ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg> ' + te.carga : '') + ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg> descanso ' + (te.intervalo_descanso || '—') + '</div>'));
   if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
   const teVideoUrl = (te.exercicios || {}).video_url;
   if (teVideoUrl) {
@@ -1153,19 +1235,31 @@ function renderAddExForm(treino) {
     return exerciciosLib.find(e => e.nome.toLowerCase() === nome);
   };
 
+  const seriesAquecWrap = el('<div><label>Séries de aquecimento (opcional)</label></div>');
+  const seriesAquecTa = el('<textarea maxlength="250" placeholder="Ex: 15 reps — 20kg (uma série por linha)"></textarea>');
+  seriesAquecTa.value = editTe ? (editTe.series_aquecimento || '') : '';
+  const seriesAquecCount = el('<div class="counter">' + seriesAquecTa.value.length + '/250</div>');
+  seriesAquecTa.addEventListener('input', () => seriesAquecCount.textContent = seriesAquecTa.value.length + '/250');
+  seriesAquecWrap.appendChild(seriesAquecTa);
+  seriesAquecWrap.appendChild(seriesAquecCount);
+  seriesAquecWrap.appendChild(el('<div class="sub" style="margin:4px 0 0;">Não conta no volume de séries por grupamento muscular.</div>'));
+  form.appendChild(seriesAquecWrap);
+
   const seriesWrap = el('<div></div>');
   const seriesLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;"></div>');
-  seriesLabelRow.appendChild(el('<label style="margin-bottom:0;">Séries</label>'));
+  seriesLabelRow.appendChild(el('<label style="margin-bottom:0;">Séries válidas</label>'));
   const escolherSerieBtn = el('<button type="button" class="serie-tmpl-link">+ Adicionar série pré-definida</button>');
   seriesLabelRow.appendChild(escolherSerieBtn);
   seriesWrap.appendChild(seriesLabelRow);
-  const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 3x12, 4x8-10, 3x15"></textarea>');
+  const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 10 reps (uma série por linha)"></textarea>');
   seriesTa.value = editTe ? (editTe.series || '') : '';
   const seriesCount = el('<div class="counter">' + seriesTa.value.length + '/250</div>');
   seriesTa.addEventListener('input', () => seriesCount.textContent = seriesTa.value.length + '/250');
   escolherSerieBtn.addEventListener('click', () => abrirEscolherSerieTemplate({
     onAplicar: (tmpl) => {
-      seriesTa.value = formatarSerieTemplate(tmpl).slice(0, 250);
+      seriesAquecTa.value = formatarSerieTemplatePorTipo(tmpl, 'aquecimento').slice(0, 250);
+      seriesAquecCount.textContent = seriesAquecTa.value.length + '/250';
+      seriesTa.value = formatarSerieTemplatePorTipo(tmpl, 'valida').slice(0, 250);
       seriesCount.textContent = seriesTa.value.length + '/250';
     }
   }));
@@ -1173,7 +1267,10 @@ function renderAddExForm(treino) {
   seriesWrap.appendChild(seriesCount);
   const salvarComoTemplateBtn = el('<button type="button" class="serie-tmpl-link" style="margin-top:4px;">Salvar como série pré-definida</button>');
   salvarComoTemplateBtn.addEventListener('click', () => abrirModalSalvarSerieRapido({
-    linhas: parseSeriesTextoParaLinhas(seriesTa.value)
+    linhas: [
+      ...parseSeriesTextoParaLinhas(seriesAquecTa.value, 'aquecimento'),
+      ...parseSeriesTextoParaLinhas(seriesTa.value, 'valida')
+    ]
   }));
   seriesWrap.appendChild(salvarComoTemplateBtn);
   form.appendChild(seriesWrap);
@@ -1282,6 +1379,7 @@ function renderAddExForm(treino) {
 
     const payload = {
       exercicio_id: escolhido.id,
+      series_aquecimento: seriesAquecTa.value.trim() || null,
       series: seriesTa.value.trim() || null,
       carga: cargaInput.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
