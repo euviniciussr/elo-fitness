@@ -570,6 +570,10 @@ function renderTreinoTab(container) {
 }
 
 let taDetalheCargas = {}; // treino_exercicio_id -> serie_index -> [{data, carga}, ...] desc por data
+let taDetalheFeitosHoje = {}; // treino_exercicio_id -> true (marcado hoje pelo aluno)
+let taDetalheExecucoes = []; // [{data, created_at}, ...] desc por data — histórico de "finalizar treino" deste treino
+
+const TA_HOJE_ISO = new Date().toISOString().slice(0, 10);
 
 async function openTaDetalhe(treinoId) {
   taDetalheId = treinoId;
@@ -581,19 +585,55 @@ async function openTaDetalhe(treinoId) {
     .order('ordem', { ascending: true });
   taDetalheExercicios = data || [];
   taDetalheCargas = {};
+  taDetalheFeitosHoje = {};
+  const { data: execs } = await supabaseClient
+    .from('treino_execucoes')
+    .select('data, created_at')
+    .eq('treino_id', treinoId)
+    .order('data', { ascending: false });
+  taDetalheExecucoes = execs || [];
   if (taDetalheExercicios.length) {
-    const { data: cargas } = await supabaseClient
-      .from('serie_cargas')
-      .select('treino_exercicio_id, serie_index, carga, data')
-      .in('treino_exercicio_id', taDetalheExercicios.map(te => te.id))
-      .order('data', { ascending: false });
+    const [{ data: cargas }, { data: feitosHoje }] = await Promise.all([
+      supabaseClient.from('serie_cargas').select('treino_exercicio_id, serie_index, carga, data')
+        .in('treino_exercicio_id', taDetalheExercicios.map(te => te.id)).order('data', { ascending: false }),
+      supabaseClient.from('treino_exercicio_execucoes').select('treino_exercicio_id')
+        .in('treino_exercicio_id', taDetalheExercicios.map(te => te.id)).eq('data', TA_HOJE_ISO)
+    ]);
     (cargas || []).forEach(c => {
       const porExercicio = taDetalheCargas[c.treino_exercicio_id] || (taDetalheCargas[c.treino_exercicio_id] = {});
       const lista = porExercicio[c.serie_index] || (porExercicio[c.serie_index] = []);
       if (lista.length < 2) lista.push(c);
     });
+    (feitosHoje || []).forEach(r => { taDetalheFeitosHoje[r.treino_exercicio_id] = true; });
   }
   render();
+}
+
+function renderStatusTreino() {
+  if (!taDetalheExecucoes.length) return null;
+  const box = el('<div style="background:#0d1119;border:1px solid #1e2633;border-radius:12px;padding:14px 16px;margin-bottom:16px;"></div>');
+  const ultima = taDetalheExecucoes[0];
+  const fmtData = (d) => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR');
+  const fmtHora = (ts) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const destaque = ultima.data === TA_HOJE_ISO
+    ? '✓ Treino finalizado hoje às ' + fmtHora(ultima.created_at)
+    : '✓ Última finalização: ' + fmtData(ultima.data) + ' às ' + fmtHora(ultima.created_at);
+  box.appendChild(el('<div style="font-size:13px;font-weight:800;color:#4ade80;">' + destaque + '</div>'));
+  if (taDetalheExecucoes.length > 1) {
+    const historico = taDetalheExecucoes.slice(1, 6).map(e => fmtData(e.data)).join(' · ');
+    box.appendChild(el('<div style="font-size:11.5px;color:#66707e;margin-top:4px;">Histórico: ' + historico + '</div>'));
+  }
+  const feedbacksDoTreino = feedbacksList.filter(f => f.treino_id === taDetalheId);
+  if (feedbacksDoTreino.length) {
+    const fbWrap = el('<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a2130;"></div>');
+    feedbacksDoTreino.slice(0, 3).forEach(f => {
+      fbWrap.appendChild(el(
+        '<div style="font-size:12px;color:#9aa4b2;margin-top:4px;"><b style="color:#c7ccd6;">Feedback (' + fmtData(f.created_at.slice(0, 10)) + '):</b> ' + (f.comentario || '—') + '</div>'
+      ));
+    });
+    box.appendChild(fbWrap);
+  }
+  return box;
 }
 
 // "Série N — texto — atual (anterior: X)": só aparece quando o aluno já
@@ -610,9 +650,9 @@ function renderCargasSerieList(te) {
     algumaLinha = true;
     const atual = historico[0];
     const anterior = historico[1];
-    const fmt = (n) => String(n).replace('.', ',');
-    let txt = 'Série ' + (si + 1) + ' — ' + texto + ' — <b style="color:#4ade80;">' + fmt(atual.carga) + ' kg</b>';
-    if (anterior && anterior.carga !== atual.carga) txt += ' <span style="color:#66707e;">(anterior: ' + fmt(anterior.carga) + ' kg)</span>';
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let txt = 'Série ' + (si + 1) + ' — ' + texto + ' — Carga utilizada: <b style="color:#4ade80;">' + esc(atual.carga) + '</b>';
+    if (anterior && anterior.carga !== atual.carga) txt += ' <span style="color:#66707e;">(anterior: ' + esc(anterior.carga) + ')</span>';
     wrap.appendChild(el('<div style="font-size:11.5px;color:#9aa4b2;">' + txt + '</div>'));
   });
   return algumaLinha ? wrap : null;
@@ -626,14 +666,18 @@ function renderTaDetalhe(container) {
   head.appendChild(back);
   container.appendChild(head);
 
+  const statusTreino = renderStatusTreino();
+  if (statusTreino) container.appendChild(statusTreino);
+
   if (!taDetalheExercicios.length) {
     container.appendChild(el('<div class="empty">Nenhum exercício adicionado ainda.</div>'));
   }
   taDetalheExercicios.forEach(te => {
     const tec = tecnicasLib.find(t => t.id === te.tecnica_avancada);
+    const feitoHoje = !!taDetalheFeitosHoje[te.id];
     const item = el(
       '<div class="ex-item">' +
-        '<div class="ex-nome">' + ((te.exercicios || {}).nome || 'Exercício') + '</div>' +
+        '<div class="ex-nome">' + (feitoHoje ? '<span style="color:#4ade80;">☑</span> ' : '<span style="color:#4a5364;">☐</span> ') + ((te.exercicios || {}).nome || 'Exercício') + '</div>' +
         '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (tec ? tec.nome : 'Sem técnica avançada') + '</div>' +
       '</div>'
     );
@@ -880,19 +924,37 @@ function renderFotosTab(container) {
 
 // ---------- FEEDBACK ----------
 
+function renderFeedbackRow(f, treinoNome) {
+  return el(
+    '<div class="list-row">' +
+      '<div class="list-row-nome">' + (treinoNome || (f.humor || 'Sem humor registrado') + (f.rpe ? ' · RPE ' + f.rpe : '')) + '</div>' +
+      '<div class="list-row-meta">' + new Date(f.created_at).toLocaleDateString('pt-BR') + '</div>' +
+      (f.comentario ? '<div class="list-row-meta" style="margin-top:6px;">' + f.comentario + '</div>' : '') +
+    '</div>'
+  );
+}
+
 function renderFeedbackTab(container) {
   if (!feedbacksList.length) {
     container.appendChild(el('<div class="empty">Nenhum feedback enviado ainda.</div>'));
     return;
   }
-  feedbacksList.forEach(f => {
-    container.appendChild(el(
-      '<div class="list-row">' +
-        '<div class="list-row-nome">' + (f.humor || 'Sem humor registrado') + (f.rpe ? ' · RPE ' + f.rpe : '') + '</div>' +
-        '<div class="list-row-meta">' + new Date(f.created_at).toLocaleDateString('pt-BR') + '</div>' +
-        (f.comentario ? '<div class="list-row-meta" style="margin-top:6px;">' + f.comentario + '</div>' : '') +
-      '</div>'
-    ));
+  const gerais = feedbacksList.filter(f => !f.treino_id);
+  const porTreino = feedbacksList.filter(f => f.treino_id);
+
+  container.appendChild(el('<div class="sub" style="margin-bottom:10px;">Feedback geral (aba Evolução do aluno)</div>'));
+  if (!gerais.length) {
+    container.appendChild(el('<div class="empty">Nenhum feedback geral ainda.</div>'));
+  }
+  gerais.forEach(f => container.appendChild(renderFeedbackRow(f)));
+
+  container.appendChild(el('<div class="sub" style="margin:22px 0 10px;">Feedback de cada treino</div>'));
+  if (!porTreino.length) {
+    container.appendChild(el('<div class="empty">Nenhum feedback de treino ainda.</div>'));
+  }
+  porTreino.forEach(f => {
+    const treino = treinos.find(t => t.id === f.treino_id);
+    container.appendChild(renderFeedbackRow(f, treino ? treino.nome : 'Treino removido'));
   });
 }
 

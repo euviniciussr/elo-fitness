@@ -486,14 +486,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                             <div style="font-size:12.5px;color:#c7ccd6;">Série {{ sv.numero }} — {{ sv.texto }}</div>
                             <sc-if value="{{ sv.mostrarInput }}" hint-placeholder-val="{{ true }}">
                               <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                                <input value="{{ sv.inputValor }}" sc-camel-on-change="{{ sv.onInputChange }}" placeholder="carga" inputmode="decimal" style="width:64px;background:#0d1119;border:1px solid #1e2633;border-radius:8px;padding:6px 8px;color:#e5e9f0;font-family:inherit;font-size:12.5px;text-align:center;outline:none;">
-                                <span style="font-size:11px;color:#66707e;">kg</span>
+                                <input value="{{ sv.inputValor }}" sc-camel-on-change="{{ sv.onInputChange }}" placeholder="Ex: 60kg ou 40kg-30kg-20kg" style="width:170px;background:#0d1119;border:1px solid #1e2633;border-radius:8px;padding:6px 8px;color:#e5e9f0;font-family:inherit;font-size:12.5px;outline:none;">
                                 <button type="button" sc-camel-on-click="{{ sv.onSalvar }}" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer;">{{ sv.salvarLabel }}</button>
                               </div>
                             </sc-if>
                             <sc-if value="{{ sv.mostrarSalvo }}" hint-placeholder-val="{{ false }}">
                               <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                                <span style="font-size:12.5px;font-weight:700;color:#4ade80;">{{ sv.cargaLabel }} kg utilizados</span>
+                                <span style="font-size:12.5px;font-weight:700;color:#4ade80;">Carga: {{ sv.cargaLabel }}</span>
                                 <button type="button" sc-camel-on-click="{{ sv.onEditar }}" style="background:none;border:none;color:#66707e;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:0;">Editar</button>
                               </div>
                             </sc-if>
@@ -522,6 +521,28 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                     </div>
                   </sc-for>
                 </div>
+                <sc-if value="{{ dv.jaFinalizadoHoje }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:16px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:18px;color:#4ade80;">✓</span>
+                    <div>
+                      <div style="font-size:13px;font-weight:800;color:#4ade80;">Treino finalizado hoje</div>
+                      <div style="font-size:11.5px;color:#9aa4b2;">às {{ dv.finalizadoHorario }}</div>
+                    </div>
+                  </div>
+                  <sc-if value="{{ dv.feedbackTreinoEnviado }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:10px;font-size:12.5px;color:#4ade80;">✓ Feedback do treino enviado</div>
+                  </sc-if>
+                  <sc-if value="{{ dv.feedbackTreinoNaoEnviado }}" hint-placeholder-val="{{ true }}">
+                    <div style="margin-top:12px;background:#0d1119;border:1px solid #1e2633;border-radius:12px;padding:16px 18px;">
+                      <div style="font-size:12.5px;font-weight:800;margin-bottom:8px;">Como foi seu treino hoje?</div>
+                      <textarea value="{{ dv.feedbackTreinoTexto }}" sc-camel-on-change="{{ dv.onFeedbackTreinoChange }}" placeholder="Ex: Senti dificuldade nas últimas séries de perna…" style="width:100%;min-height:60px;background:#131a26;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:12.5px;outline:none;resize:vertical;"></textarea>
+                      <button type="button" sc-camel-on-click="{{ dv.onEnviarFeedbackTreino }}" style="margin-top:10px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;">{{ dv.feedbackTreinoLabel }}</button>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{ dv.aindaNaoFinalizadoHoje }}" hint-placeholder-val="{{ true }}">
+                  <button type="button" sc-camel-on-click="{{ dv.onFinalizarTreino }}" style="margin-top:16px;width:100%;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13.5px;font-weight:800;padding:13px;border-radius:12px;cursor:pointer;letter-spacing:.02em;">FINALIZAR TREINO</button>
+                </sc-if>
               </div>
             </sc-for>
           </div>
@@ -716,6 +737,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             </sc-for>
           </div>
         </section>
+
+        <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-top:16px;">
+          <div style="font-size:14px;font-weight:800;margin-bottom:4px;">Feedback</div>
+          <div style="font-size:12.5px;color:#9aa4b2;margin-bottom:14px;">Como está sendo sua evolução? Esse feedback vai direto pro seu personal.</div>
+          <textarea value="{{ feedbackGeralTexto }}" sc-camel-on-change="{{ onFeedbackGeralChange }}" placeholder="Ex: Estou conseguindo aumentar minhas cargas, mas sinto dificuldade em manter a frequência…" style="width:100%;min-height:72px;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:12px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
+          <button sc-camel-on-click="{{ enviarFeedbackGeral }}" style="margin-top:12px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px 26px;border-radius:11px;cursor:pointer;">{{ feedbackGeralLabel }}</button>
+        </section>
       </div>
     </sc-if>
 
@@ -841,14 +869,16 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;hoje&quot;,&quot;options&quot;:[&quot;hoje&quot;,&quot;treino&quot;,&quot;dieta&quot;,&quot;evolucao&quot;,&quot;agenda&quot;,&quot;mensagens&quot;,&quot;plano&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 class Component extends DCLogic {
   state = {
-    tab: 'hoje', feitos: [], treinoSelecionadoId: null,
+    tab: 'hoje', exerciciosFeitos: {}, treinoSelecionadoId: null,
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
     convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', alunoStatus: '', trainerNome: '',
     notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
     pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: '',
-    cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {}
+    cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {},
+    feedbackGeralTexto: '', feedbackGeralEnviando: false, feedbackGeralEnviado: false,
+    feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {}
   };
 
   componentDidMount() {
@@ -954,12 +984,18 @@ class Component extends DCLogic {
       (tecnicas || []).forEach(t => { tecnicasPorId[t.id] = t; });
     }
     let cargasSalvas = {};
+    let exerciciosFeitos = {};
     if (itens && itens.length) {
-      const { data: cargas } = await supabaseClient.from('serie_cargas').select('treino_exercicio_id, serie_index, carga')
-        .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr);
+      const [{ data: cargas }, { data: feitosHoje }] = await Promise.all([
+        supabaseClient.from('serie_cargas').select('treino_exercicio_id, serie_index, carga')
+          .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr),
+        supabaseClient.from('treino_exercicio_execucoes').select('treino_exercicio_id')
+          .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr)
+      ]);
       (cargas || []).forEach(c => { cargasSalvas[c.treino_exercicio_id + '_' + c.serie_index] = c.carga; });
+      (feitosHoje || []).forEach(r => { exerciciosFeitos[r.treino_exercicio_id] = true; });
     }
-    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId, cargasSalvas });
+    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId, cargasSalvas, exerciciosFeitos });
   }
 
   // Carga é sempre salva com a data de hoje: se o aluno já registrou hoje,
@@ -967,21 +1003,20 @@ class Component extends DCLogic {
   // — é assim que o histórico de progressão se forma sozinho.
   async onSalvarCarga(treinoExercicioId, serieIndex) {
     const key = treinoExercicioId + '_' + serieIndex;
-    const raw = (this.state.cargasInputTemp[key] || '').replace(',', '.').trim();
-    const valor = parseFloat(raw);
-    if (!raw || isNaN(valor) || valor <= 0) return;
+    const raw = (this.state.cargasInputTemp[key] || '').trim();
+    if (!raw) return;
     this.setState(s => ({ cargasSalvando: { ...s.cargasSalvando, [key]: true } }));
     const hoje = new Date().toISOString().slice(0, 10);
     const { error } = await supabaseClient.from('serie_cargas').upsert({
       treino_exercicio_id: treinoExercicioId, cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
-      serie_index: serieIndex, carga: valor, data: hoje, updated_at: new Date().toISOString()
+      serie_index: serieIndex, carga: raw, data: hoje, updated_at: new Date().toISOString()
     }, { onConflict: 'treino_exercicio_id,serie_index,data' });
     this.setState(s => {
       const cargasSalvando = { ...s.cargasSalvando, [key]: false };
       if (error) return { cargasSalvando };
       return {
         cargasSalvando,
-        cargasSalvas: { ...s.cargasSalvas, [key]: valor },
+        cargasSalvas: { ...s.cargasSalvas, [key]: raw },
         cargasEditando: { ...s.cargasEditando, [key]: false }
       };
     });
@@ -1014,14 +1049,49 @@ class Component extends DCLogic {
   }
 
   async onFinalizarTreino() {
-    const exData = this.state.exerciciosDoTreino;
-    this.setState({ feitos: exData.map(() => true) });
-    const hoje = new Date();
-    const hojeDow = hoje.getDay();
-    const hojeStr = hoje.toISOString().slice(0, 10);
+    const hojeDow = new Date().getDay();
     const treinoHoje = this.state.treinosPlano.find(tr => (tr.dias_semana || []).includes(hojeDow));
+    if (!treinoHoje) return;
+    const exDataHoje = this.state.exerciciosDoTreino.filter(te => te.treino_id === treinoHoje.id);
+    const exerciciosFeitos = { ...this.state.exerciciosFeitos };
+    exDataHoje.forEach(te => { exerciciosFeitos[te.id] = true; });
+    this.setState({ exerciciosFeitos });
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (exDataHoje.length) {
+      await supabaseClient.from('treino_exercicio_execucoes').upsert(
+        exDataHoje.map(te => ({ treino_exercicio_id: te.id, cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, data: hoje })),
+        { onConflict: 'treino_exercicio_id,data' }
+      );
+    }
+    await this.onFinalizarTreinoEspecifico(treinoHoje.id);
+  }
+
+  // Marca/desmarca um único exercício como realizado (persistido por dia —
+  // linha presente = feito; some a linha ao desmarcar). Independente da
+  // finalização do treino: o aluno pode finalizar mesmo sem marcar tudo.
+  async onToggleExercicioFeito(treinoExercicioId) {
+    const jaFeito = !!this.state.exerciciosFeitos[treinoExercicioId];
+    const exerciciosFeitos = { ...this.state.exerciciosFeitos };
+    if (jaFeito) delete exerciciosFeitos[treinoExercicioId]; else exerciciosFeitos[treinoExercicioId] = true;
+    this.setState({ exerciciosFeitos });
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (jaFeito) {
+      await supabaseClient.from('treino_exercicio_execucoes').delete()
+        .eq('treino_exercicio_id', treinoExercicioId).eq('data', hoje);
+    } else {
+      await supabaseClient.from('treino_exercicio_execucoes').upsert(
+        { treino_exercicio_id: treinoExercicioId, cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, data: hoje },
+        { onConflict: 'treino_exercicio_id,data' }
+      );
+    }
+  }
+
+  // Finaliza um treino específico (upsert por dia — clicar de novo no mesmo
+  // dia só atualiza, nunca duplica nem apaga o histórico de outros dias).
+  async onFinalizarTreinoEspecifico(treinoId) {
+    const hojeStr = new Date().toISOString().slice(0, 10);
     const { error } = await supabaseClient.from('treino_execucoes')
-      .upsert({ cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, treino_id: treinoHoje ? treinoHoje.id : null, data: hojeStr }, { onConflict: 'cliente_id,data' });
+      .upsert({ cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, treino_id: treinoId, data: hojeStr }, { onConflict: 'cliente_id,treino_id,data' });
     if (error) return;
     const desde90 = new Date(); desde90.setDate(desde90.getDate() - 90);
     const { data: execucoes } = await supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', this.state.clienteId).gte('data', desde90.toISOString().slice(0, 10));
@@ -1047,6 +1117,45 @@ class Component extends DCLogic {
       titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou um feedback de treino') : 'Novo feedback de treino recebido'
     });
     this.setState({ fbEnviando: false, fbEnviado: true });
+  }
+
+  // Feedback geral (aba Evolução) — mesma tabela feedbacks_treino, sem
+  // treino_id (nulo = geral). Independente do feedback pós-treino abaixo.
+  async onEnviarFeedbackGeral() {
+    const texto = this.state.feedbackGeralTexto.trim();
+    if (!texto) return;
+    this.setState({ feedbackGeralEnviando: true });
+    await supabaseClient.from('feedbacks_treino').insert({
+      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, comentario: texto
+    });
+    await supabaseClient.from('notificacoes').insert({
+      trainer_id: this.state.trainerId, cliente_id: this.state.clienteId, destino: 'trainer',
+      titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou um feedback') : 'Novo feedback recebido'
+    });
+    this.setState({ feedbackGeralEnviando: false, feedbackGeralEnviado: true, feedbackGeralTexto: '' });
+  }
+
+  onFeedbackTreinoChange(treinoId, valor) {
+    this.setState(s => ({ feedbackTreinoTexto: { ...s.feedbackTreinoTexto, [treinoId]: valor } }));
+  }
+
+  // Feedback vinculado a um treino específico — enviado depois de "Finalizar
+  // treino", fica associado a esse treino (não é o feedback geral acima).
+  async onEnviarFeedbackTreino(treinoId) {
+    const texto = (this.state.feedbackTreinoTexto[treinoId] || '').trim();
+    if (!texto) return;
+    this.setState(s => ({ feedbackTreinoEnviando: { ...s.feedbackTreinoEnviando, [treinoId]: true } }));
+    await supabaseClient.from('feedbacks_treino').insert({
+      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, comentario: texto, treino_id: treinoId
+    });
+    await supabaseClient.from('notificacoes').insert({
+      trainer_id: this.state.trainerId, cliente_id: this.state.clienteId, destino: 'trainer',
+      titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou um feedback do treino') : 'Novo feedback de treino recebido'
+    });
+    this.setState(s => ({
+      feedbackTreinoEnviando: { ...s.feedbackTreinoEnviando, [treinoId]: false },
+      feedbackTreinoEnviado: { ...s.feedbackTreinoEnviado, [treinoId]: true }
+    }));
   }
 
   async onFotoUpload(e) {
@@ -1075,9 +1184,7 @@ class Component extends DCLogic {
       weight: t === k ? '700' : '600'
     });
 
-    const feitos = this.state.feitos;
-    const doneCount = feitos.filter(Boolean).length;
-    const todos = feitos.length > 0 && doneCount === feitos.length;
+    const exerciciosFeitos = this.state.exerciciosFeitos;
 
     const exData = this.state.exerciciosDoTreino.map((te, idx) => {
       const tecnica = this.state.tecnicasPorId[te.tecnica_avancada];
@@ -1097,6 +1204,8 @@ class Component extends DCLogic {
         videoUrl: (te.exercicios || {}).video_url || ''
       };
     });
+    const doneCount = exData.filter(e => exerciciosFeitos[e.teId]).length;
+    const todos = exData.length > 0 && doneCount === exData.length;
     const DIA_LABELS_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
     const divisoesOrdenadas = this.state.treinosPlano.slice().sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     const divisoesData = divisoesOrdenadas.map(tr => {
@@ -1303,14 +1412,25 @@ class Component extends DCLogic {
       })),
       onVoltarListaTreinos: () => this.setState({ treinoSelecionadoId: null }),
       mostrarDetalheTreino: !!this.state.treinoSelecionadoId,
-      divisoes: divisoesData.filter(dv => dv.id === this.state.treinoSelecionadoId).map(dv => ({
+      divisoes: divisoesData.filter(dv => dv.id === this.state.treinoSelecionadoId).map(dv => {
+        const execHoje = this.state.execucoes.find(ex => ex.treino_id === dv.id && ex.data === isoOf(hoje));
+        return {
         nome: dv.nome,
         subtitulo: dv.subtitulo,
         diasLabel: dv.diasLabel,
         semExercicios: dv.semExercicios,
+        jaFinalizadoHoje: !!execHoje,
+        aindaNaoFinalizadoHoje: !execHoje,
+        finalizadoHorario: execHoje ? new Date(execHoje.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+        onFinalizarTreino: () => this.onFinalizarTreinoEspecifico(dv.id),
+        feedbackTreinoEnviado: !!this.state.feedbackTreinoEnviado[dv.id],
+        feedbackTreinoNaoEnviado: !this.state.feedbackTreinoEnviado[dv.id],
+        feedbackTreinoTexto: this.state.feedbackTreinoTexto[dv.id] || '',
+        feedbackTreinoLabel: this.state.feedbackTreinoEnviando[dv.id] ? 'Enviando…' : 'Enviar feedback',
+        onFeedbackTreinoChange: (ev) => this.onFeedbackTreinoChange(dv.id, ev.target.value),
+        onEnviarFeedbackTreino: () => this.onEnviarFeedbackTreino(dv.id),
         exercicios: dv.exercicios.map(e => {
-          const i = e.idx;
-          const done = feitos[i];
+          const done = !!exerciciosFeitos[e.teId];
           const seriesValidasData = e.seriesLinhas.map((linha, si) => {
             const key = e.teId + '_' + si;
             const salva = this.state.cargasSalvas[key];
@@ -1323,7 +1443,7 @@ class Component extends DCLogic {
               mostrarInput,
               mostrarSalvo: !mostrarInput,
               inputValor: this.state.cargasInputTemp[key] != null ? this.state.cargasInputTemp[key] : '',
-              cargaLabel: salva != null ? String(salva).replace('.', ',') : '',
+              cargaLabel: salva != null ? salva : '',
               salvando,
               salvarLabel: salvando ? 'Salvando…' : 'Salvar',
               onInputChange: (ev) => this.onCargaInputChange(key, ev.target.value),
@@ -1345,10 +1465,11 @@ class Component extends DCLogic {
             checkBorder: done ? 'rgba(74,222,128,.3)' : '#1e2633',
             decoration: done ? 'line-through' : 'none',
             nomeColor: done ? '#66707e' : '#e5e9f0',
-            onCheck: () => this.setState(s => { const f = s.feitos.slice(); f[i] = !f[i]; return { feitos: f }; })
+            onCheck: () => this.onToggleExercicioFeito(e.teId)
           };
         })
-      })),
+        };
+      }),
       videoModalOpen: !!this.state.videoModalUrl,
       videoModalEmbedUrl: this.embedUrl(this.state.videoModalUrl),
       onFecharVideo: () => this.setState({ videoModalUrl: '' }),
@@ -1370,6 +1491,11 @@ class Component extends DCLogic {
       feedbackLabel: this.state.fbEnviado ? 'Enviado ✓' : (this.state.fbEnviando ? 'Enviando…' : 'Enviar feedback'),
       comentarioFeedback: this.state.comentarioFeedback,
       onComentarioFeedbackChange: (e) => this.setState({ comentarioFeedback: e.target.value }),
+
+      feedbackGeralTexto: this.state.feedbackGeralTexto,
+      onFeedbackGeralChange: (e) => this.setState({ feedbackGeralTexto: e.target.value }),
+      enviarFeedbackGeral: () => this.onEnviarFeedbackGeral(),
+      feedbackGeralLabel: this.state.feedbackGeralEnviado ? 'Enviado ✓' : (this.state.feedbackGeralEnviando ? 'Enviando…' : 'Enviar feedback'),
 
       fotosEvolucao: this.state.fotosEvolucao.map(f => ({ url: f.url })),
       semFotosEvolucao: this.state.fotosEvolucao.length === 0,
