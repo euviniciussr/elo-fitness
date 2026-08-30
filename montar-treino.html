@@ -618,6 +618,8 @@ async function carregarTemplates() {
   });
 }
 
+let cargasPorTreinoExercicio = {}; // treino_exercicio_id -> serie_index -> [{carga, data}, ...] desc por data
+
 async function loadExerciciosDoTreino(treino) {
   const { data } = await supabaseClient
     .from('treino_exercicios')
@@ -625,6 +627,40 @@ async function loadExerciciosDoTreino(treino) {
     .eq('treino_id', treino.id)
     .order('ordem');
   treino._exercicios = data || [];
+  if (!clienteIdParam || !treino._exercicios.length) return;
+  treino._exercicios.forEach(te => { delete cargasPorTreinoExercicio[te.id]; });
+  const { data: cargas } = await supabaseClient
+    .from('serie_cargas')
+    .select('treino_exercicio_id, serie_index, carga, data')
+    .in('treino_exercicio_id', treino._exercicios.map(te => te.id))
+    .order('data', { ascending: false });
+  (cargas || []).forEach(c => {
+    const porExercicio = cargasPorTreinoExercicio[c.treino_exercicio_id] || (cargasPorTreinoExercicio[c.treino_exercicio_id] = {});
+    const lista = porExercicio[c.serie_index] || (porExercicio[c.serie_index] = []);
+    if (lista.length < 2) lista.push(c);
+  });
+}
+
+// "Série N — atual (anterior: X)": só aparece quando o aluno já registrou ao
+// menos uma carga naquela série — nunca mostra algo que o aluno não digitou.
+function renderCargasSerieList(te) {
+  const cargasPorSerie = cargasPorTreinoExercicio[te.id];
+  if (!cargasPorSerie || !Object.keys(cargasPorSerie).length) return null;
+  const linhas = (te.series || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const wrap = el('<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #1e2633;display:flex;flex-direction:column;gap:3px;"></div>');
+  let alguma = false;
+  linhas.forEach((texto, si) => {
+    const historico = cargasPorSerie[si];
+    if (!historico || !historico.length) return;
+    alguma = true;
+    const atual = historico[0];
+    const anterior = historico[1];
+    const fmt = (n) => String(n).replace('.', ',');
+    let txt = 'Série ' + (si + 1) + ' — <b style="color:#4ade80;">' + fmt(atual.carga) + ' kg</b>';
+    if (anterior && anterior.carga !== atual.carga) txt += ' <span style="color:#66707e;">(anterior: ' + fmt(anterior.carga) + ' kg)</span>';
+    wrap.appendChild(el('<div style="font-size:11.5px;color:#9aa4b2;">' + txt + '</div>'));
+  });
+  return alguma ? wrap : null;
 }
 
 function gruposMusculares(treino) {
@@ -1128,6 +1164,8 @@ function renderExItem(treino, te) {
     info.appendChild(videoToggle);
     info.appendChild(videoWrap);
   }
+  const cargasList = renderCargasSerieList(te);
+  if (cargasList) info.appendChild(cargasList);
   item.appendChild(info);
 
   const actions = el('<div class="ex-actions"></div>');

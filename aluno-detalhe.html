@@ -569,6 +569,8 @@ function renderTreinoTab(container) {
   container.appendChild(novoBtn);
 }
 
+let taDetalheCargas = {}; // treino_exercicio_id -> serie_index -> [{data, carga}, ...] desc por data
+
 async function openTaDetalhe(treinoId) {
   taDetalheId = treinoId;
   taAddExOpen = false;
@@ -578,7 +580,42 @@ async function openTaDetalhe(treinoId) {
     .eq('treino_id', treinoId)
     .order('ordem', { ascending: true });
   taDetalheExercicios = data || [];
+  taDetalheCargas = {};
+  if (taDetalheExercicios.length) {
+    const { data: cargas } = await supabaseClient
+      .from('serie_cargas')
+      .select('treino_exercicio_id, serie_index, carga, data')
+      .in('treino_exercicio_id', taDetalheExercicios.map(te => te.id))
+      .order('data', { ascending: false });
+    (cargas || []).forEach(c => {
+      const porExercicio = taDetalheCargas[c.treino_exercicio_id] || (taDetalheCargas[c.treino_exercicio_id] = {});
+      const lista = porExercicio[c.serie_index] || (porExercicio[c.serie_index] = []);
+      if (lista.length < 2) lista.push(c);
+    });
+  }
   render();
+}
+
+// "Série N — texto — atual (anterior: X)": só aparece quando o aluno já
+// registrou pelo menos uma carga naquela série; nunca inventa um valor.
+function renderCargasSerieList(te) {
+  const cargasPorSerie = taDetalheCargas[te.id];
+  if (!cargasPorSerie || !Object.keys(cargasPorSerie).length) return null;
+  const linhas = (te.series || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const wrap = el('<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #1e2633;display:flex;flex-direction:column;gap:3px;"></div>');
+  let algumaLinha = false;
+  linhas.forEach((texto, si) => {
+    const historico = cargasPorSerie[si];
+    if (!historico || !historico.length) return;
+    algumaLinha = true;
+    const atual = historico[0];
+    const anterior = historico[1];
+    const fmt = (n) => String(n).replace('.', ',');
+    let txt = 'Série ' + (si + 1) + ' — ' + texto + ' — <b style="color:#4ade80;">' + fmt(atual.carga) + ' kg</b>';
+    if (anterior && anterior.carga !== atual.carga) txt += ' <span style="color:#66707e;">(anterior: ' + fmt(anterior.carga) + ' kg)</span>';
+    wrap.appendChild(el('<div style="font-size:11.5px;color:#9aa4b2;">' + txt + '</div>'));
+  });
+  return algumaLinha ? wrap : null;
 }
 
 function renderTaDetalhe(container) {
@@ -594,12 +631,15 @@ function renderTaDetalhe(container) {
   }
   taDetalheExercicios.forEach(te => {
     const tec = tecnicasLib.find(t => t.id === te.tecnica_avancada);
-    container.appendChild(el(
+    const item = el(
       '<div class="ex-item">' +
         '<div class="ex-nome">' + ((te.exercicios || {}).nome || 'Exercício') + '</div>' +
         '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (tec ? tec.nome : 'Sem técnica avançada') + '</div>' +
       '</div>'
-    ));
+    );
+    const cargasList = renderCargasSerieList(te);
+    if (cargasList) item.appendChild(cargasList);
+    container.appendChild(item);
   });
 
   if (taAddExOpen) {

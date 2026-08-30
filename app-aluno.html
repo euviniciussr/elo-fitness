@@ -481,8 +481,23 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                           </sc-for>
                           <div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;color:#66707e;text-transform:uppercase;margin:6px 0 1px;">Séries válidas</div>
                         </sc-if>
-                        <sc-for list="{{ e.seriesLinhas }}" as="ln" hint-placeholder-count="3">
-                          <div style="font-size:12.5px;color:#c7ccd6;">• {{ ln }}</div>
+                        <sc-for list="{{ e.seriesValidasData }}" as="sv" hint-placeholder-count="3">
+                          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:2px 0;">
+                            <div style="font-size:12.5px;color:#c7ccd6;">Série {{ sv.numero }} — {{ sv.texto }}</div>
+                            <sc-if value="{{ sv.mostrarInput }}" hint-placeholder-val="{{ true }}">
+                              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                                <input value="{{ sv.inputValor }}" sc-camel-on-change="{{ sv.onInputChange }}" placeholder="carga" inputmode="decimal" style="width:64px;background:#0d1119;border:1px solid #1e2633;border-radius:8px;padding:6px 8px;color:#e5e9f0;font-family:inherit;font-size:12.5px;text-align:center;outline:none;">
+                                <span style="font-size:11px;color:#66707e;">kg</span>
+                                <button type="button" sc-camel-on-click="{{ sv.onSalvar }}" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer;">{{ sv.salvarLabel }}</button>
+                              </div>
+                            </sc-if>
+                            <sc-if value="{{ sv.mostrarSalvo }}" hint-placeholder-val="{{ false }}">
+                              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                                <span style="font-size:12.5px;font-weight:700;color:#4ade80;">{{ sv.cargaLabel }} kg utilizados</span>
+                                <button type="button" sc-camel-on-click="{{ sv.onEditar }}" style="background:none;border:none;color:#66707e;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:0;">Editar</button>
+                              </div>
+                            </sc-if>
+                          </div>
                         </sc-for>
                         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#9aa4b2;">
                           <sc-if value="{{ e.carga }}" hint-placeholder-val="{{ true }}">
@@ -832,7 +847,8 @@ class Component extends DCLogic {
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
     convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', alunoStatus: '', trainerNome: '',
     notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
-    pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: ''
+    pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: '',
+    cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {}
   };
 
   componentDidMount() {
@@ -937,7 +953,49 @@ class Component extends DCLogic {
       const { data: tecnicas } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').in('id', tecnicaIds);
       (tecnicas || []).forEach(t => { tecnicasPorId[t.id] = t; });
     }
-    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId });
+    let cargasSalvas = {};
+    if (itens && itens.length) {
+      const { data: cargas } = await supabaseClient.from('serie_cargas').select('treino_exercicio_id, serie_index, carga')
+        .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr);
+      (cargas || []).forEach(c => { cargasSalvas[c.treino_exercicio_id + '_' + c.serie_index] = c.carga; });
+    }
+    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId, cargasSalvas });
+  }
+
+  // Carga é sempre salva com a data de hoje: se o aluno já registrou hoje,
+  // "salvar" de novo faz upsert (edita), sem nunca tocar em dias anteriores
+  // — é assim que o histórico de progressão se forma sozinho.
+  async onSalvarCarga(treinoExercicioId, serieIndex) {
+    const key = treinoExercicioId + '_' + serieIndex;
+    const raw = (this.state.cargasInputTemp[key] || '').replace(',', '.').trim();
+    const valor = parseFloat(raw);
+    if (!raw || isNaN(valor) || valor <= 0) return;
+    this.setState(s => ({ cargasSalvando: { ...s.cargasSalvando, [key]: true } }));
+    const hoje = new Date().toISOString().slice(0, 10);
+    const { error } = await supabaseClient.from('serie_cargas').upsert({
+      treino_exercicio_id: treinoExercicioId, cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
+      serie_index: serieIndex, carga: valor, data: hoje, updated_at: new Date().toISOString()
+    }, { onConflict: 'treino_exercicio_id,serie_index,data' });
+    this.setState(s => {
+      const cargasSalvando = { ...s.cargasSalvando, [key]: false };
+      if (error) return { cargasSalvando };
+      return {
+        cargasSalvando,
+        cargasSalvas: { ...s.cargasSalvas, [key]: valor },
+        cargasEditando: { ...s.cargasEditando, [key]: false }
+      };
+    });
+  }
+
+  onEditarCarga(key, valorAtual) {
+    this.setState(s => ({
+      cargasEditando: { ...s.cargasEditando, [key]: true },
+      cargasInputTemp: { ...s.cargasInputTemp, [key]: valorAtual != null ? String(valorAtual) : '' }
+    }));
+  }
+
+  onCargaInputChange(key, valor) {
+    this.setState(s => ({ cargasInputTemp: { ...s.cargasInputTemp, [key]: valor } }));
   }
 
   onPesoInputChange(e) {
@@ -1025,6 +1083,7 @@ class Component extends DCLogic {
       const tecnica = this.state.tecnicasPorId[te.tecnica_avancada];
       return {
         idx,
+        teId: te.id,
         treinoId: te.treino_id,
         nome: (te.exercicios || {}).nome || 'Exercício',
         categoria: (te.exercicios || {}).categoria || '',
@@ -1252,11 +1311,31 @@ class Component extends DCLogic {
         exercicios: dv.exercicios.map(e => {
           const i = e.idx;
           const done = feitos[i];
+          const seriesValidasData = e.seriesLinhas.map((linha, si) => {
+            const key = e.teId + '_' + si;
+            const salva = this.state.cargasSalvas[key];
+            const editando = !!this.state.cargasEditando[key];
+            const mostrarInput = salva == null || editando;
+            const salvando = !!this.state.cargasSalvando[key];
+            return {
+              numero: si + 1,
+              texto: linha,
+              mostrarInput,
+              mostrarSalvo: !mostrarInput,
+              inputValor: this.state.cargasInputTemp[key] != null ? this.state.cargasInputTemp[key] : '',
+              cargaLabel: salva != null ? String(salva).replace('.', ',') : '',
+              salvando,
+              salvarLabel: salvando ? 'Salvando…' : 'Salvar',
+              onInputChange: (ev) => this.onCargaInputChange(key, ev.target.value),
+              onEditar: () => this.onEditarCarga(key, salva),
+              onSalvar: () => this.onSalvarCarga(e.teId, si)
+            };
+          });
           return {
             nome: e.nome,
             temAquecimento: e.seriesAquecimentoLinhas.length > 0,
             seriesAquecimentoLinhas: e.seriesAquecimentoLinhas,
-            seriesLinhas: e.seriesLinhas, carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
+            seriesValidasData, carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
             tecnica: e.tecnica, tecnicaObs: e.tecnicaObs,
             temVideo: !!e.videoUrl,
             onVerVideo: () => { if (e.videoUrl) this.setState({ videoModalUrl: e.videoUrl }); },
