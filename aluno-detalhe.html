@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aluno — Performa AI</title>
+<title>Aluno — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
@@ -109,8 +109,8 @@ textarea{resize:vertical;min-height:52px;}
 
 <div class="topbar">
   <div class="logo">
-    <div class="logo-badge">P</div>
-    <div class="logo-text">Performa <span>AI</span></div>
+    <div class="logo-badge">E</div>
+    <div class="logo-text">Elo <span>Fitness</span></div>
   </div>
   <a class="voltar" href="alunos.html">← Voltar pros alunos</a>
 </div>
@@ -501,7 +501,7 @@ function notificarCliente() {
   if (!cliente.telefone) { alert('Esse aluno ainda não tem telefone cadastrado.'); return; }
   let digits = cliente.telefone.replace(/\D/g, '');
   if (digits.length <= 11) digits = '55' + digits;
-  const msg = encodeURIComponent('Oi ' + cliente.nome + '! Seu treino já está pronto no Performa AI <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>');
+  const msg = encodeURIComponent('Oi ' + cliente.nome + '! Seu treino já está pronto no Elo Fitness <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>');
   window.open('https://wa.me/' + digits + '?text=' + msg, '_blank');
 }
 

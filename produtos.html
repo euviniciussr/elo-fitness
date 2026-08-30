@@ -203,8 +203,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 <div style="display:flex;min-height:100vh;background:#0a0d13;">
   <aside style="width:250px;flex-shrink:0;background:#0d1119;border-right:1px solid #171d29;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;gap:10px;padding:0 8px;">
-      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:17px;">P</div>
-      <div style="font-size:18px;font-weight:800;">Performa <span style="color:#f97316;">AI</span></div>
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:17px;">E</div>
+      <div style="font-size:18px;font-weight:800;">Elo <span style="color:#f97316;">Fitness</span></div>
     </div>
     <div style="margin:18px 8px 20px;"><span style="font-size:11px;font-weight:700;color:#f97316;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);padding:5px 12px;border-radius:999px;">Personal Trainer</span></div>
 
@@ -286,7 +286,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:10px;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:6px 6px 6px 14px;">
-          <span style="font-size:12px;color:#66707e;font-family:ui-monospace,monospace;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">performa.ai/m/seuusuario</span>
+          <span style="font-size:12px;color:#66707e;font-family:ui-monospace,monospace;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">elofitness.app/m/seuusuario</span>
           <button sc-camel-on-click="{{ copyCatalogo }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;" style-hover="color:#e5e9f0;">{{ copyCatalogoLabel }}</button>
         </div>
         <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="color:#e5e9f0;border-color:#2a3444;">Cupons</button>
@@ -336,7 +336,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               Exigir anamnese + fotos antes de liberar o acesso
             </label>
             <sc-if value="{{ formAnamnese }}" hint-placeholder-val="{{ true }}">
-              <div style="font-size:11.5px;color:#66707e;line-height:1.5;">Assim que o cliente comprar, ele recebe o link <span style="color:#f97316;font-family:ui-monospace,monospace;">performa.ai/anamnese/seuusuario</span> pra preencher antes de ganhar acesso.</div>
+              <div style="font-size:11.5px;color:#66707e;line-height:1.5;">Assim que o cliente comprar, ele recebe o link <span style="color:#f97316;font-family:ui-monospace,monospace;">elofitness.app/anamnese/seuusuario</span> pra preencher antes de ganhar acesso.</div>
             </sc-if>
           </div>
           <button sc-camel-on-click="{{ criarProduto }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">Criar produto</button>
@@ -522,7 +522,7 @@ class Component extends DCLogic {
       },
       copyCatalogoLabel: this.state.copiedCatalogo ? 'Copiado!' : 'Copiar catálogo',
       copyCatalogo: () => {
-        navigator.clipboard && navigator.clipboard.writeText('https://performa.ai/m/seuusuario');
+        navigator.clipboard && navigator.clipboard.writeText('https://elofitness.app/m/seuusuario');
         this.setState({ copiedCatalogo: true });
         setTimeout(() => this.setState({ copiedCatalogo: false }), 1800);
       },
@@ -544,7 +544,7 @@ class Component extends DCLogic {
         spark: this.spark(p.spark, p.vendas === 0 ? '#3a4352' : (p.shareW >= 40 ? '#f97316' : '#3b82f6')),
         copyLabel: this.state.copiedId === p.id ? 'Copiado!' : 'Link',
         onCopy: () => {
-          navigator.clipboard && navigator.clipboard.writeText('https://performa.ai/p/' + p.id);
+          navigator.clipboard && navigator.clipboard.writeText('https://elofitness.app/p/' + p.id);
           this.setState({ copiedId: p.id });
           setTimeout(() => this.setState({ copiedId: null }), 1800);
         }
