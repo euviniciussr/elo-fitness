@@ -363,9 +363,16 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 <input type="number" value="{{ alimentoLip }}" sc-camel-on-change="{{ onAlimentoLipChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
               </div>
             </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Fibra (g)</label>
+              <input type="number" value="{{ alimentoFib }}" sc-camel-on-change="{{ onAlimentoFibChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
           </div>
           <div style="{{ alimentoErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ alimentoErro }}</div>
           <button sc-camel-on-click="{{ onSalvarAlimento }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ alimentoSalvarLabel }}</button>
+          <sc-if value="{{ alimentoPodeExcluir }}" hint-placeholder-val="{{ false }}">
+            <button sc-camel-on-click="{{ onExcluirAlimento }}" style="width:100%;margin-top:10px;background:none;border:1px solid rgba(248,113,113,.35);color:#f87171;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:10px;cursor:pointer;">Excluir alimento</button>
+          </sc-if>
         </div>
       </div>
     </sc-if>
@@ -389,6 +396,29 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           </div>
           <div style="{{ formulaErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ formulaErro }}</div>
           <button sc-camel-on-click="{{ onSalvarFormula }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ formulaSalvarLabel }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ tecnicaModalOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:440px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:800;">{{ tecnicaModalTitulo }}</div>
+            <button sc-camel-on-click="{{ closeTecnicaModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
+              <input value="{{ tecnicaNome }}" sc-camel-on-change="{{ onTecnicaNomeChange }}" placeholder="Ex: Drop set" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Descrição</label>
+              <textarea rows="3" value="{{ tecnicaDescricao }}" sc-camel-on-change="{{ onTecnicaDescricaoChange }}" placeholder="Como realizar essa técnica" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="{{ tecnicaErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ tecnicaErro }}</div>
+          <button sc-camel-on-click="{{ onSalvarTecnica }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ tecnicaSalvarLabel }}</button>
         </div>
       </div>
     </sc-if>
@@ -554,8 +584,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <sc-if value="{{ alimentosVazio }}" hint-placeholder-val="{{ true }}">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
               <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="11" cy="14" r="7"></circle><path d="M11 7c0-2 1-4 3-4"></path><path d="M8 4c1 1 2 2 2 3"></path></svg></div>
-              <div style="font-size:14.5px;font-weight:800;">Nenhum alimento próprio cadastrado</div>
-              <div style="font-size:12.5px;color:#66707e;margin-top:6px;">A busca ao montar uma dieta já traz alimentos da base do app e de fontes externas — use esta lista só pra acompanhar os que você cadastrou manualmente.</div>
+              <div style="font-size:14.5px;font-weight:800;">Nenhum alimento cadastrado ainda</div>
+              <div style="font-size:12.5px;color:#66707e;margin-top:6px;">A busca ao montar uma dieta já traz alimentos da base do app e de fontes externas — esta lista mostra os alimentos cadastrados manualmente, compartilhados entre todos os profissionais.</div>
             </div>
           </sc-if>
           <sc-if value="{{ isAlimentos }}" hint-placeholder-val="{{ true }}">
@@ -574,7 +604,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 <div style="flex:0 0 66px;text-align:right;font-size:13px;font-weight:700;">{{ a.lip }}<span style="font-size:10px;color:#66707e;"> g</span></div>
                 <div style="flex:0 0 66px;text-align:right;font-size:13px;font-weight:700;">{{ a.fib }}<span style="font-size:10px;color:#66707e;"> g</span></div>
                 <div style="flex:0 0 86px;text-align:right;font-size:13.5px;font-weight:800;color:#f97316;">{{ a.cal }}<span style="font-size:10px;color:#66707e;"> kcal</span></div>
-                <div style="flex:0 0 120px;text-align:right;font-size:11.5px;color:#66707e;">{{ a.uso }}</div>
+                <div style="flex:0 0 120px;text-align:right;">
+                  <sc-if value="{{ a.podeEditar }}" hint-placeholder-val="{{ false }}">
+                    <span sc-camel-on-click="{{ a.onEditarAlimento }}" style="font-size:11.5px;font-weight:700;color:#f97316;cursor:pointer;">✎ Editar</span>
+                  </sc-if>
+                </div>
               </div>
             </sc-for>
           </div>
@@ -690,8 +724,10 @@ class Component extends DCLogic {
 
     importBusy: false, importResultMsg: '', importResultColor: '#4ade80',
 
+    isAdmin: false,
+
     alimentosDb: [], buscaAlimentos: '', buscaGeral: '',
-    alimentoModalOpen: false, alimentoEditId: '', alimentoNome: '', alimentoCategoria: '', alimentoKcal: '', alimentoPtn: '', alimentoCho: '', alimentoLip: '', alimentoErro: '', alimentoSalvarLabel: 'Adicionar alimento',
+    alimentoModalOpen: false, alimentoEditId: '', alimentoNome: '', alimentoCategoria: '', alimentoKcal: '', alimentoPtn: '', alimentoCho: '', alimentoLip: '', alimentoFib: '', alimentoErro: '', alimentoSalvarLabel: 'Adicionar alimento',
     importAlimentosBusy: false, importAlimentosMsg: '', importAlimentosColor: '#4ade80',
 
     formulasDb: [],
@@ -700,7 +736,8 @@ class Component extends DCLogic {
     refeicoesPredefinidasDb: [],
     refeicaoModalOpen: false, refeicaoEditId: '', refeicaoNome: '', refeicaoDescricao: '', refeicaoErro: '', refeicaoSalvarLabel: 'Criar refeição',
 
-    tecnicasDb: []
+    tecnicasDb: [],
+    tecnicaModalOpen: false, tecnicaEditId: '', tecnicaNome: '', tecnicaDescricao: '', tecnicaErro: '', tecnicaSalvarLabel: 'Salvar técnica'
   };
 
   componentDidMount() {
@@ -710,21 +747,25 @@ class Component extends DCLogic {
   async loadAcervo() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes, tecnicasRes] = await Promise.all([
+    const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes, tecnicasRes, trainerRes] = await Promise.all([
       supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
       supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id),
       supabaseClient.from('dietas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('alimentos').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
+      // Base de alimentos agora é compartilhada entre treinadores (só o admin
+      // edita/exclui) — por isso não filtra mais por trainer_id aqui.
+      supabaseClient.from('alimentos').select('*').order('nome', { ascending: true }),
       supabaseClient.from('formulas_alimentares').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('refeicoes_predefinidas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', user.id).order('created_at', { ascending: true })
+      supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', user.id).order('created_at', { ascending: true }),
+      supabaseClient.from('trainers').select('is_admin').eq('id', user.id).maybeSingle()
     ]);
     this.setState({
       exerciciosDb: exRes.data || [], treinosDb: trRes.data || [], clientesDb: clRes.data || [],
       dietasDb: dietasRes.data || [], alimentosDb: alimentosRes.data || [],
       formulasDb: formulasRes.data || [], refeicoesPredefinidasDb: refeicoesRes.data || [],
-      tecnicasDb: tecnicasRes.data || []
+      tecnicasDb: tecnicasRes.data || [],
+      isAdmin: !!(trainerRes.data && trainerRes.data.is_admin)
     });
   }
 
@@ -734,6 +775,7 @@ class Component extends DCLogic {
     else if (tipo === 'alimentos') this.openAlimentoModal();
     else if (tipo === 'formulas') this.openFormulaModal();
     else if (tipo === 'refeicoes') this.openRefeicaoModal();
+    else if (tipo === 'tecnicas') this.openTecnicaModal();
     else if (tipo === 'cardapios' || tipo === 'minhasDietas') window.location.href = 'montar-dieta.html';
   }
 
@@ -747,6 +789,21 @@ class Component extends DCLogic {
 
   onVerVideo(url) {
     window.open(url, '_blank', 'noopener');
+  }
+
+  // Exclusão exclusiva do admin (gate real é a RLS — isso é só a verificação
+  // de uso antes de oferecer o botão). Nunca exclui um exercício que já
+  // esteja prescrito em algum treino, pra não quebrar prescrições de alunos.
+  async onExcluirExercicio(ex) {
+    const { count } = await supabaseClient.from('treino_exercicios').select('id', { count: 'exact', head: true }).eq('exercicio_id', ex.id);
+    if (count) {
+      alert('Não é possível excluir "' + ex.nome + '": ele está sendo usado em ' + count + (count === 1 ? ' prescrição de treino' : ' prescrições de treino') + '. Remova-o desses treinos antes de excluir da biblioteca.');
+      return;
+    }
+    if (!window.confirm('Excluir o exercício "' + ex.nome + '"? Essa ação não pode ser desfeita.')) return;
+    const { error } = await supabaseClient.from('exercicios').delete().eq('id', ex.id);
+    if (error) { alert('Não foi possível excluir: ' + error.message); return; }
+    this.loadAcervo();
   }
 
   async onCriarExercicio() {
@@ -943,6 +1000,7 @@ class Component extends DCLogic {
       alimentoPtn: alimento && alimento.proteina_g != null ? String(alimento.proteina_g) : '',
       alimentoCho: alimento && alimento.carboidrato_g != null ? String(alimento.carboidrato_g) : '',
       alimentoLip: alimento && alimento.gordura_g != null ? String(alimento.gordura_g) : '',
+      alimentoFib: alimento && alimento.fibra_g != null ? String(alimento.fibra_g) : '',
       alimentoErro: '', alimentoSalvarLabel: alimento ? 'Salvar alterações' : 'Adicionar alimento'
     });
   }
@@ -960,7 +1018,8 @@ class Component extends DCLogic {
     const payload = {
       nome, categoria: this.state.alimentoCategoria.trim() || null,
       kcal: num(this.state.alimentoKcal), proteina_g: num(this.state.alimentoPtn),
-      carboidrato_g: num(this.state.alimentoCho), gordura_g: num(this.state.alimentoLip)
+      carboidrato_g: num(this.state.alimentoCho), gordura_g: num(this.state.alimentoLip),
+      fibra_g: num(this.state.alimentoFib)
     };
     let error;
     if (editando) {
@@ -970,6 +1029,15 @@ class Component extends DCLogic {
       ({ error } = await supabaseClient.from('alimentos').insert({ ...payload, trainer_id: user.id }));
     }
     if (error) { this.setState({ alimentoSalvarLabel: editando ? 'Salvar alterações' : 'Adicionar alimento', alimentoErro: error.message }); return; }
+    this.setState({ alimentoModalOpen: false, alimentoEditId: '' });
+    this.loadAcervo();
+  }
+
+  async onExcluirAlimento() {
+    const nome = this.state.alimentoNome;
+    if (!window.confirm('Tem certeza que deseja excluir o alimento "' + nome + '"? Essa ação não pode ser desfeita.')) return;
+    const { error } = await supabaseClient.from('alimentos').delete().eq('id', this.state.alimentoEditId);
+    if (error) { this.setState({ alimentoErro: error.message }); return; }
     this.setState({ alimentoModalOpen: false, alimentoEditId: '' });
     this.loadAcervo();
   }
@@ -1066,6 +1134,40 @@ class Component extends DCLogic {
     }
   }
 
+  // Técnicas avançadas: mesmo cadastro usado na montagem de treino
+  // (tabela tecnicas_avancadas) — aqui só visualiza/edita, sem duplicar.
+  // Qualquer trainer edita (não é exclusivo do admin), e não há exclusão
+  // por aqui — técnica em uso não deve sumir da prescrição de ninguém.
+  openTecnicaModal(tecnica) {
+    this.setState({
+      tecnicaModalOpen: true, tecnicaEditId: tecnica ? tecnica.id : '',
+      tecnicaNome: tecnica ? tecnica.nome : '', tecnicaDescricao: tecnica ? (tecnica.observacao || '') : '',
+      tecnicaErro: '', tecnicaSalvarLabel: tecnica ? 'Salvar alterações' : 'Salvar técnica'
+    });
+  }
+
+  closeTecnicaModal() {
+    this.setState({ tecnicaModalOpen: false });
+  }
+
+  async onSalvarTecnica() {
+    const nome = this.state.tecnicaNome.trim();
+    if (!nome) { this.setState({ tecnicaErro: 'Digite o nome da técnica.' }); return; }
+    const editando = !!this.state.tecnicaEditId;
+    this.setState({ tecnicaSalvarLabel: 'Salvando…', tecnicaErro: '' });
+    const payload = { nome, observacao: this.state.tecnicaDescricao.trim() || null };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('tecnicas_avancadas').update(payload).eq('id', this.state.tecnicaEditId));
+    } else {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      ({ error } = await supabaseClient.from('tecnicas_avancadas').insert({ ...payload, trainer_id: user.id }));
+    }
+    if (error) { this.setState({ tecnicaSalvarLabel: editando ? 'Salvar alterações' : 'Salvar técnica', tecnicaErro: error.message }); return; }
+    this.setState({ tecnicaModalOpen: false, tecnicaEditId: '' });
+    this.loadAcervo();
+  }
+
   openFormulaModal(formula) {
     this.setState({
       formulaModalOpen: true, formulaEditId: formula ? formula.id : '',
@@ -1146,7 +1248,7 @@ class Component extends DCLogic {
     const TIPOS = {
       treino: [
         ['exercicios', '', 'Exercícios', this.state.exerciciosDb.length],
-        ['tecnicas', '', 'Técnicas avançadas', 0],
+        ['tecnicas', '', 'Técnicas avançadas', this.state.tecnicasDb.length],
         ['treinos', '', 'Meus treinos', treinosCardCount],
         ['predefinidos', '', 'Treinos predefinidos', 0],
         ['cardio', '', 'Planos de cardio', 0]
@@ -1175,9 +1277,16 @@ class Component extends DCLogic {
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
         mostrarUsar: false, temAcoesExercicio: true, temVideo: !!ex.video_url,
         onVerVideo: (e) => { e.stopPropagation(); this.onVerVideo(ex.video_url); },
-        onEditar: (e) => { e.stopPropagation(); this.onEditarExercicio(ex); }
+        onEditar: (e) => { e.stopPropagation(); this.onEditarExercicio(ex); },
+        ...(this.state.isAdmin ? { onDelete: (e) => { e.stopPropagation(); this.onExcluirExercicio(ex); } } : {})
       })),
-      tecnicas: [],
+      tecnicas: this.state.tecnicasDb.filter(t => combinaBusca(t.nome)).map(t => ({
+        icon: '', iconBg: 'rgba(168,85,247,.12)',
+        nome: t.nome, meta: t.observacao || 'Sem descrição cadastrada',
+        tags: [], uso: '', border: '#1a2130',
+        mostrarUsar: false, temAcoesExercicio: true, temVideo: false,
+        onEditar: (e) => { e.stopPropagation(); this.openTecnicaModal(t); }
+      })),
       treinos: (() => {
         const clienteNome = (id) => (this.state.clientesDb.find(c => c.id === id) || {}).nome;
         const standalone = this.state.treinosDb.filter(tr => !tr.split_id && combinaBusca(tr.nome));
@@ -1247,7 +1356,8 @@ class Component extends DCLogic {
         lip: a.gordura_g != null ? a.gordura_g : '—',
         fib: a.fibra_g != null ? a.fibra_g : '—',
         cal: a.kcal != null ? a.kcal : '—',
-        uso: '—'
+        podeEditar: this.state.isAdmin,
+        onEditarAlimento: () => this.openAlimentoModal(a)
       }));
 
     const chip = ([key, icon, label, count]) => ({
@@ -1278,17 +1388,20 @@ class Component extends DCLogic {
       alimentoModalTitulo: this.state.alimentoEditId ? 'Editar alimento' : 'Novo alimento',
       alimentoNome: this.state.alimentoNome, alimentoCategoria: this.state.alimentoCategoria,
       alimentoKcal: this.state.alimentoKcal, alimentoPtn: this.state.alimentoPtn,
-      alimentoCho: this.state.alimentoCho, alimentoLip: this.state.alimentoLip,
+      alimentoCho: this.state.alimentoCho, alimentoLip: this.state.alimentoLip, alimentoFib: this.state.alimentoFib,
       onAlimentoNomeChange: (e) => this.setState({ alimentoNome: e.target.value }),
       onAlimentoCategoriaChange: (e) => this.setState({ alimentoCategoria: e.target.value }),
       onAlimentoKcalChange: (e) => this.setState({ alimentoKcal: e.target.value }),
       onAlimentoPtnChange: (e) => this.setState({ alimentoPtn: e.target.value }),
       onAlimentoChoChange: (e) => this.setState({ alimentoCho: e.target.value }),
       onAlimentoLipChange: (e) => this.setState({ alimentoLip: e.target.value }),
+      onAlimentoFibChange: (e) => this.setState({ alimentoFib: e.target.value }),
       alimentoErro: this.state.alimentoErro, alimentoErroDisplay: this.state.alimentoErro ? '' : 'display:none;',
       alimentoSalvarLabel: this.state.alimentoSalvarLabel,
+      alimentoPodeExcluir: this.state.isAdmin && !!this.state.alimentoEditId,
       closeAlimentoModal: () => this.closeAlimentoModal(),
       onSalvarAlimento: () => this.onSalvarAlimento(),
+      onExcluirAlimento: () => this.onExcluirAlimento(),
       buscaAlimentos: this.state.buscaAlimentos,
       onBuscaAlimentosChange: (e) => this.onBuscaAlimentosChange(e),
       buscaGeral: this.state.buscaGeral,
@@ -1307,6 +1420,16 @@ class Component extends DCLogic {
       formulaSalvarLabel: this.state.formulaSalvarLabel,
       closeFormulaModal: () => this.closeFormulaModal(),
       onSalvarFormula: () => this.onSalvarFormula(),
+
+      tecnicaModalOpen: this.state.tecnicaModalOpen,
+      tecnicaModalTitulo: this.state.tecnicaEditId ? 'Editar técnica avançada' : 'Nova técnica avançada',
+      tecnicaNome: this.state.tecnicaNome, tecnicaDescricao: this.state.tecnicaDescricao,
+      onTecnicaNomeChange: (e) => this.setState({ tecnicaNome: e.target.value }),
+      onTecnicaDescricaoChange: (e) => this.setState({ tecnicaDescricao: e.target.value }),
+      tecnicaErro: this.state.tecnicaErro, tecnicaErroDisplay: this.state.tecnicaErro ? '' : 'display:none;',
+      tecnicaSalvarLabel: this.state.tecnicaSalvarLabel,
+      closeTecnicaModal: () => this.closeTecnicaModal(),
+      onSalvarTecnica: () => this.onSalvarTecnica(),
 
       refeicaoModalOpen: this.state.refeicaoModalOpen,
       refeicaoModalTitulo: this.state.refeicaoEditId ? 'Editar refeição' : 'Nova refeição',
