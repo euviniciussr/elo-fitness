@@ -626,7 +626,8 @@ async function carregarTemplates() {
 let cargasPorTreinoExercicio = {}; // treino_exercicio_id -> serie_index -> [{carga, data}, ...] desc por data
 let feedbacksList = []; // feedbacks_treino do aluno atual (geral + por treino)
 let exerciciosFeitosHoje = {}; // treino_exercicio_id -> true (marcado hoje pelo aluno)
-let execucoesPorTreino = {}; // treino_id -> [{data, created_at}, ...] desc por data (histórico de "finalizar treino")
+let execucoesPorTreino = {}; // treino_id -> [{data, created_at, foto_url}, ...] desc por data (histórico de "finalizar treino")
+let fotosTreinoPorTreino = {}; // treino_id -> { data (YYYY-MM-DD) -> signed URL da foto opcional }
 
 const HOJE_ISO = new Date().toISOString().slice(0, 10);
 
@@ -640,10 +641,20 @@ async function loadExerciciosDoTreino(treino) {
   if (!clienteIdParam) return;
   const { data: execucoesTreino } = await supabaseClient
     .from('treino_execucoes')
-    .select('data, created_at')
+    .select('data, created_at, foto_url')
     .eq('treino_id', treino.id)
     .order('data', { ascending: false });
   execucoesPorTreino[treino.id] = execucoesTreino || [];
+  fotosTreinoPorTreino[treino.id] = {};
+  const fotosPaths = (execucoesTreino || []).filter(e => e.foto_url).map(e => e.foto_url);
+  if (fotosPaths.length) {
+    const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosPaths, 60 * 60 * 24 * 7);
+    (execucoesTreino || []).forEach(e => {
+      if (!e.foto_url) return;
+      const s = (signed || []).find(x => x.path === e.foto_url);
+      if (s && s.signedUrl) fotosTreinoPorTreino[treino.id][e.data] = s.signedUrl;
+    });
+  }
   if (!treino._exercicios.length) return;
   treino._exercicios.forEach(te => { delete cargasPorTreinoExercicio[te.id]; delete exerciciosFeitosHoje[te.id]; });
   const [{ data: cargas }, { data: feitosHoje }] = await Promise.all([
@@ -671,9 +682,18 @@ function renderStatusTreino(treino) {
   const destaque = ultima.data === HOJE_ISO
     ? '✓ Treino finalizado hoje às ' + fmtHora(ultima.created_at)
     : '✓ Última finalização: ' + fmtData(ultima.data) + ' às ' + fmtHora(ultima.created_at);
-  box.appendChild(el('<div style="font-size:13px;font-weight:800;color:#4ade80;">' + destaque + '</div>'));
+  const fotosPorData = fotosTreinoPorTreino[treino.id] || {};
+  const linhaTopo = el('<div style="display:flex;align-items:center;gap:10px;"></div>');
+  linhaTopo.appendChild(el('<div style="font-size:13px;font-weight:800;color:#4ade80;">' + destaque + '</div>'));
+  const fotoUltima = fotosPorData[ultima.data];
+  if (fotoUltima) {
+    const img = el('<img src="' + fotoUltima + '" style="width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid #1e2633;cursor:pointer;">');
+    img.addEventListener('click', () => window.open(fotoUltima, '_blank'));
+    linhaTopo.appendChild(img);
+  }
+  box.appendChild(linhaTopo);
   if (execs.length > 1) {
-    const historico = execs.slice(1, 6).map(e => fmtData(e.data)).join(' · ');
+    const historico = execs.slice(1, 6).map(e => fmtData(e.data) + (fotosPorData[e.data] ? ' 📷' : '')).join(' · ');
     box.appendChild(el('<div style="font-size:11.5px;color:#66707e;margin-top:4px;">Histórico: ' + historico + '</div>'));
   }
   const feedbacksDoTreino = feedbacksList.filter(f => f.treino_id === treino.id);

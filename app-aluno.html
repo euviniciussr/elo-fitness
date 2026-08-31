@@ -559,6 +559,22 @@ aside + * table{display:block!important;overflow-x:auto!important}
                       <button type="button" sc-camel-on-click="{{ dv.onEnviarFeedbackTreino }}" style="margin-top:10px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;">{{ dv.feedbackTreinoLabel }}</button>
                     </div>
                   </sc-if>
+                  <sc-if value="{{ dv.temFotoLocal }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
+                      <img src="{{ dv.fotoTreinoPreview }}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #1a2130;">
+                      <span style="font-size:12px;color:#4ade80;">✓ Foto do treino salva</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ dv.temFotoSemPreview }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:10px;font-size:12px;color:#4ade80;">✓ Foto do treino salva</div>
+                  </sc-if>
+                  <sc-if value="{{ dv.semFoto }}" hint-placeholder-val="{{ true }}">
+                    <label style="margin-top:10px;display:inline-flex;align-items:center;gap:8px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:9px 14px;border-radius:9px;cursor:pointer;">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                      {{ dv.fotoTreinoLabel }}
+                      <input type="file" accept="image/*" capture="environment" sc-camel-on-change="{{ dv.onFotoTreinoChange }}" style="display:none;">
+                    </label>
+                  </sc-if>
                 </sc-if>
                 <sc-if value="{{ dv.aindaNaoFinalizadoHoje }}" hint-placeholder-val="{{ true }}">
                   <button type="button" sc-camel-on-click="{{ dv.onFinalizarTreino }}" style="margin-top:16px;width:100%;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13.5px;font-weight:800;padding:13px;border-radius:12px;cursor:pointer;letter-spacing:.02em;">FINALIZAR TREINO</button>
@@ -928,7 +944,8 @@ class Component extends DCLogic {
     cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {},
     feedbackGeralTexto: '', feedbackGeralEnviando: false, feedbackGeralEnviado: false,
     feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {},
-    maisAbertoMobile: false
+    maisAbertoMobile: false,
+    fotoTreinoUploading: {}, fotoTreinoPreview: {}
   };
 
   componentDidMount() {
@@ -1142,10 +1159,42 @@ class Component extends DCLogic {
     const hojeStr = new Date().toISOString().slice(0, 10);
     const { error } = await supabaseClient.from('treino_execucoes')
       .upsert({ cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, treino_id: treinoId, data: hojeStr }, { onConflict: 'cliente_id,treino_id,data' });
-    if (error) return;
+    if (error) { alert('Não foi possível finalizar o treino: ' + error.message); return; }
     const desde90 = new Date(); desde90.setDate(desde90.getDate() - 90);
     const { data: execucoes } = await supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', this.state.clienteId).gte('data', desde90.toISOString().slice(0, 10));
     this.setState({ execucoes: execucoes || [] });
+  }
+
+  // Foto opcional anexada ao finalizar o treino do dia (não bloqueia a
+  // finalização — o aluno pode enviar antes ou depois de finalizar).
+  async onFotoTreinoChange(treinoId, e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    this.setState(s => ({ fotoTreinoUploading: { ...s.fotoTreinoUploading, [treinoId]: true } }));
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = this.state.clienteId + '/treino-' + treinoId + '-' + hoje + '.' + ext;
+    const { error: upErr } = await supabaseClient.storage.from('fotos-evolucao').upload(path, file, { upsert: true });
+    if (upErr) {
+      this.setState(s => ({ fotoTreinoUploading: { ...s.fotoTreinoUploading, [treinoId]: false } }));
+      alert('Não foi possível enviar a foto: ' + upErr.message);
+      return;
+    }
+    const { error: updErr } = await supabaseClient.from('treino_execucoes')
+      .update({ foto_url: path })
+      .eq('cliente_id', this.state.clienteId).eq('treino_id', treinoId).eq('data', hoje);
+    if (updErr) {
+      this.setState(s => ({ fotoTreinoUploading: { ...s.fotoTreinoUploading, [treinoId]: false } }));
+      alert('Foto enviada, mas não foi possível vincular ao treino: ' + updErr.message);
+      return;
+    }
+    const localUrl = URL.createObjectURL(file);
+    this.setState(s => ({
+      fotoTreinoUploading: { ...s.fotoTreinoUploading, [treinoId]: false },
+      fotoTreinoPreview: { ...s.fotoTreinoPreview, [treinoId]: localUrl },
+      execucoes: s.execucoes.map(ex => (ex.treino_id === treinoId && ex.data === hoje) ? { ...ex, foto_url: path } : ex)
+    }));
   }
 
   async onConfirmarSessao(id) {
@@ -1489,6 +1538,12 @@ class Component extends DCLogic {
         feedbackTreinoLabel: this.state.feedbackTreinoEnviando[dv.id] ? 'Enviando…' : 'Enviar feedback',
         onFeedbackTreinoChange: (ev) => this.onFeedbackTreinoChange(dv.id, ev.target.value),
         onEnviarFeedbackTreino: () => this.onEnviarFeedbackTreino(dv.id),
+        temFotoLocal: !!this.state.fotoTreinoPreview[dv.id],
+        temFotoSemPreview: !this.state.fotoTreinoPreview[dv.id] && !!(execHoje && execHoje.foto_url),
+        semFoto: !this.state.fotoTreinoPreview[dv.id] && !(execHoje && execHoje.foto_url),
+        fotoTreinoPreview: this.state.fotoTreinoPreview[dv.id] || '',
+        fotoTreinoLabel: this.state.fotoTreinoUploading[dv.id] ? 'Enviando…' : 'Adicionar foto do treino',
+        onFotoTreinoChange: (ev) => this.onFotoTreinoChange(dv.id, ev),
         exercicios: dv.exercicios.map(e => {
           const done = !!exerciciosFeitos[e.teId];
           const seriesValidasData = e.seriesLinhas.map((linha, si) => {
