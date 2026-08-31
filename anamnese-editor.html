@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Personalizar Anamnese — Elo Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+textarea{font-family:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.voltar{font-size:13px;font-weight:700;color:#9aa4b2;}
+.voltar:hover{color:#e5e9f0;}
+
+.wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;line-height:1.5;}
+
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #171d29;padding-bottom:0;}
+.tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:#9aa4b2;border-bottom:2px solid transparent;cursor:pointer;}
+.tab.active{color:#f97316;border-color:#f97316;}
+
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-size:13.5px;outline:none;}
+textarea{resize:vertical;min-height:38px;}
+
+.list-row{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+
+.btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:#1e2633;color:#e5e9f0;}
+.btn-outline{background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;}
+.btn-ghost{background:none;border:none;color:#66707e;font-size:12px;font-weight:700;padding:5px 8px;white-space:nowrap;}
+.btn-ghost:hover{color:#f87171;}
+.btn:disabled{opacity:.55;cursor:default;}
+.btn-block{width:100%;}
+.actions-row{display:flex;gap:10px;margin-top:10px;}
+.actions-row .btn{flex:1;}
+
+.sexo-row{display:flex;gap:8px;flex-wrap:wrap;}
+.sexo-row .chip{background:#0d1119;border:1px solid #1e2633;color:#9aa4b2;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;}
+.sexo-row .chip.sel{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:#f97316;}
+
+.pergunta-card{background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:14px 16px;margin-top:10px;}
+.pergunta-topo{display:flex;gap:8px;align-items:flex-start;}
+.pergunta-meta{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;}
+.pergunta-meta select, .pergunta-meta > label { width:auto; }
+.subbox{margin-top:10px;padding:10px;background:#0d1119;border-radius:8px;}
+.subbox-titulo{font-size:11px;color:#66707e;margin-bottom:6px;}
+.opcao-row{display:flex;gap:6px;margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">E</div>
+    <div class="logo-text">Elo <span>Fitness</span></div>
+  </div>
+  <a class="voltar" href="configuracoes.html">← Voltar pra Configurações</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="app">Carregando…</div>
+</div>
+
+<script>
+const app = document.getElementById('app');
+
+const TIPOS = [
+  { valor: 'texto', label: 'Texto curto' },
+  { valor: 'texto_longo', label: 'Texto longo' },
+  { valor: 'escolha_unica', label: 'Escolha única' },
+  { valor: 'escolha_multipla', label: 'Escolha múltipla' },
+  { valor: 'horario', label: 'Horário' },
+  { valor: 'lista_pares', label: 'Lista (tipo + frequência)' }
+];
+
+let userId = null;
+let isAdmin = false;
+let editingTarget = 'meu';
+let defaultTemplateId = null;
+let estruturaPadraoOriginal = { secoes: [], perguntas: [] };
+let workingByTarget = { meu: null, padrao: null };
+let salvando = false;
+let salvoMsg = '';
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function slugify(s) {
+  return (s || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'campo';
+}
+
+function novoId(labelTexto) {
+  return slugify(labelTexto).slice(0, 24) + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function moverOrdem(lista, item, direcao) {
+  const ordenada = lista.slice().sort((a, b) => a.ordem - b.ordem);
+  const idx = ordenada.findIndex(x => x.id === item.id);
+  const alvo = idx + direcao;
+  if (alvo < 0 || alvo >= ordenada.length) return;
+  const tmp = ordenada[idx].ordem;
+  ordenada[idx].ordem = ordenada[alvo].ordem;
+  ordenada[alvo].ordem = tmp;
+}
+
+async function init() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) { window.location.href = 'login.html'; return; }
+  userId = user.id;
+
+  const [{ data: trainerRow }, { data: ownTpl }, { data: defaultTpl }] = await Promise.all([
+    supabaseClient.from('trainers').select('is_admin').eq('id', userId).maybeSingle(),
+    supabaseClient.from('anamnese_templates').select('estrutura').eq('trainer_id', userId).maybeSingle(),
+    supabaseClient.from('anamnese_templates').select('id, estrutura').is('trainer_id', null).maybeSingle()
+  ]);
+
+  isAdmin = !!(trainerRow && trainerRow.is_admin);
+  defaultTemplateId = defaultTpl && defaultTpl.id;
+  estruturaPadraoOriginal = JSON.parse(JSON.stringify((defaultTpl && defaultTpl.estrutura) || { secoes: [], perguntas: [] }));
+
+  workingByTarget.padrao = JSON.parse(JSON.stringify(estruturaPadraoOriginal));
+  workingByTarget.meu = JSON.parse(JSON.stringify((ownTpl && ownTpl.estrutura) || estruturaPadraoOriginal));
+
+  renderApp();
+}
+
+function renderApp() {
+  app.innerHTML = '';
+  app.appendChild(el('<h1>Personalizar Anamnese</h1>'));
+  app.appendChild(el('<div class="sub">Edite as perguntas que seus alunos respondem na anamnese inicial. "Dados pessoais" (sexo, idade, altura, peso, objetivo e tempo de treino) é fixo pra todo mundo, porque alimenta o cálculo de TMB/GET — tudo abaixo disso você pode personalizar do seu jeito.</div>'));
+
+  if (isAdmin) {
+    const tabs = el('<div class="tabs" style="margin-bottom:24px;"></div>');
+    const tabMeu = el('<div class="tab' + (editingTarget === 'meu' ? ' active' : '') + '">Minha personalização</div>');
+    const tabPadrao = el('<div class="tab' + (editingTarget === 'padrao' ? ' active' : '') + '">Anamnese padrão do sistema</div>');
+    tabMeu.addEventListener('click', () => { editingTarget = 'meu'; salvoMsg = ''; renderApp(); });
+    tabPadrao.addEventListener('click', () => { editingTarget = 'padrao'; salvoMsg = ''; renderApp(); });
+    tabs.appendChild(tabMeu); tabs.appendChild(tabPadrao);
+    app.appendChild(tabs);
+  }
+
+  const est = workingByTarget[editingTarget];
+  const secoesOrdenadas = est.secoes.slice().sort((a, b) => a.ordem - b.ordem);
+  secoesOrdenadas.forEach((sec, secIdx) => app.appendChild(renderSecaoCard(est, sec, secIdx, secoesOrdenadas.length)));
+
+  const addSecBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-bottom:20px;">+ Nova seção</button>');
+  addSecBtn.addEventListener('click', () => {
+    const titulo = prompt('Nome da nova seção:');
+    if (!titulo || !titulo.trim()) return;
+    const maxOrdem = est.secoes.reduce((m, s) => Math.max(m, s.ordem), 0);
+    est.secoes.push({ id: novoId(titulo), titulo: titulo.trim(), ordem: maxOrdem + 1 });
+    renderApp();
+  });
+  app.appendChild(addSecBtn);
+
+  const footer = el('<div class="actions-row"></div>');
+  const restaurarBtn = el('<button type="button" class="btn btn-secondary">Restaurar padrão</button>');
+  restaurarBtn.addEventListener('click', () => {
+    if (!confirm('Isso substitui as perguntas customizadas aqui pela anamnese padrão do sistema. Continuar?')) return;
+    workingByTarget[editingTarget] = JSON.parse(JSON.stringify(estruturaPadraoOriginal));
+    salvoMsg = '';
+    renderApp();
+  });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">' + (salvando ? 'Salvando…' : 'Salvar anamnese') + '</button>');
+  salvarBtn.disabled = salvando;
+  salvarBtn.addEventListener('click', salvar);
+  footer.appendChild(restaurarBtn); footer.appendChild(salvarBtn);
+  app.appendChild(footer);
+
+  if (salvoMsg) app.appendChild(el('<div style="font-size:12.5px;margin-top:10px;text-align:center;color:' + (salvoMsg.indexOf('Erro') === 0 ? '#f87171' : '#4ade80') + ';">' + esc(salvoMsg) + '</div>'));
+}
+
+function renderSecaoCard(est, sec, secIdx, totalSecoes) {
+  const perguntas = est.perguntas.filter(q => q.secao_id === sec.id).sort((a, b) => a.ordem - b.ordem);
+  const card = el('<div class="list-row" style="padding:18px 20px;"></div>');
+
+  const header = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
+  const tituloInput = el('<input style="flex:1;font-weight:700;">');
+  tituloInput.value = sec.titulo;
+  tituloInput.addEventListener('input', () => { sec.titulo = tituloInput.value; });
+  header.appendChild(tituloInput);
+
+  const upBtn = el('<button type="button" class="btn-ghost">↑</button>');
+  upBtn.disabled = secIdx === 0;
+  upBtn.addEventListener('click', () => { moverOrdem(est.secoes, sec, -1); renderApp(); });
+  const downBtn = el('<button type="button" class="btn-ghost">↓</button>');
+  downBtn.disabled = secIdx === totalSecoes - 1;
+  downBtn.addEventListener('click', () => { moverOrdem(est.secoes, sec, 1); renderApp(); });
+  const delBtn = el('<button type="button" class="btn-ghost">Excluir seção</button>');
+  delBtn.addEventListener('click', () => {
+    if (!confirm('Excluir a seção "' + sec.titulo + '" e todas as suas perguntas?')) return;
+    est.secoes = est.secoes.filter(s => s.id !== sec.id);
+    est.perguntas = est.perguntas.filter(q => q.secao_id !== sec.id);
+    renderApp();
+  });
+  header.appendChild(upBtn); header.appendChild(downBtn); header.appendChild(delBtn);
+  card.appendChild(header);
+
+  perguntas.forEach((q, qIdx) => card.appendChild(renderPerguntaCard(est, q, qIdx, perguntas.length, sec)));
+
+  const addQBtn = el('<button type="button" class="btn btn-outline" style="margin-top:12px;">+ Nova pergunta</button>');
+  addQBtn.addEventListener('click', () => {
+    const label = prompt('Texto da pergunta:');
+    if (!label || !label.trim()) return;
+    const maxOrdem = perguntas.reduce((m, q) => Math.max(m, q.ordem), 0);
+    est.perguntas.push({ id: novoId(label), secao_id: sec.id, ordem: maxOrdem + 1, tipo: 'texto_longo', label: label.trim(), obrigatoria: false });
+    renderApp();
+  });
+  card.appendChild(addQBtn);
+
+  return card;
+}
+
+function renderPerguntaCard(est, q, qIdx, totalPerguntas, sec) {
+  const box = el('<div class="pergunta-card"></div>');
+
+  const topRow = el('<div class="pergunta-topo"></div>');
+  const labelInput = el('<textarea rows="1" style="flex:1;font-weight:600;"></textarea>');
+  labelInput.value = q.label;
+  labelInput.addEventListener('input', () => { q.label = labelInput.value; });
+  topRow.appendChild(labelInput);
+
+  const upBtn = el('<button type="button" class="btn-ghost">↑</button>');
+  upBtn.disabled = qIdx === 0;
+  upBtn.addEventListener('click', () => { moverOrdem(est.perguntas.filter(p => p.secao_id === sec.id), q, -1); renderApp(); });
+  const downBtn = el('<button type="button" class="btn-ghost">↓</button>');
+  downBtn.disabled = qIdx === totalPerguntas - 1;
+  downBtn.addEventListener('click', () => { moverOrdem(est.perguntas.filter(p => p.secao_id === sec.id), q, 1); renderApp(); });
+  const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
+  delBtn.addEventListener('click', () => {
+    if (!confirm('Excluir esta pergunta?')) return;
+    est.perguntas = est.perguntas.filter(p => p.id !== q.id);
+    renderApp();
+  });
+  topRow.appendChild(upBtn); topRow.appendChild(downBtn); topRow.appendChild(delBtn);
+  box.appendChild(topRow);
+
+  const metaRow = el('<div class="pergunta-meta"></div>');
+  const tipoSelect = el('<select></select>');
+  TIPOS.forEach(t => tipoSelect.appendChild(el('<option value="' + t.valor + '"' + (q.tipo === t.valor ? ' selected' : '') + '>' + esc(t.label) + '</option>')));
+  tipoSelect.addEventListener('change', () => {
+    q.tipo = tipoSelect.value;
+    if ((q.tipo === 'escolha_unica' || q.tipo === 'escolha_multipla') && !q.opcoes) q.opcoes = [];
+    if (q.tipo === 'lista_pares' && (!q.subcampos || !q.subcampos.length)) q.subcampos = [{ key: 'tipo', label: 'Tipo' }, { key: 'frequencia', label: 'Frequência' }];
+    renderApp();
+  });
+  metaRow.appendChild(tipoSelect);
+
+  const obrigLabel = el('<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#9aa4b2;margin:0;"><input type="checkbox"' + (q.obrigatoria ? ' checked' : '') + ' style="width:auto;"> Obrigatória</label>');
+  obrigLabel.querySelector('input').addEventListener('change', (e) => { q.obrigatoria = e.target.checked; });
+  metaRow.appendChild(obrigLabel);
+  box.appendChild(metaRow);
+
+  if (q.tipo === 'escolha_unica' || q.tipo === 'escolha_multipla') box.appendChild(renderOpcoesEditor(q));
+  if (q.tipo === 'lista_pares') box.appendChild(renderSubcamposEditor(q));
+  box.appendChild(renderCondicionalEditor(est, q));
+
+  return box;
+}
+
+function renderOpcoesEditor(q) {
+  if (!q.opcoes) q.opcoes = [];
+  const wrap = el('<div class="subbox"></div>');
+  wrap.appendChild(el('<div class="subbox-titulo">Opções de resposta</div>'));
+  q.opcoes.forEach((o, i) => {
+    const row = el('<div class="opcao-row"></div>');
+    const inp = el('<input>'); inp.value = o.label;
+    inp.addEventListener('input', () => { o.label = inp.value; });
+    const rm = el('<button type="button" class="btn-ghost">×</button>');
+    rm.addEventListener('click', () => { q.opcoes.splice(i, 1); renderApp(); });
+    row.appendChild(inp); row.appendChild(rm);
+    wrap.appendChild(row);
+  });
+  const addBtn = el('<button type="button" class="btn-ghost" style="color:#f97316;">+ adicionar opção</button>');
+  addBtn.addEventListener('click', () => {
+    const label = prompt('Texto da opção:');
+    if (!label || !label.trim()) return;
+    q.opcoes.push({ valor: novoId(label), label: label.trim() });
+    renderApp();
+  });
+  wrap.appendChild(addBtn);
+  return wrap;
+}
+
+function renderSubcamposEditor(q) {
+  if (!q.subcampos || !q.subcampos.length) q.subcampos = [{ key: 'tipo', label: 'Tipo' }, { key: 'frequencia', label: 'Frequência' }];
+  const wrap = el('<div class="subbox"></div>');
+  wrap.appendChild(el('<div class="subbox-titulo">Campos de cada linha da lista</div>'));
+  q.subcampos.forEach(sc => {
+    const inp = el('<input style="margin-bottom:6px;">');
+    inp.value = sc.label;
+    inp.addEventListener('input', () => { sc.label = inp.value; });
+    wrap.appendChild(inp);
+  });
+  return wrap;
+}
+
+function renderCondicionalEditor(est, q) {
+  const wrap = el('<div class="subbox"></div>');
+  wrap.appendChild(el('<div class="subbox-titulo">Mostrar essa pergunta só quando...</div>'));
+
+  const candidatas = est.perguntas.filter(p => p.id !== q.id && (p.tipo === 'escolha_unica' || p.tipo === 'escolha_multipla'));
+  const sel = el('<select style="margin-bottom:8px;"></select>');
+  sel.appendChild(el('<option value="">(sempre mostrar)</option>'));
+  candidatas.forEach(p => sel.appendChild(el(
+    '<option value="' + esc(p.id) + '"' + (q.depende_de && q.depende_de.pergunta_id === p.id ? ' selected' : '') + '>' + esc((p.label || '').slice(0, 60)) + '</option>'
+  )));
+  wrap.appendChild(sel);
+
+  const valoresWrap = el('<div class="sexo-row"></div>');
+  function renderValores() {
+    valoresWrap.innerHTML = '';
+    const gatilho = est.perguntas.find(p => p.id === sel.value);
+    if (!gatilho) return;
+    const valoresAtuais = (q.depende_de && q.depende_de.pergunta_id === gatilho.id) ? q.depende_de.valores : [];
+    (gatilho.opcoes || []).forEach(o => {
+      const marcado = valoresAtuais.includes(o.valor);
+      const chip = el('<div class="chip' + (marcado ? ' sel' : '') + '" style="font-size:11.5px;padding:6px 10px;">' + esc(o.label) + '</div>');
+      chip.addEventListener('click', () => {
+        const atuais = (q.depende_de && q.depende_de.pergunta_id === gatilho.id) ? q.depende_de.valores.slice() : [];
+        const novo = atuais.includes(o.valor) ? atuais.filter(v => v !== o.valor) : [...atuais, o.valor];
+        q.depende_de = { pergunta_id: gatilho.id, valores: novo };
+        renderValores();
+      });
+      valoresWrap.appendChild(chip);
+    });
+  }
+  sel.addEventListener('change', () => {
+    q.depende_de = sel.value ? { pergunta_id: sel.value, valores: [] } : null;
+    renderValores();
+  });
+  renderValores();
+  wrap.appendChild(valoresWrap);
+  return wrap;
+}
+
+async function salvar() {
+  salvando = true; salvoMsg = ''; renderApp();
+  const est = workingByTarget[editingTarget];
+  let error;
+  if (editingTarget === 'padrao') {
+    ({ error } = await supabaseClient.from('anamnese_templates').update({ estrutura: est, updated_at: new Date().toISOString() }).eq('id', defaultTemplateId));
+  } else {
+    ({ error } = await supabaseClient.from('anamnese_templates').upsert(
+      { trainer_id: userId, estrutura: est, updated_at: new Date().toISOString() },
+      { onConflict: 'trainer_id' }
+    ));
+  }
+  salvando = false;
+  salvoMsg = error ? ('Erro: ' + error.message) : 'Anamnese salva!';
+  renderApp();
+}
+
+init();
+</script>
+</body>
+</html>

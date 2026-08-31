@@ -169,6 +169,33 @@ function calcularTMB(sexo, pesoKg, alturaCm, idade) {
   return sexo === 'M' ? base + 5 : base - 161;
 }
 
+function anamnesePerguntaDeveAparecer(q, respostas) {
+  if (!q.depende_de) return true;
+  const val = respostas[q.depende_de.pergunta_id];
+  if (Array.isArray(val)) return q.depende_de.valores.some(v => val.includes(v));
+  return q.depende_de.valores.includes(val);
+}
+
+function anamneseFormatarResposta(q, valor) {
+  if (valor == null || valor === '') return null;
+  if (q.tipo === 'escolha_unica') { const op = (q.opcoes || []).find(o => o.valor === valor); return op ? op.label : valor; }
+  if (q.tipo === 'escolha_multipla') {
+    const vals = Array.isArray(valor) ? valor : [];
+    if (!vals.length) return null;
+    return vals.map(v => { const op = (q.opcoes || []).find(o => o.valor === v); return op ? op.label : v; }).join(', ');
+  }
+  if (q.tipo === 'lista_pares') {
+    const linhas = Array.isArray(valor) ? valor : [];
+    const partes = linhas.map(l => (q.subcampos || []).map(sc => l[sc.key]).filter(Boolean).join(' — ')).filter(Boolean);
+    return partes.length ? partes.join('; ') : null;
+  }
+  return valor;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 let userId = null;
 let cliente = null;
 let exerciciosLib = [];
@@ -178,6 +205,10 @@ let dietaList = [];
 let cardioList = [];
 let agendamentosList = [];
 let anamnese = null;
+let anamneseEstrutura = { secoes: [], perguntas: [] };
+let anamneseDinamica = {};
+let anamneseDinamicaFormOpen = false;
+let anamneseDinamicaEdit = null;
 let fotosList = [];
 let feedbacksList = [];
 let convite = null;
@@ -221,13 +252,15 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, anamneseRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
+  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle(),
+    supabaseClient.from('anamnese_respostas_dinamicas').select('*').eq('cliente_id', clienteIdParam).maybeSingle(),
+    supabaseClient.from('anamnese_templates').select('estrutura').eq('trainer_id', userId).maybeSingle(),
     supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('feedbacks_treino').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true }),
@@ -239,6 +272,12 @@ async function init() {
   dietaList = dietaRes.data || [];
   cardioList = cardioRes.data || [];
   anamnese = anamneseRes.data || null;
+  anamneseDinamica = (anamneseDinRes.data && anamneseDinRes.data.respostas) || {};
+  anamneseEstrutura = tplTrainerRes.data && tplTrainerRes.data.estrutura;
+  if (!anamneseEstrutura) {
+    const { data: tplDefault } = await supabaseClient.from('anamnese_templates').select('estrutura').is('trainer_id', null).maybeSingle();
+    anamneseEstrutura = (tplDefault && tplDefault.estrutura) || { secoes: [], perguntas: [] };
+  }
   const fotosRaw = fotosRes.data || [];
   if (fotosRaw.length) {
     const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosRaw.map(f => f.url), 60 * 60 * 24 * 7);
@@ -276,8 +315,11 @@ function render() {
   app.appendChild(body);
 }
 
+const TEMPO_TREINO_LABEL = { '1_a_6_meses': '1 a 6 meses', '6_meses_a_1_ano': '6 meses a 1 ano', '1_a_3_anos': '1 a 3 anos', 'acima_3_anos': 'Acima de 3 anos' };
+
 function renderAnamneseTab(container) {
   if (anamneseFormOpen) { renderAnamneseForm(container); return; }
+  if (anamneseDinamicaFormOpen) { renderAnamneseDinamicaForm(container); return; }
 
   if (!anamnese) {
     container.appendChild(el('<div class="empty">Aguardando resposta do aluno. Assim que ele preencher a anamnese, as respostas aparecem aqui.</div>'));
@@ -287,11 +329,11 @@ function renderAnamneseTab(container) {
     return;
   }
   const linha = (label, valor) => el(
-    '<div class="list-row"><div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;">' + label + '</div>' +
-    '<div class="list-row-nome" style="margin-top:4px;">' + (valor || '—') + '</div></div>'
+    '<div class="list-row"><div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;">' + esc(label) + '</div>' +
+    '<div class="list-row-nome" style="margin-top:4px;">' + esc(valor || '—') + '</div></div>'
   );
   container.appendChild(linha('Objetivo', OBJETIVO_LABEL[anamnese.objetivo] || anamnese.objetivo));
-  container.appendChild(linha('Nível de experiência', NIVEL_LABEL[anamnese.nivel] || anamnese.nivel));
+  container.appendChild(linha('Tempo de treino', anamnese.tempo_treino ? TEMPO_TREINO_LABEL[anamnese.tempo_treino] : (anamnese.nivel ? NIVEL_LABEL[anamnese.nivel] || anamnese.nivel : null)));
   container.appendChild(linha('Sexo', anamnese.sexo === 'M' ? 'Masculino' : anamnese.sexo === 'F' ? 'Feminino' : null));
   container.appendChild(linha('Idade / Altura / Peso', [
     anamnese.idade ? anamnese.idade + ' anos' : null,
@@ -306,6 +348,35 @@ function renderAnamneseTab(container) {
   const editBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:14px;">Editar sexo, idade, altura e peso</button>');
   editBtn.addEventListener('click', () => { anamneseFormOpen = true; render(); });
   container.appendChild(editBtn);
+
+  const secoesComPerguntas = (anamneseEstrutura.secoes || []).slice().sort((a, b) => a.ordem - b.ordem)
+    .map(sec => ({
+      sec,
+      perguntas: (anamneseEstrutura.perguntas || [])
+        .filter(q => q.secao_id === sec.id && anamnesePerguntaDeveAparecer(q, anamneseDinamica))
+        .sort((a, b) => a.ordem - b.ordem)
+    }))
+    .filter(s => s.perguntas.length);
+
+  if (secoesComPerguntas.length) {
+    container.appendChild(el('<div class="sub" style="margin:22px 0 10px;">Anamnese detalhada</div>'));
+    secoesComPerguntas.forEach(({ sec, perguntas }) => {
+      const secBox = el('<div style="margin-bottom:16px;"></div>');
+      secBox.appendChild(el('<div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;margin-bottom:6px;">' + esc(sec.titulo) + '</div>'));
+      perguntas.forEach(q => {
+        const valorFmt = anamneseFormatarResposta(q, anamneseDinamica[q.id]);
+        secBox.appendChild(el(
+          '<div style="margin-bottom:8px;"><div style="font-size:12.5px;color:#9aa4b2;">' + esc(q.label) + '</div>' +
+          '<div style="font-size:13.5px;color:' + (valorFmt ? '#e5e9f0' : '#66707e') + ';margin-top:2px;">' + esc(valorFmt || 'Não respondido') + '</div></div>'
+        ));
+      });
+      container.appendChild(secBox);
+    });
+  }
+
+  const editDinBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">Editar respostas completas da anamnese</button>');
+  editDinBtn.addEventListener('click', () => { anamneseDinamicaFormOpen = true; render(); });
+  container.appendChild(editDinBtn);
 }
 
 function renderAnamneseForm(container) {
@@ -358,6 +429,114 @@ function renderAnamneseForm(container) {
     const { data } = await supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle();
     anamnese = data || null;
     anamneseFormOpen = false;
+    render();
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
+}
+
+function renderAnamneseDinamicaForm(container) {
+  if (!anamneseDinamicaEdit) anamneseDinamicaEdit = JSON.parse(JSON.stringify(anamneseDinamica || {}));
+  const resp = anamneseDinamicaEdit;
+
+  const box = el('<div class="form-box"></div>');
+  box.appendChild(el('<div class="sub" style="margin:0 0 16px;">Editando a anamnese detalhada do aluno.</div>'));
+
+  const perguntasWrap = el('<div></div>');
+  box.appendChild(perguntasWrap);
+
+  function renderPergunta(q) {
+    const wrap = el('<div style="margin-bottom:14px;"></div>');
+    wrap.appendChild(el('<label>' + esc(q.label) + '</label>'));
+
+    if (q.tipo === 'texto' || q.tipo === 'horario') {
+      const input = el('<input type="' + (q.tipo === 'horario' ? 'time' : 'text') + '">');
+      input.value = resp[q.id] || '';
+      input.addEventListener('input', () => { resp[q.id] = input.value; });
+      wrap.appendChild(input);
+    } else if (q.tipo === 'texto_longo') {
+      const ta = el('<textarea rows="2"></textarea>');
+      ta.value = resp[q.id] || '';
+      ta.addEventListener('input', () => { resp[q.id] = ta.value; });
+      wrap.appendChild(ta);
+    } else if (q.tipo === 'escolha_unica') {
+      const row = el('<div class="sexo-row" style="flex-wrap:wrap;"></div>');
+      (q.opcoes || []).forEach(o => {
+        const chip = el('<div class="chip' + (resp[q.id] === o.valor ? ' sel' : '') + '">' + esc(o.label) + '</div>');
+        chip.addEventListener('click', () => { resp[q.id] = o.valor; renderPerguntas(); });
+        row.appendChild(chip);
+      });
+      wrap.appendChild(row);
+    } else if (q.tipo === 'escolha_multipla') {
+      const atual = Array.isArray(resp[q.id]) ? resp[q.id] : [];
+      const row = el('<div class="sexo-row" style="flex-wrap:wrap;"></div>');
+      (q.opcoes || []).forEach(o => {
+        const sel = atual.includes(o.valor);
+        const chip = el('<div class="chip' + (sel ? ' sel' : '') + '">' + esc(o.label) + '</div>');
+        chip.addEventListener('click', () => {
+          resp[q.id] = sel ? atual.filter(v => v !== o.valor) : [...atual, o.valor];
+          renderPerguntas();
+        });
+        row.appendChild(chip);
+      });
+      wrap.appendChild(row);
+    } else if (q.tipo === 'lista_pares') {
+      const linhas = Array.isArray(resp[q.id]) && resp[q.id].length ? resp[q.id] : [{}];
+      const linhasWrap = el('<div style="display:flex;flex-direction:column;gap:8px;"></div>');
+      linhas.forEach((linha, idx) => {
+        const linhaRow = el('<div style="display:flex;gap:8px;align-items:center;"></div>');
+        (q.subcampos || []).forEach(sc => {
+          const inp = el('<input placeholder="' + esc(sc.label) + '" style="flex:1;min-width:0;">');
+          inp.value = linha[sc.key] || '';
+          inp.addEventListener('input', () => { linha[sc.key] = inp.value; resp[q.id] = linhas; });
+          linhaRow.appendChild(inp);
+        });
+        if (linhas.length > 1) {
+          const rmBtn = el('<button type="button" style="background:none;border:none;color:#66707e;font-size:18px;cursor:pointer;">×</button>');
+          rmBtn.addEventListener('click', () => { resp[q.id] = linhas.filter((_, i) => i !== idx); renderPerguntas(); });
+          linhaRow.appendChild(rmBtn);
+        }
+        linhasWrap.appendChild(linhaRow);
+      });
+      wrap.appendChild(linhasWrap);
+      const addBtn = el('<button type="button" class="btn btn-outline" style="margin-top:6px;">+ adicionar</button>');
+      addBtn.addEventListener('click', () => { resp[q.id] = [...linhas, {}]; renderPerguntas(); });
+      wrap.appendChild(addBtn);
+    }
+    return wrap;
+  }
+
+  function renderPerguntas() {
+    perguntasWrap.innerHTML = '';
+    const secoes = (anamneseEstrutura.secoes || []).slice().sort((a, b) => a.ordem - b.ordem);
+    secoes.forEach(sec => {
+      const perguntas = (anamneseEstrutura.perguntas || [])
+        .filter(q => q.secao_id === sec.id && anamnesePerguntaDeveAparecer(q, resp))
+        .sort((a, b) => a.ordem - b.ordem);
+      if (!perguntas.length) return;
+      const secBox = el('<div style="margin-bottom:18px;"></div>');
+      secBox.appendChild(el('<div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;margin-bottom:8px;">' + esc(sec.titulo) + '</div>'));
+      perguntas.forEach(q => secBox.appendChild(renderPergunta(q)));
+      perguntasWrap.appendChild(secBox);
+    });
+  }
+
+  renderPerguntas();
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { anamneseDinamicaEdit = null; anamneseDinamicaFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">Salvar</button>');
+  salvarBtn.addEventListener('click', async () => {
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const { error } = await supabaseClient.from('anamnese_respostas_dinamicas').upsert({
+      cliente_id: clienteIdParam, trainer_id: userId, respostas: resp, respondido_em: new Date().toISOString()
+    }, { onConflict: 'cliente_id' });
+    if (error) { alert('Não foi possível salvar: ' + error.message); salvarBtn.disabled = false; salvarBtn.textContent = 'Salvar'; return; }
+    anamneseDinamica = resp;
+    anamneseDinamicaEdit = null;
+    anamneseDinamicaFormOpen = false;
     render();
   });
   actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);

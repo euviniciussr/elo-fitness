@@ -226,6 +226,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">DADOS PESSOAIS</div>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <input value="{{ nome }}" sc-camel-on-change="{{ onNomeChange }}" placeholder="Nome completo" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <sc-for list="{{ sexos }}" as="sx" hint-placeholder-count="2">
+                <button type="button" sc-camel-on-click="{{ sx.onClick }}" style="background:{{ sx.bg }};border:1px solid {{ sx.border }};color:{{ sx.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ sx.label }}</button>
+              </sc-for>
+            </div>
             <div style="display:flex;gap:10px;">
               <input value="{{ idade }}" sc-camel-on-change="{{ onIdadeChange }}" placeholder="Idade" style="flex:1;min-width:0;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
               <input value="{{ altura }}" sc-camel-on-change="{{ onAlturaChange }}" placeholder="Altura (cm)" style="flex:1;min-width:0;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
@@ -244,13 +249,64 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </div>
 
         <div style="margin-bottom:20px;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">NÍVEL DE ATIVIDADE ATUAL</div>
+          <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">TEMPO DE TREINO</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <sc-for list="{{ niveis }}" as="n" hint-placeholder-count="3">
+            <sc-for list="{{ temposTreino }}" as="n" hint-placeholder-count="4">
               <button sc-camel-on-click="{{ n.onClick }}" style="background:{{ n.bg }};border:1px solid {{ n.border }};color:{{ n.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ n.label }}</button>
             </sc-for>
           </div>
         </div>
+
+        <sc-for list="{{ secoesView }}" as="sec" hint-placeholder-count="0">
+          <div style="margin-bottom:20px;">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">{{ sec.tituloUpper }}</div>
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <sc-for list="{{ sec.perguntas }}" as="q" hint-placeholder-count="0">
+                <div>
+                  <div style="font-size:13px;font-weight:700;margin-bottom:8px;">{{ q.label }}</div>
+                  <sc-if value="{{ q.isTexto }}" hint-placeholder-val="{{ false }}">
+                    <input value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+                  </sc-if>
+                  <sc-if value="{{ q.isTextoLongo }}" hint-placeholder-val="{{ false }}">
+                    <textarea value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" rows="2" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;resize:vertical;"></textarea>
+                  </sc-if>
+                  <sc-if value="{{ q.isHorario }}" hint-placeholder-val="{{ false }}">
+                    <input type="time" value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+                  </sc-if>
+                  <sc-if value="{{ q.isEscolhaUnica }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ q.opcoesView }}" as="o" hint-placeholder-count="0">
+                        <button type="button" sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ q.isEscolhaMultipla }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ q.opcoesView }}" as="o" hint-placeholder-count="0">
+                        <button type="button" sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ q.isListaPares }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      <sc-for list="{{ q.rows }}" as="row" hint-placeholder-count="0">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                          <sc-for list="{{ row.campos }}" as="c" hint-placeholder-count="0">
+                            <input value="{{ c.value }}" sc-camel-on-change="{{ c.onChange }}" placeholder="{{ c.label }}" style="flex:1;min-width:0;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+                          </sc-for>
+                          <sc-if value="{{ row.canRemove }}" hint-placeholder-val="{{ false }}">
+                            <button type="button" sc-camel-on-click="{{ row.onRemove }}" style="background:none;border:none;color:#66707e;font-size:18px;cursor:pointer;padding:4px 8px;">×</button>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                      <button type="button" sc-camel-on-click="{{ q.onAddRow }}" style="align-self:flex-start;background:none;border:1px dashed #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;">+ adicionar</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
 
         <div style="margin-bottom:20px;">
           <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">SAÚDE · OBRIGATÓRIO</div>
@@ -296,13 +352,15 @@ class Component extends DCLogic {
   state = {
     enviado: false, enviando: false, erro: '',
     clienteId: '', trainerId: '', trainerNome: '',
-    nome: '', idade: '', altura: '', peso: '',
-    objetivo: 'emagrecimento', nivel: 'iniciante',
+    nome: '', sexo: '', idade: '', altura: '', peso: '',
+    objetivo: 'emagrecimento', tempoTreino: '1_a_6_meses',
     lesoes: '', medicamentos: '', restricoes: '',
     fotoFrente: null, fotoFrenteFile: null,
     fotoLado: null, fotoLadoFile: null,
     fotoCostas: null, fotoCostasFile: null,
-    tentouEnviar: false
+    tentouEnviar: false,
+    estrutura: { secoes: [], perguntas: [] },
+    respostasDinamicas: {}
   };
 
   async componentDidMount() {
@@ -314,10 +372,21 @@ class Component extends DCLogic {
       .eq('auth_user_id', user.id)
       .maybeSingle();
     if (!cliente) return;
+
+    const { data: tplTrainer } = await supabaseClient
+      .from('anamnese_templates').select('estrutura').eq('trainer_id', cliente.trainer_id).maybeSingle();
+    let estrutura = tplTrainer && tplTrainer.estrutura;
+    if (!estrutura) {
+      const { data: tplDefault } = await supabaseClient
+        .from('anamnese_templates').select('estrutura').is('trainer_id', null).maybeSingle();
+      estrutura = (tplDefault && tplDefault.estrutura) || { secoes: [], perguntas: [] };
+    }
+
     this.setState({
       clienteId: cliente.id, trainerId: cliente.trainer_id,
       trainerNome: (cliente.trainers || {}).nome || this.props.trainerNome || '',
-      nome: cliente.nome || ''
+      nome: cliente.nome || '',
+      estrutura
     });
   }
 
@@ -349,7 +418,8 @@ class Component extends DCLogic {
 
       const { error: anamneseErr } = await supabaseClient.from('anamnese_respostas').upsert({
         cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
-        objetivo: this.state.objetivo, nivel: this.state.nivel,
+        objetivo: this.state.objetivo, tempo_treino: this.state.tempoTreino,
+        sexo: this.state.sexo || null,
         idade: this.state.idade ? Number(this.state.idade) : null,
         altura_cm: this.state.altura ? Number(this.state.altura) : null,
         peso_kg: this.state.peso ? Number(this.state.peso) : null,
@@ -359,6 +429,12 @@ class Component extends DCLogic {
         respondido_em: new Date().toISOString()
       }, { onConflict: 'cliente_id' });
       if (anamneseErr) throw anamneseErr;
+
+      const { error: dinamicaErr } = await supabaseClient.from('anamnese_respostas_dinamicas').upsert({
+        cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
+        respostas: this.state.respostasDinamicas, respondido_em: new Date().toISOString()
+      }, { onConflict: 'cliente_id' });
+      if (dinamicaErr) throw dinamicaErr;
 
       this.setState({ enviando: false, enviado: true });
     } catch (err) {
@@ -389,6 +465,73 @@ class Component extends DCLogic {
 
     const completo = !!(this.state.nome.trim() && this.state.fotoFrente && this.state.fotoLado && this.state.fotoCostas);
 
+    const respDin = this.state.respostasDinamicas;
+    const setResp = (id, val) => this.setState(s => ({ respostasDinamicas: { ...s.respostasDinamicas, [id]: val } }));
+
+    const shouldShow = (q) => {
+      if (!q.depende_de) return true;
+      const val = respDin[q.depende_de.pergunta_id];
+      if (Array.isArray(val)) return q.depende_de.valores.some(v => val.includes(v));
+      return q.depende_de.valores.includes(val);
+    };
+
+    const buildPergunta = (q) => {
+      const base = {
+        id: q.id, label: q.label + (q.obrigatoria ? ' *' : ''),
+        isTexto: q.tipo === 'texto', isTextoLongo: q.tipo === 'texto_longo', isHorario: q.tipo === 'horario',
+        isEscolhaUnica: q.tipo === 'escolha_unica', isEscolhaMultipla: q.tipo === 'escolha_multipla', isListaPares: q.tipo === 'lista_pares'
+      };
+      if (q.tipo === 'texto' || q.tipo === 'texto_longo' || q.tipo === 'horario') {
+        base.value = respDin[q.id] || '';
+        base.onChange = (e) => setResp(q.id, e.target.value);
+      } else if (q.tipo === 'escolha_unica') {
+        base.opcoesView = (q.opcoes || []).map(o => ({
+          label: o.label,
+          bg: respDin[q.id] === o.valor ? 'rgba(249,115,22,.12)' : '#10151f',
+          border: respDin[q.id] === o.valor ? 'rgba(249,115,22,.35)' : '#1a2130',
+          color: respDin[q.id] === o.valor ? '#f97316' : '#9aa4b2',
+          onClick: () => setResp(q.id, o.valor)
+        }));
+      } else if (q.tipo === 'escolha_multipla') {
+        const atual = Array.isArray(respDin[q.id]) ? respDin[q.id] : [];
+        base.opcoesView = (q.opcoes || []).map(o => {
+          const sel = atual.includes(o.valor);
+          return {
+            label: o.label,
+            bg: sel ? 'rgba(249,115,22,.12)' : '#10151f',
+            border: sel ? 'rgba(249,115,22,.35)' : '#1a2130',
+            color: sel ? '#f97316' : '#9aa4b2',
+            onClick: () => setResp(q.id, sel ? atual.filter(v => v !== o.valor) : [...atual, o.valor])
+          };
+        });
+      } else if (q.tipo === 'lista_pares') {
+        const linhas = Array.isArray(respDin[q.id]) && respDin[q.id].length ? respDin[q.id] : [{}];
+        base.rows = linhas.map((linha, idx) => ({
+          idx,
+          campos: (q.subcampos || []).map(sc => ({
+            label: sc.label,
+            value: linha[sc.key] || '',
+            onChange: (e) => setResp(q.id, linhas.map((l, i) => i === idx ? { ...l, [sc.key]: e.target.value } : l))
+          })),
+          canRemove: linhas.length > 1,
+          onRemove: () => setResp(q.id, linhas.filter((_, i) => i !== idx))
+        }));
+        base.onAddRow = () => setResp(q.id, [...linhas, {}]);
+      }
+      return base;
+    };
+
+    const secoesView = (this.state.estrutura.secoes || [])
+      .slice().sort((a, b) => a.ordem - b.ordem)
+      .map(sec => ({
+        id: sec.id, tituloUpper: (sec.titulo || '').toUpperCase(),
+        perguntas: (this.state.estrutura.perguntas || [])
+          .filter(q => q.secao_id === sec.id && shouldShow(q))
+          .sort((a, b) => a.ordem - b.ordem)
+          .map(buildPergunta)
+      }))
+      .filter(sec => sec.perguntas.length > 0);
+
     return {
       trainerNome,
       isEnviado: this.state.enviado,
@@ -402,17 +545,23 @@ class Component extends DCLogic {
       onLesoesChange: (e) => this.setState({ lesoes: e.target.value }),
       onMedicamentosChange: (e) => this.setState({ medicamentos: e.target.value }),
       onRestricoesChange: (e) => this.setState({ restricoes: e.target.value }),
+      sexos: [
+        chip('sexo', 'M', 'Masculino'),
+        chip('sexo', 'F', 'Feminino')
+      ],
       objetivos: [
         chip('objetivo', 'emagrecimento', 'Emagrecimento'),
         chip('objetivo', 'hipertrofia', 'Hipertrofia'),
         chip('objetivo', 'condicionamento', 'Condicionamento'),
         chip('objetivo', 'saude', 'Saúde geral')
       ],
-      niveis: [
-        chip('nivel', 'iniciante', 'Iniciante'),
-        chip('nivel', 'intermediario', 'Intermediário'),
-        chip('nivel', 'avancado', 'Avançado')
+      temposTreino: [
+        chip('tempoTreino', '1_a_6_meses', '1 a 6 meses'),
+        chip('tempoTreino', '6_meses_a_1_ano', '6 meses a 1 ano'),
+        chip('tempoTreino', '1_a_3_anos', '1 a 3 anos'),
+        chip('tempoTreino', 'acima_3_anos', 'Acima de 3 anos')
       ],
+      secoesView,
       fotoSlots: [
         fotoField('fotoFrente', 'Frente'),
         fotoField('fotoLado', 'Lado'),
