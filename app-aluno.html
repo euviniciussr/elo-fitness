@@ -503,7 +503,10 @@ aside + * table{display:block!important;overflow-x:auto!important}
                         </sc-if>
                         <sc-for list="{{ e.seriesValidasData }}" as="sv" hint-placeholder-count="3">
                           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:2px 0;">
-                            <div style="font-size:12.5px;color:#c7ccd6;">Série {{ sv.numero }} — {{ sv.texto }}</div>
+                            <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+                              <div sc-camel-on-click="{{ sv.onCheck }}" style="width:20px;height:20px;flex-shrink:0;border-radius:6px;background:{{ sv.checkBg }};border:1px solid {{ sv.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:11px;color:#4ade80;font-weight:800;cursor:pointer;">{{ sv.check }}</div>
+                              <div style="font-size:12.5px;color:{{ sv.textoColor }};text-decoration:{{ sv.decoration }};">Série {{ sv.numero }} — {{ sv.texto }}</div>
+                            </div>
                             <sc-if value="{{ sv.mostrarInput }}" hint-placeholder-val="{{ true }}">
                               <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                                 <input value="{{ sv.inputValor }}" sc-camel-on-change="{{ sv.onInputChange }}" placeholder="Ex: 60kg ou 40kg-30kg-20kg" style="width:170px;background:#0d1119;border:1px solid #1e2633;border-radius:8px;padding:6px 8px;color:#e5e9f0;font-family:inherit;font-size:12.5px;outline:none;">
@@ -518,6 +521,23 @@ aside + * table{display:block!important;overflow-x:auto!important}
                             </sc-if>
                           </div>
                         </sc-for>
+                        <sc-if value="{{ e.temSeriesValidas }}" hint-placeholder-val="{{ true }}">
+                          <div style="font-size:11px;color:#66707e;margin-top:3px;">{{ e.seriesFeitasLabel }}</div>
+                        </sc-if>
+                        <sc-if value="{{ e.descansoAtivo }}" hint-placeholder-val="{{ false }}">
+                          <div style="margin-top:8px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:10px 12px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                              <div style="display:flex;align-items:center;gap:7px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#3b82f6;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg>
+                                <span style="font-size:13px;font-weight:800;color:#3b82f6;">Descanso: {{ e.descansoLabel }}</span>
+                              </div>
+                              <button type="button" sc-camel-on-click="{{ e.onPularDescanso }}" style="background:none;border:none;color:#66707e;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:0;">Pular</button>
+                            </div>
+                            <div style="margin-top:7px;height:4px;background:rgba(59,130,246,.15);border-radius:99px;overflow:hidden;">
+                              <div style="height:100%;width:{{ e.descansoPct }};background:#3b82f6;border-radius:99px;"></div>
+                            </div>
+                          </div>
+                        </sc-if>
                         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#9aa4b2;">
                           <sc-if value="{{ e.carga }}" hint-placeholder-val="{{ true }}">
                             <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>Carga: {{ e.carga }}</span>
@@ -934,7 +954,7 @@ aside + * table{display:block!important;overflow-x:auto!important}
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;hoje&quot;,&quot;options&quot;:[&quot;hoje&quot;,&quot;treino&quot;,&quot;dieta&quot;,&quot;evolucao&quot;,&quot;agenda&quot;,&quot;mensagens&quot;,&quot;plano&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 class Component extends DCLogic {
   state = {
-    tab: 'hoje', exerciciosFeitos: {}, treinoSelecionadoId: null,
+    tab: 'hoje', exerciciosFeitos: {}, seriesFeitas: {}, treinoSelecionadoId: null,
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
@@ -945,8 +965,10 @@ class Component extends DCLogic {
     feedbackGeralTexto: '', feedbackGeralEnviando: false, feedbackGeralEnviado: false,
     feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {},
     maisAbertoMobile: false,
-    fotoTreinoUploading: {}, fotoTreinoPreview: {}
+    fotoTreinoUploading: {}, fotoTreinoPreview: {},
+    descansoAtivo: null
   };
+  _descansoInterval = null;
 
   componentDidMount() {
     this.loadTreino();
@@ -1052,17 +1074,21 @@ class Component extends DCLogic {
     }
     let cargasSalvas = {};
     let exerciciosFeitos = {};
+    let seriesFeitas = {};
     if (itens && itens.length) {
-      const [{ data: cargas }, { data: feitosHoje }] = await Promise.all([
+      const [{ data: cargas }, { data: feitosHoje }, { data: seriesFeitasHoje }] = await Promise.all([
         supabaseClient.from('serie_cargas').select('treino_exercicio_id, serie_index, carga')
           .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr),
         supabaseClient.from('treino_exercicio_execucoes').select('treino_exercicio_id')
+          .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr),
+        supabaseClient.from('treino_serie_execucoes').select('treino_exercicio_id, serie_index')
           .in('treino_exercicio_id', itens.map(te => te.id)).eq('data', hojeStr)
       ]);
       (cargas || []).forEach(c => { cargasSalvas[c.treino_exercicio_id + '_' + c.serie_index] = c.carga; });
       (feitosHoje || []).forEach(r => { exerciciosFeitos[r.treino_exercicio_id] = true; });
+      (seriesFeitasHoje || []).forEach(r => { seriesFeitas[r.treino_exercicio_id + '_' + r.serie_index] = true; });
     }
-    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId, cargasSalvas, exerciciosFeitos });
+    this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId, cargasSalvas, exerciciosFeitos, seriesFeitas });
   }
 
   // Carga é sempre salva com a data de hoje: se o aluno já registrou hoje,
@@ -1151,6 +1177,56 @@ class Component extends DCLogic {
         { onConflict: 'treino_exercicio_id,data' }
       );
     }
+  }
+
+  // Marca/desmarca uma série específica como feita (mesmo padrão do check de
+  // exercício, mas por série) — ajuda o aluno a não perder a conta de quantas
+  // séries já fez de um exercício. Marcar (não desmarcar) dispara o timer de
+  // descanso automático, se o personal configurou um pra este exercício.
+  async onToggleSerieFeita(treinoExercicioId, serieIndex) {
+    const key = treinoExercicioId + '_' + serieIndex;
+    const jaFeita = !!this.state.seriesFeitas[key];
+    const seriesFeitas = { ...this.state.seriesFeitas };
+    if (jaFeita) delete seriesFeitas[key]; else seriesFeitas[key] = true;
+    this.setState({ seriesFeitas });
+    if (!jaFeita) {
+      const te = this.state.exerciciosDoTreino.find(x => x.id === treinoExercicioId);
+      if (te && te.descanso_segundos > 0) this.iniciarDescanso(treinoExercicioId, te.descanso_segundos);
+    }
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (jaFeita) {
+      await supabaseClient.from('treino_serie_execucoes').delete()
+        .eq('treino_exercicio_id', treinoExercicioId).eq('serie_index', serieIndex).eq('data', hoje);
+    } else {
+      await supabaseClient.from('treino_serie_execucoes').upsert(
+        { treino_exercicio_id: treinoExercicioId, serie_index: serieIndex, cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, data: hoje },
+        { onConflict: 'treino_exercicio_id,serie_index,data' }
+      );
+    }
+  }
+
+  // Timer de descanso: puramente local (não persiste), reinicia se outra
+  // série for marcada enquanto um descanso já está contando.
+  iniciarDescanso(treinoExercicioId, segundos) {
+    if (this._descansoInterval) clearInterval(this._descansoInterval);
+    this.setState({ descansoAtivo: { treinoExercicioId, restante: segundos, total: segundos } });
+    this._descansoInterval = setInterval(() => {
+      this.setState(s => {
+        if (!s.descansoAtivo) return {};
+        const restante = s.descansoAtivo.restante - 1;
+        if (restante <= 0) {
+          clearInterval(this._descansoInterval);
+          this._descansoInterval = null;
+          return { descansoAtivo: null };
+        }
+        return { descansoAtivo: { ...s.descansoAtivo, restante } };
+      });
+    }, 1000);
+  }
+
+  pularDescanso() {
+    if (this._descansoInterval) { clearInterval(this._descansoInterval); this._descansoInterval = null; }
+    this.setState({ descansoAtivo: null });
   }
 
   // Finaliza um treino específico (upsert por dia — clicar de novo no mesmo
@@ -1552,9 +1628,17 @@ class Component extends DCLogic {
             const editando = !!this.state.cargasEditando[key];
             const mostrarInput = salva == null || editando;
             const salvando = !!this.state.cargasSalvando[key];
+            const feita = !!this.state.seriesFeitas[key];
             return {
               numero: si + 1,
               texto: linha,
+              feita,
+              check: feita ? '✓' : '',
+              checkBg: feita ? 'rgba(74,222,128,.12)' : '#131a26',
+              checkBorder: feita ? 'rgba(74,222,128,.3)' : '#1e2633',
+              textoColor: feita ? '#66707e' : '#c7ccd6',
+              decoration: feita ? 'line-through' : 'none',
+              onCheck: () => this.onToggleSerieFeita(e.teId, si),
               mostrarInput,
               mostrarSalvo: !mostrarInput,
               inputValor: this.state.cargasInputTemp[key] != null ? this.state.cargasInputTemp[key] : '',
@@ -1566,11 +1650,20 @@ class Component extends DCLogic {
               onSalvar: () => this.onSalvarCarga(e.teId, si)
             };
           });
+          const seriesFeitasCount = seriesValidasData.filter(sv => sv.feita).length;
+          const descansoAtivo = this.state.descansoAtivo && this.state.descansoAtivo.treinoExercicioId === e.teId ? this.state.descansoAtivo : null;
           return {
             nome: e.nome,
             temAquecimento: e.seriesAquecimentoLinhas.length > 0,
             seriesAquecimentoLinhas: e.seriesAquecimentoLinhas,
-            seriesValidasData, carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
+            seriesValidasData,
+            temSeriesValidas: seriesValidasData.length > 0,
+            seriesFeitasLabel: seriesFeitasCount + ' de ' + seriesValidasData.length + (seriesValidasData.length === 1 ? ' série feita' : ' séries feitas'),
+            descansoAtivo: !!descansoAtivo,
+            descansoLabel: descansoAtivo ? Math.floor(descansoAtivo.restante / 60) + ':' + String(descansoAtivo.restante % 60).padStart(2, '0') : '',
+            descansoPct: descansoAtivo ? Math.round((1 - descansoAtivo.restante / descansoAtivo.total) * 100) + '%' : '0%',
+            onPularDescanso: () => this.pularDescanso(),
+            carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
             tecnica: e.tecnica, tecnicaObs: e.tecnicaObs,
             temVideo: !!e.videoUrl,
             onVerVideo: () => { if (e.videoUrl) this.setState({ videoModalUrl: e.videoUrl }); },

@@ -800,7 +800,7 @@ async function duplicarTreino(treino) {
     await supabaseClient.from('treino_exercicios').insert(exs.map((te, i) => ({
       treino_id: novo.id, exercicio_id: te.exercicio_id,
       ordem: i, series_aquecimento: te.series_aquecimento, series: te.series, intervalo_descanso: te.intervalo_descanso,
-      tecnica_avancada: te.tecnica_avancada
+      descanso_segundos: te.descanso_segundos, tecnica_avancada: te.tecnica_avancada
     })));
   }
 
@@ -892,6 +892,7 @@ async function usarTemplate(template) {
       return {
         treino_id: novosOrdenados[i].id, exercicio_id: te.exercicio_id, ordem: te.ordem,
         series_aquecimento: te.series_aquecimento, series: te.series, intervalo_descanso: te.intervalo_descanso,
+        descanso_segundos: te.descanso_segundos,
         tecnica_avancada: te.tecnica_avancada, observacoes: te.observacoes, grupo_id: novoGrupoId
       };
     }));
@@ -1089,9 +1090,19 @@ function renderQuickEditItem(treino, te) {
   });
   descansoWrap.appendChild(descansoInput);
 
+  const descansoSegWrap = el('<div><label>Timer de descanso (segundos)</label></div>');
+  const descansoSegInput = el('<input type="number" min="0" step="5" value="' + (te.descanso_segundos != null ? te.descanso_segundos : '') + '" placeholder="Ex: 90, sem = sem timer">');
+  descansoSegInput.addEventListener('change', async () => {
+    const v = descansoSegInput.value.trim();
+    te.descanso_segundos = v === '' ? null : Math.max(0, parseInt(v, 10) || 0);
+    await supabaseClient.from('treino_exercicios').update({ descanso_segundos: te.descanso_segundos }).eq('id', te.id);
+  });
+  descansoSegWrap.appendChild(descansoSegInput);
+
   fields.appendChild(seriesAquecWrap);
   fields.appendChild(seriesWrap);
   fields.appendChild(descansoWrap);
+  fields.appendChild(descansoSegWrap);
   row.appendChild(fields);
   return row;
 }
@@ -1403,6 +1414,12 @@ function renderAddExForm(treino) {
   descansoWrap.appendChild(descansoCount);
   form.appendChild(descansoWrap);
 
+  const descansoSegWrap = el('<div><label>Timer de descanso automático (opcional)</label></div>');
+  const descansoSegInput = el('<input type="number" min="0" step="5" placeholder="Ex: 90 — em segundos, deixe vazio p/ sem timer">');
+  descansoSegInput.value = editTe && editTe.descanso_segundos != null ? editTe.descanso_segundos : '';
+  descansoSegWrap.appendChild(descansoSegInput);
+  form.appendChild(descansoSegWrap);
+
   const tecWrap = el('<div><label>Técnica avançada</label></div>');
   const tecSel = el('<select></select>');
   const tecObsWrap = el('<div style="display:none;"></div>');
@@ -1496,6 +1513,7 @@ function renderAddExForm(treino) {
       series: seriesTa.value.trim() || null,
       carga: cargaInput.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
+      descanso_segundos: descansoSegInput.value.trim() === '' ? null : Math.max(0, parseInt(descansoSegInput.value, 10) || 0),
       tecnica_avancada: tecSel.value,
       tecnica_instrucoes: tecSel.value === 'nenhuma' ? null : (tecObsTa.value.trim() || null),
       observacoes: obsTa.value.trim() || null
