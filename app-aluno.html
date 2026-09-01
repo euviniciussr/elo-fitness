@@ -952,6 +952,49 @@ aside + * table{display:block!important;overflow-x:auto!important}
 </sc-if>
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;hoje&quot;,&quot;options&quot;:[&quot;hoje&quot;,&quot;treino&quot;,&quot;dieta&quot;,&quot;evolucao&quot;,&quot;agenda&quot;,&quot;mensagens&quot;,&quot;plano&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
+// Trainers costumam escrever séries no formato curto "4x12" (4 séries de 12
+// reps) numa linha só, em vez de uma linha por série. Pra ter um check por
+// série de verdade, essa notação precisa virar 4 linhas repetidas — senão o
+// aluno via 4 séries prescritas mas só 1 checkbox pra marcar.
+function expandirSeriesLinhas(linhas) {
+  const out = [];
+  (linhas || []).forEach(linha => {
+    const m = linha.match(/^(\d{1,2})\s*[x×X]\s*(.+)$/);
+    const n = m ? parseInt(m[1], 10) : 0;
+    if (m && n >= 1 && n <= 15) {
+      const resto = m[2].trim();
+      for (let i = 0; i < n; i++) out.push(resto);
+    } else {
+      out.push(linha);
+    }
+  });
+  return out;
+}
+
+// Fallback pro timer de descanso quando o personal só preencheu o campo de
+// texto livre (ex.: "1min", "90s", "1-2min") e não o campo estruturado em
+// segundos — assim o timer já funciona com o que já estava cadastrado.
+function parseDescansoSegundos(texto) {
+  if (!texto) return null;
+  const t = texto.toLowerCase().trim();
+  let m = t.match(/^(\d+)\s*:\s*(\d{1,2})$/);
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  m = t.match(/^(\d+)\s*-\s*(\d+)\s*(min|minuto|m|s|seg|segundo)/);
+  if (m) {
+    const media = (parseInt(m[1], 10) + parseInt(m[2], 10)) / 2;
+    return Math.round(/^m/.test(m[3]) ? media * 60 : media);
+  }
+  m = t.match(/^(\d+)\s*(?:min|minuto)s?\s*(\d+)\s*(?:s|seg|segundo)?s?$/);
+  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  m = t.match(/^(\d+)\s*(?:min|minuto|m)s?$/);
+  if (m) return parseInt(m[1], 10) * 60;
+  m = t.match(/^(\d+)\s*(?:s|seg|segundo)s?$/);
+  if (m) return parseInt(m[1], 10);
+  m = t.match(/^(\d+)$/);
+  if (m) return parseInt(m[1], 10);
+  return null;
+}
+
 class Component extends DCLogic {
   state = {
     tab: 'hoje', exerciciosFeitos: {}, seriesFeitas: {}, treinoSelecionadoId: null,
@@ -1191,7 +1234,8 @@ class Component extends DCLogic {
     this.setState({ seriesFeitas });
     if (!jaFeita) {
       const te = this.state.exerciciosDoTreino.find(x => x.id === treinoExercicioId);
-      if (te && te.descanso_segundos > 0) this.iniciarDescanso(treinoExercicioId, te.descanso_segundos);
+      const segundos = te ? (te.descanso_segundos > 0 ? te.descanso_segundos : parseDescansoSegundos(te.intervalo_descanso)) : null;
+      if (segundos > 0) this.iniciarDescanso(treinoExercicioId, segundos);
     }
     const hoje = new Date().toISOString().slice(0, 10);
     if (jaFeita) {
@@ -1370,7 +1414,7 @@ class Component extends DCLogic {
         nome: (te.exercicios || {}).nome || 'Exercício',
         categoria: (te.exercicios || {}).categoria || '',
         seriesAquecimentoLinhas: (te.series_aquecimento || '').split('\n').map(s => s.trim()).filter(Boolean),
-        seriesLinhas: (te.series || '').split('\n').map(s => s.trim()).filter(Boolean),
+        seriesLinhas: expandirSeriesLinhas((te.series || '').split('\n').map(s => s.trim()).filter(Boolean)),
         carga: te.carga || '',
         descanso: te.intervalo_descanso || '',
         observacoes: te.observacoes || '',
