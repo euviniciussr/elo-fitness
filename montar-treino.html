@@ -709,26 +709,49 @@ function renderStatusTreino(treino) {
   return box;
 }
 
-// "Série N — atual (anterior: X)": só aparece quando o aluno já registrou ao
-// menos uma carga naquela série — nunca mostra algo que o aluno não digitou.
+// Mesma expansão usada no app do aluno pra série "4x12" numa linha só virar
+// 4 séries de verdade — precisa ser idêntica dos dois lados, senão o índice
+// (serie_index) que o aluno salva no banco não bate com a linha que o
+// treinador está lendo aqui, e a carga da Série 2+ nunca aparece.
+function expandirSeriesLinhas(linhas) {
+  const out = [];
+  (linhas || []).forEach(linha => {
+    const m = linha.match(/^(\d{1,2})\s*[x×X]\s*(.+)$/);
+    const n = m ? parseInt(m[1], 10) : 0;
+    if (m && n >= 1 && n <= 15) {
+      const resto = m[2].trim();
+      for (let i = 0; i < n; i++) out.push(resto);
+    } else {
+      out.push(linha);
+    }
+  });
+  return out;
+}
+
+// "Série N — atual (anterior: X)": mostra TODAS as séries prescritas assim
+// que o aluno já registrou pelo menos uma carga no exercício — sério sem
+// carga aparece como "não preenchida" em vez de simplesmente sumir, pra não
+// dar a impressão de que a carga de uma série "vazou" pra outra.
 function renderCargasSerieList(te) {
   const cargasPorSerie = cargasPorTreinoExercicio[te.id];
   if (!cargasPorSerie || !Object.keys(cargasPorSerie).length) return null;
-  const linhas = (te.series || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const linhas = expandirSeriesLinhas((te.series || '').split('\n').map(s => s.trim()).filter(Boolean));
   const wrap = el('<div style="margin-top:8px;padding-top:8px;border-top:1px dashed #1e2633;display:flex;flex-direction:column;gap:3px;"></div>');
-  let alguma = false;
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   linhas.forEach((texto, si) => {
     const historico = cargasPorSerie[si];
-    if (!historico || !historico.length) return;
-    alguma = true;
-    const atual = historico[0];
-    const anterior = historico[1];
-    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    let txt = 'Série ' + (si + 1) + ' — Carga utilizada: <b style="color:#4ade80;">' + esc(atual.carga) + '</b>';
-    if (anterior && anterior.carga !== atual.carga) txt += ' <span style="color:#66707e;">(anterior: ' + esc(anterior.carga) + ')</span>';
+    let txt;
+    if (historico && historico.length) {
+      const atual = historico[0];
+      const anterior = historico[1];
+      txt = 'Série ' + (si + 1) + ' — Carga utilizada: <b style="color:#4ade80;">' + esc(atual.carga) + '</b>';
+      if (anterior && anterior.carga !== atual.carga) txt += ' <span style="color:#66707e;">(anterior: ' + esc(anterior.carga) + ')</span>';
+    } else {
+      txt = 'Série ' + (si + 1) + ' — <span style="color:#66707e;">não preenchida</span>';
+    }
     wrap.appendChild(el('<div style="font-size:11.5px;color:#9aa4b2;">' + txt + '</div>'));
   });
-  return alguma ? wrap : null;
+  return wrap;
 }
 
 function gruposMusculares(treino) {
