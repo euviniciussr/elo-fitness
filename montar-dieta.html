@@ -62,11 +62,12 @@ input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;bor
 .opcao-remove{background:none;border:none;color:#4a5364;font-size:11.5px;font-weight:700;}
 .opcao-remove:hover{color:#f87171;}
 
-.item-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #1a2130;}
+.item-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #1a2130;}
 .item-row:last-of-type{border-bottom:none;}
+.item-row-left{flex:1;min-width:0;}
 .item-nome{font-size:13px;font-weight:600;}
 .item-qtd{font-size:11.5px;color:#66707e;margin-top:1px;}
-.item-macros{font-size:11px;color:#66707e;text-align:right;white-space:nowrap;}
+.item-macros{font-size:11px;color:#66707e;text-align:right;white-space:normal;}
 .item-remove{background:none;border:none;color:#4a5364;font-size:14px;padding:2px 6px;line-height:1;}
 .item-remove:hover{color:#f87171;}
 .item-edit{background:none;border:none;color:#4a5364;font-size:13px;padding:2px 6px;line-height:1;cursor:pointer;}
@@ -462,25 +463,27 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
 
   opcao.itens.forEach((it, ii) => {
     const row = el('<div class="item-row"></div>');
-    const left = el('<div></div>');
+    const left = el('<div class="item-row-left"></div>');
     left.appendChild(el('<div class="item-nome">' + it.nome + '</div>'));
     const qtdLabel = (it.quantidade != null && it.unidade)
       ? it.quantidade + ' ' + foodMeasureLabel(it.unidade) + (it.unidade !== 'g' && it.unidade !== 'ml' && it.quantidade_g != null ? ' (' + it.quantidade_g + 'g)' : '')
       : it.quantidade_g + 'g';
     left.appendChild(el('<div class="item-qtd">' + qtdLabel + '</div>'));
     row.appendChild(left);
-    const right = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
+    const right = el('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;max-width:45%;"></div>');
     right.appendChild(el('<div class="item-macros">' + it.kcal + ' kcal · P ' + it.proteina_g + 'g · C ' + it.carboidrato_g + 'g · G ' + it.gordura_g + 'g · F ' + it.fibra_g + 'g</div>'));
+    const actions = el('<div style="display:flex;align-items:center;gap:8px;"></div>');
     const subCount = (it.substituiveis || []).length;
     const subBtn = el('<button type="button" class="item-sub-btn" title="Alimentos substitutos equivalentes">Substituíveis' + (subCount ? ' (' + subCount + ')' : '') + '</button>');
     subBtn.addEventListener('click', () => abrirGerenciarSubstituiveis(it, render));
-    right.appendChild(subBtn);
+    actions.appendChild(subBtn);
     const editBtn = el('<button type="button" class="item-edit" title="Editar quantidade">✎</button>');
     editBtn.addEventListener('click', () => abrirEditarItem(opcao, ii, render));
-    right.appendChild(editBtn);
+    actions.appendChild(editBtn);
     const rmBtn = el('<button type="button" class="item-remove">×</button>');
     rmBtn.addEventListener('click', () => { opcao.itens.splice(ii, 1); render(); });
-    right.appendChild(rmBtn);
+    actions.appendChild(rmBtn);
+    right.appendChild(actions);
     row.appendChild(right);
     box.appendChild(row);
 
