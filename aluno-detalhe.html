@@ -131,6 +131,7 @@ const TABS = [
   ['anamnese', 'Anamnese'],
   ['treino', 'Treino'],
   ['energetico', 'TBM - GET'],
+  ['avaliacao_fisica', 'Avaliação Física'],
   ['dieta', 'Dieta'],
   ['cardio', 'Cardio'],
   ['fotos', 'Fotos'],
@@ -167,6 +168,26 @@ const ESTADO_ATUAL_OPCOES = [
 function calcularTMB(sexo, pesoKg, alturaCm, idade) {
   const base = 10 * pesoKg + 6.25 * alturaCm - 5 * idade;
   return sexo === 'M' ? base + 5 : base - 161;
+}
+
+const DOBRAS_CAMPOS = [
+  ['peitoral', 'Peitoral'],
+  ['axilar_media', 'Axilar média'],
+  ['triceps', 'Tríceps'],
+  ['subescapular', 'Subescapular'],
+  ['supra_iliaca', 'Supra-ilíaca'],
+  ['abdominal', 'Abdominal'],
+  ['coxa', 'Coxa']
+];
+
+// Jackson & Pollock 7 dobras (densidade corporal, fórmula distinta por sexo) + Siri (% de gordura).
+function calcularComposicaoPollock(sexo, idade, dobras) {
+  const soma = DOBRAS_CAMPOS.reduce((acc, [chave]) => acc + (Number(dobras[chave]) || 0), 0);
+  const densidade = sexo === 'M'
+    ? 1.112 - 0.00043499 * soma + 0.00000055 * soma * soma - 0.00028826 * idade
+    : 1.097 - 0.00046971 * soma + 0.00000056 * soma * soma - 0.00012828 * idade;
+  const percGordura = (495 / densidade) - 450;
+  return { soma, densidade, percGordura };
 }
 
 function anamnesePerguntaDeveAparecer(q, respostas) {
@@ -209,6 +230,9 @@ let anamneseEstrutura = { secoes: [], perguntas: [] };
 let anamneseDinamica = {};
 let anamneseDinamicaFormOpen = false;
 let anamneseDinamicaEdit = null;
+let avaliacoesFisicas = [];
+let avaliacaoFisicaFormOpen = false;
+let avaliacaoFisicaEditId = '';
 let fotosList = [];
 let feedbacksList = [];
 let convite = null;
@@ -252,12 +276,13 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
+  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
+    supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', clienteIdParam).order('data', { ascending: false }),
     supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle(),
     supabaseClient.from('anamnese_respostas_dinamicas').select('*').eq('cliente_id', clienteIdParam).maybeSingle(),
     supabaseClient.from('anamnese_templates').select('estrutura').eq('trainer_id', userId).maybeSingle(),
@@ -271,6 +296,7 @@ async function init() {
   treinos = trRes.data || [];
   dietaList = dietaRes.data || [];
   cardioList = cardioRes.data || [];
+  avaliacoesFisicas = avFisicaRes.data || [];
   anamnese = anamneseRes.data || null;
   anamneseDinamica = (anamneseDinRes.data && anamneseDinRes.data.respostas) || {};
   anamneseEstrutura = tplTrainerRes.data && tplTrainerRes.data.estrutura;
@@ -309,6 +335,7 @@ function render() {
   else if (activeTab === 'cardio') renderCardioTab(body);
   else if (activeTab === 'anamnese') renderAnamneseTab(body);
   else if (activeTab === 'energetico') renderEnergeticoTab(body);
+  else if (activeTab === 'avaliacao_fisica') renderAvaliacaoFisicaTab(body);
   else if (activeTab === 'fotos') renderFotosTab(body);
   else if (activeTab === 'feedback') renderFeedbackTab(body);
   else if (activeTab === 'agendamentos') renderAgendamentosTab(body);
@@ -612,6 +639,212 @@ function renderEnergeticoTab(container) {
     'Estado Atual: <b>' + (estadoSel ? estadoSel.nome : 'não selecionado') + '</b>' +
     '</div>'
   ));
+}
+
+function avaliacaoDobrasDeRegistro(av) {
+  return {
+    peitoral: av.dobra_peitoral, axilar_media: av.dobra_axilar_media, triceps: av.dobra_triceps,
+    subescapular: av.dobra_subescapular, supra_iliaca: av.dobra_supra_iliaca, abdominal: av.dobra_abdominal, coxa: av.dobra_coxa
+  };
+}
+
+function avaliacaoResultado(av) {
+  const { soma, percGordura } = calcularComposicaoPollock(av.sexo, av.idade, avaliacaoDobrasDeRegistro(av));
+  const massaGorda = av.peso_kg * (percGordura / 100);
+  const massaMagra = av.peso_kg - massaGorda;
+  return { soma, percGordura, massaGorda, massaMagra };
+}
+
+function renderAvaliacaoFisicaTab(container) {
+  if (avaliacaoFisicaFormOpen) { renderAvaliacaoFisicaForm(container); return; }
+
+  if (!avaliacoesFisicas.length) {
+    container.appendChild(el('<div class="empty">Nenhuma avaliação física registrada ainda.</div>'));
+  }
+  avaliacoesFisicas.forEach(av => {
+    const r = avaliacaoResultado(av);
+    const row = el(
+      '<div class="list-row">' +
+        '<div class="list-row-nome">' + new Date(av.data + 'T00:00:00').toLocaleDateString('pt-BR') + '</div>' +
+        '<div class="list-row-meta">' + [
+          'Peso ' + av.peso_kg + ' kg',
+          '% Gordura ' + r.percGordura.toFixed(1) + '%',
+          'Massa de gordura ' + r.massaGorda.toFixed(1) + ' kg',
+          'Massa livre de gordura ' + r.massaMagra.toFixed(1) + ' kg'
+        ].join(' · ') + '</div>' +
+      '</div>'
+    );
+    const actions = el('<div class="list-row-actions"></div>');
+    const editBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">Editar</button>');
+    editBtn.addEventListener('click', () => { avaliacaoFisicaEditId = av.id; avaliacaoFisicaFormOpen = true; render(); });
+    const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
+    delBtn.addEventListener('click', async () => {
+      if (!window.confirm('Excluir essa avaliação física?')) return;
+      await supabaseClient.from('avaliacoes_fisicas').delete().eq('id', av.id);
+      avaliacoesFisicas = avaliacoesFisicas.filter(x => x.id !== av.id);
+      render();
+    });
+    actions.appendChild(editBtn); actions.appendChild(delBtn);
+    row.appendChild(actions);
+    container.appendChild(row);
+  });
+
+  const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Nova avaliação</button>');
+  novoBtn.addEventListener('click', () => { avaliacaoFisicaEditId = ''; avaliacaoFisicaFormOpen = true; render(); });
+  container.appendChild(novoBtn);
+}
+
+function renderAvaliacaoFisicaForm(container) {
+  const editando = avaliacoesFisicas.find(av => av.id === avaliacaoFisicaEditId);
+  const box = el('<div class="form-box"></div>');
+  box.appendChild(el('<div class="sub" style="margin:0 0 16px;">Sexo, idade, altura e peso vêm da anamnese quando disponíveis — confira e ajuste se mudou algo desde a última avaliação.</div>'));
+
+  let sexoVal = editando ? (editando.sexo || '') : (anamnese ? (anamnese.sexo || '') : '');
+  const sexoWrap = el('<div style="margin-bottom:14px;"></div>');
+  sexoWrap.appendChild(el('<label>Sexo</label>'));
+  const sexoRow = el('<div class="sexo-row"></div>');
+  const chipM = el('<div class="chip' + (sexoVal === 'M' ? ' sel' : '') + '">Masculino</div>');
+  const chipF = el('<div class="chip' + (sexoVal === 'F' ? ' sel' : '') + '">Feminino</div>');
+  chipM.addEventListener('click', () => { sexoVal = 'M'; chipM.classList.add('sel'); chipF.classList.remove('sel'); atualizarResultado(); });
+  chipF.addEventListener('click', () => { sexoVal = 'F'; chipF.classList.add('sel'); chipM.classList.remove('sel'); atualizarResultado(); });
+  sexoRow.appendChild(chipM); sexoRow.appendChild(chipF);
+  sexoWrap.appendChild(sexoRow);
+  box.appendChild(sexoWrap);
+
+  const row1 = el('<div class="field-row"></div>');
+  const idadeInput = el('<input type="number" min="0" placeholder="Ex: 28">');
+  idadeInput.value = editando ? (editando.idade != null ? editando.idade : '') : (anamnese && anamnese.idade != null ? anamnese.idade : '');
+  const colIdade = el('<div></div>'); colIdade.appendChild(el('<label>Idade (anos)</label>')); colIdade.appendChild(idadeInput);
+  const alturaInput = el('<input type="number" min="0" placeholder="Ex: 180">');
+  alturaInput.value = editando ? (editando.altura_cm != null ? editando.altura_cm : '') : (anamnese && anamnese.altura_cm != null ? anamnese.altura_cm : '');
+  const colAltura = el('<div></div>'); colAltura.appendChild(el('<label>Altura (cm)</label>')); colAltura.appendChild(alturaInput);
+  row1.appendChild(colIdade); row1.appendChild(colAltura);
+  box.appendChild(row1);
+
+  const row2 = el('<div class="field-row"></div>');
+  const pesoInput = el('<input type="number" min="0" step="0.1" placeholder="Ex: 90">');
+  pesoInput.value = editando ? (editando.peso_kg != null ? editando.peso_kg : '') : (anamnese && anamnese.peso_kg != null ? anamnese.peso_kg : '');
+  const colPeso = el('<div></div>'); colPeso.appendChild(el('<label>Peso (kg)</label>')); colPeso.appendChild(pesoInput);
+  const dataInput = el('<input type="date">');
+  dataInput.value = editando ? editando.data : new Date().toISOString().slice(0, 10);
+  const colData = el('<div></div>'); colData.appendChild(el('<label>Data da avaliação</label>')); colData.appendChild(dataInput);
+  row2.appendChild(colPeso); row2.appendChild(colData);
+  box.appendChild(row2);
+
+  box.appendChild(el('<div class="sub" style="margin:18px 0 10px;font-weight:700;color:#e5e9f0;">Percentual de Gordura — Pollock 7 Dobras</div>'));
+  const dobrasGrid = el('<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;"></div>');
+  const dobraInputs = {};
+  DOBRAS_CAMPOS.forEach(([chave, label]) => {
+    const input = el('<input type="number" min="0" step="0.1" placeholder="mm">');
+    input.value = editando && editando['dobra_' + chave] != null ? editando['dobra_' + chave] : '';
+    const col = el('<div></div>');
+    col.appendChild(el('<label>' + label + ' (mm)</label>'));
+    col.appendChild(input);
+    dobrasGrid.appendChild(col);
+    dobraInputs[chave] = input;
+  });
+  box.appendChild(dobrasGrid);
+
+  const resultBox = el('<div></div>');
+  box.appendChild(resultBox);
+
+  function atualizarResultado() {
+    resultBox.innerHTML = '';
+    const idade = Number(idadeInput.value);
+    const peso = Number(pesoInput.value);
+    const dobras = {};
+    let dobrasOk = true;
+    DOBRAS_CAMPOS.forEach(([chave]) => {
+      const v = Number(dobraInputs[chave].value);
+      dobras[chave] = v;
+      if (!dobraInputs[chave].value || !(v > 0)) dobrasOk = false;
+    });
+    if (!dobrasOk) {
+      resultBox.appendChild(el('<div class="warn-box">Preencha sexo, idade e todas as 7 dobras para calcular o percentual de gordura.</div>'));
+      return;
+    }
+    const { soma, percGordura } = calcularComposicaoPollock(sexoVal || 'M', idade, dobras);
+    resultBox.appendChild(el('<div class="result-summary" style="margin-bottom:12px;">Soma das 7 dobras: <b>' + soma.toFixed(1) + ' mm</b></div>'));
+    if (!sexoVal || !(idade > 0)) {
+      resultBox.appendChild(el('<div class="warn-box">Selecione o sexo e informe a idade para calcular o percentual de gordura.</div>'));
+      return;
+    }
+    const grid = el('<div class="result-grid" style="grid-template-columns:repeat(2,1fr);"></div>');
+    const boxPerc = el('<div class="result-box"></div>');
+    boxPerc.appendChild(el('<div class="result-num">' + percGordura.toFixed(1) + '%</div>'));
+    boxPerc.appendChild(el('<div class="result-label">Percentual de gordura</div>'));
+    grid.appendChild(boxPerc);
+    if (peso > 0) {
+      const massaGorda = peso * (percGordura / 100);
+      const massaMagra = peso - massaGorda;
+      const boxMassas = el('<div class="result-box"></div>');
+      boxMassas.appendChild(el('<div class="result-num" style="font-size:15px;">' + massaGorda.toFixed(1) + ' kg / ' + massaMagra.toFixed(1) + ' kg</div>'));
+      boxMassas.appendChild(el('<div class="result-label">Massa de gordura / Massa livre de gordura</div>'));
+      grid.appendChild(boxMassas);
+    } else {
+      const boxSemPeso = el('<div class="result-box"></div>');
+      boxSemPeso.appendChild(el('<div class="result-num" style="font-size:12.5px;color:#66707e;">Informe o peso</div>'));
+      boxSemPeso.appendChild(el('<div class="result-label">Massa de gordura / Massa livre de gordura</div>'));
+      grid.appendChild(boxSemPeso);
+    }
+    resultBox.appendChild(grid);
+  }
+
+  [idadeInput, pesoInput, ...Object.values(dobraInputs)].forEach(inp => inp.addEventListener('input', atualizarResultado));
+  atualizarResultado();
+
+  const obs = el('<textarea rows="3" placeholder="Observações (opcional)" style="margin-top:4px;"></textarea>');
+  obs.value = editando ? (editando.observacoes || '') : '';
+  box.appendChild(el('<label style="margin-top:14px;">Observações</label>')); box.appendChild(obs);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { avaliacaoFisicaFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">' + (editando ? 'Salvar alterações' : 'Criar avaliação') + '</button>');
+  salvarBtn.addEventListener('click', async () => {
+    const idade = Number(idadeInput.value);
+    const peso = Number(pesoInput.value);
+    const dobrasPayload = {};
+    let dobraFaltando = false;
+    DOBRAS_CAMPOS.forEach(([chave]) => {
+      const v = Number(dobraInputs[chave].value);
+      if (!dobraInputs[chave].value || !(v > 0)) dobraFaltando = true;
+      dobrasPayload['dobra_' + chave] = v;
+    });
+    if (!sexoVal) { erro.textContent = 'Selecione o sexo.'; erro.style.display = ''; return; }
+    if (!(idade > 0)) { erro.textContent = 'Informe a idade.'; erro.style.display = ''; return; }
+    if (!(peso > 0)) { erro.textContent = 'Informe o peso.'; erro.style.display = ''; return; }
+    if (!dataInput.value) { erro.textContent = 'Informe a data da avaliação.'; erro.style.display = ''; return; }
+    if (dobraFaltando) { erro.textContent = 'Preencha todas as 7 dobras para calcular o percentual de gordura.'; erro.style.display = ''; return; }
+
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const payload = {
+      sexo: sexoVal,
+      idade,
+      peso_kg: peso,
+      altura_cm: alturaInput.value ? Number(alturaInput.value) : null,
+      data: dataInput.value,
+      observacoes: obs.value.trim() || null,
+      ...dobrasPayload
+    };
+    let error;
+    if (editando) {
+      ({ error } = await supabaseClient.from('avaliacoes_fisicas').update(payload).eq('id', editando.id));
+    } else {
+      ({ error } = await supabaseClient.from('avaliacoes_fisicas').insert({ ...payload, trainer_id: userId, cliente_id: clienteIdParam }));
+    }
+    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = editando ? 'Salvar alterações' : 'Criar avaliação'; return; }
+    const { data } = await supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', clienteIdParam).order('data', { ascending: false });
+    avaliacoesFisicas = data || [];
+    avaliacaoFisicaFormOpen = false;
+    render();
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
 }
 
 function conviteStatusInfo() {

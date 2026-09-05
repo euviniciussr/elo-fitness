@@ -482,7 +482,12 @@ aside + * table{display:block!important;overflow-x:auto!important}
                   <div style="font-size:12.5px;color:#66707e;">Seu personal ainda não adicionou exercícios nesta divisão.</div>
                 </sc-if>
                 <div style="display:flex;flex-direction:column;gap:12px;">
-                  <sc-for list="{{ dv.exercicios }}" as="e" hint-placeholder-count="4">
+                  <sc-for list="{{ dv.gruposExercicios }}" as="g" hint-placeholder-count="4">
+                  <div style="background:{{ g.wrapBg }};border:1px solid {{ g.wrapBorder }};border-radius:14px;padding:{{ g.wrapPadding }};display:flex;flex-direction:column;gap:12px;">
+                    <sc-if value="{{ g.isCombo }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:10.5px;font-weight:800;color:#a855f7;text-transform:uppercase;letter-spacing:.04em;">{{ g.comboLabel }}</div>
+                    </sc-if>
+                    <sc-for list="{{ g.exercicios }}" as="e" hint-placeholder-count="2">
                     <div style="background:#10151f;border:1px solid {{ e.border }};border-radius:14px;padding:16px 20px;">
                       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
                         <div sc-camel-on-click="{{ e.onCheck }}" style="width:36px;height:36px;flex-shrink:0;border-radius:10px;background:{{ e.checkBg }};border:1px solid {{ e.checkBorder }};display:flex;align-items:center;justify-content:center;font-size:14px;color:#4ade80;font-weight:800;cursor:pointer;">{{ e.check }}</div>
@@ -559,6 +564,8 @@ aside + * table{display:block!important;overflow-x:auto!important}
                         </sc-if>
                       </div>
                     </div>
+                    </sc-for>
+                  </div>
                   </sc-for>
                 </div>
                 <sc-if value="{{ dv.jaFinalizadoHoje }}" hint-placeholder-val="{{ false }}">
@@ -705,6 +712,13 @@ aside + * table{display:block!important;overflow-x:auto!important}
           </div>
         </sc-if>
 
+        <sc-if value="{{ temObservacaoDieta }}" hint-placeholder-val="{{ false }}">
+          <div style="background:rgba(249,115,22,.06);border:1px solid rgba(249,115,22,.25);border-radius:14px;padding:16px 20px;margin-top:16px;">
+            <div style="font-size:11px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">Observações</div>
+            <div style="font-size:13px;color:#e5e9f0;line-height:1.6;white-space:pre-wrap;">{{ observacaoDieta }}</div>
+          </div>
+        </sc-if>
+
         <div style="background:#10151f;border:1px dashed #1e2633;border-radius:14px;padding:16px 20px;margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div style="font-size:12.5px;color:#9aa4b2;">Comeu algo fora do plano? Registra que seu personal vê no seu diário.</div>
           <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;" style-hover="color:#e5e9f0;">+ Refeição livre</button>
@@ -800,6 +814,69 @@ aside + * table{display:block!important;overflow-x:auto!important}
           <textarea value="{{ feedbackGeralTexto }}" sc-camel-on-change="{{ onFeedbackGeralChange }}" placeholder="Ex: Estou conseguindo aumentar minhas cargas, mas sinto dificuldade em manter a frequência…" style="width:100%;min-height:72px;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:12px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;resize:vertical;"></textarea>
           <button sc-camel-on-click="{{ enviarFeedbackGeral }}" style="margin-top:12px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px 26px;border-radius:11px;cursor:pointer;">{{ feedbackGeralLabel }}</button>
         </section>
+      </div>
+    </sc-if>
+
+    <!-- AVALIAÇÃO FÍSICA -->
+    <sc-if value="{{ isAvaliacaoFisica }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="margin-bottom:18px;">
+          <h1 style="margin:0;font-size:23px;font-weight:800;">Avaliação física</h1>
+          <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Resultados registrados pelo seu personal — Pollock 7 dobras</div>
+        </div>
+
+        <sc-if value="{{ semAvaliacoesFisicas }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
+            <div style="font-size:14.5px;font-weight:800;">Nenhuma avaliação registrada ainda</div>
+            <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Assim que seu personal fizer sua avaliação física, os resultados aparecem aqui.</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ temAvaliacoesFisicas }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+              <div style="font-size:14px;font-weight:800;">Última avaliação</div>
+              <div style="font-size:11.5px;color:#66707e;">{{ ultimaAvaliacaoFisica.data }}</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;">
+              <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:19px;font-weight:800;">{{ ultimaAvaliacaoFisica.peso }}</div>
+                <div style="font-size:10.5px;color:#66707e;margin-top:4px;">Peso</div>
+              </div>
+              <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:19px;font-weight:800;">{{ ultimaAvaliacaoFisica.altura }}</div>
+                <div style="font-size:10.5px;color:#66707e;margin-top:4px;">Altura</div>
+              </div>
+              <div style="background:#0d1119;border:1px solid rgba(249,115,22,.35);border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:19px;font-weight:800;color:#f97316;">{{ ultimaAvaliacaoFisica.percGordura }}</div>
+                <div style="font-size:10.5px;color:#66707e;margin-top:4px;">% de gordura</div>
+              </div>
+              <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:19px;font-weight:800;">{{ ultimaAvaliacaoFisica.massaGorda }}</div>
+                <div style="font-size:10.5px;color:#66707e;margin-top:4px;">Massa de gordura</div>
+              </div>
+              <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px;text-align:center;">
+                <div style="font-size:19px;font-weight:800;">{{ ultimaAvaliacaoFisica.massaMagra }}</div>
+                <div style="font-size:10.5px;color:#66707e;margin-top:4px;">Massa livre de gordura</div>
+              </div>
+            </div>
+          </section>
+
+          <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;">
+            <div style="font-size:14px;font-weight:800;margin-bottom:14px;">Histórico de avaliações</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <sc-for list="{{ avaliacoesFisicasList }}" as="a" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;padding:10px 0;border-bottom:1px solid #171d29;">
+                  <span style="color:#66707e;min-width:80px;">{{ a.data }}</span>
+                  <span>Peso <strong>{{ a.peso }}</strong></span>
+                  <span>Gordura <strong style="color:#f97316;">{{ a.percGordura }}</strong></span>
+                  <span>M. gorda <strong>{{ a.massaGorda }}</strong></span>
+                  <span>M. magra <strong>{{ a.massaMagra }}</strong></span>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
       </div>
     </sc-if>
 
@@ -946,6 +1023,7 @@ aside + * table{display:block!important;overflow-x:auto!important}
     <button type="button" class="pf-more-link" sc-camel-on-click="{{ bnAgenda.onClick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg><span>Agenda</span></button>
     <button type="button" class="pf-more-link" sc-camel-on-click="{{ bnMensagens.onClick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg><span>Mensagens</span></button>
     <button type="button" class="pf-more-link" sc-camel-on-click="{{ bnPlano.onClick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg><span>Meu plano</span></button>
+    <button type="button" class="pf-more-link" sc-camel-on-click="{{ bnAvaliacaoFisica.onClick }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 0 0-5 5v3a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z"></path><path d="M8 21h8"></path><path d="M12 17v4"></path></svg><span>Avaliação Física</span></button>
     <hr>
     <a href="login.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg><span>Sair</span></a>
   </div>
@@ -956,6 +1034,22 @@ aside + * table{display:block!important;overflow-x:auto!important}
 // reps) numa linha só, em vez de uma linha por série. Pra ter um check por
 // série de verdade, essa notação precisa virar 4 linhas repetidas — senão o
 // aluno via 4 séries prescritas mas só 1 checkbox pra marcar.
+const DOBRAS_CAMPOS = [
+  ['peitoral', 'Peitoral'], ['axilar_media', 'Axilar média'], ['triceps', 'Tríceps'],
+  ['subescapular', 'Subescapular'], ['supra_iliaca', 'Supra-ilíaca'], ['abdominal', 'Abdominal'], ['coxa', 'Coxa']
+];
+
+// Jackson & Pollock 7 dobras (densidade corporal, fórmula distinta por sexo) + Siri (% de gordura).
+// Mesma lógica de aluno-detalhe.html — aqui só leitura, o aluno nunca grava avaliação.
+function calcularComposicaoPollock(sexo, idade, av) {
+  const soma = DOBRAS_CAMPOS.reduce((acc, [chave]) => acc + (Number(av['dobra_' + chave]) || 0), 0);
+  const densidade = sexo === 'M'
+    ? 1.112 - 0.00043499 * soma + 0.00000055 * soma * soma - 0.00028826 * idade
+    : 1.097 - 0.00046971 * soma + 0.00000056 * soma * soma - 0.00012828 * idade;
+  const percGordura = (495 / densidade) - 450;
+  return { soma, densidade, percGordura };
+}
+
 function expandirSeriesLinhas(linhas) {
   const out = [];
   (linhas || []).forEach(linha => {
@@ -1004,6 +1098,7 @@ class Component extends DCLogic {
     convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', alunoStatus: '', trainerNome: '',
     notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
     pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: '',
+    avaliacoesFisicas: [],
     cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {},
     feedbackGeralTexto: '', feedbackGeralEnviando: false, feedbackGeralEnviado: false,
     feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {},
@@ -1088,20 +1183,22 @@ class Component extends DCLogic {
     const desde90 = new Date(); desde90.setDate(desde90.getDate() - 90);
     const desde90Str = desde90.toISOString().slice(0, 10);
     const hojeStr = new Date().toISOString().slice(0, 10);
-    const [{ data: treinos }, { data: fotos }, { data: dietas }, { data: agendamentos }, { data: pesos }, { data: execucoes }] = await Promise.all([
+    const [{ data: treinos }, { data: fotos }, { data: dietas }, { data: agendamentos }, { data: pesos }, { data: execucoes }, { data: avaliacoesFisicas }] = await Promise.all([
       supabaseClient.from('treinos').select('id, nome, dias_semana, ordem').eq('cliente_id', cliente.id).eq('habilitado', true).order('ordem', { ascending: true }),
       supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
       supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1),
       supabaseClient.from('agendamentos').select('*').eq('cliente_id', cliente.id).eq('concluido', false).order('data_lembrete', { ascending: true }),
       supabaseClient.from('registros_peso').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str).order('data', { ascending: false }),
-      supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str)
+      supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str),
+      supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', cliente.id).order('data', { ascending: false })
     ]);
     const pesoHoje = (pesos || []).find(p => p.data === hojeStr);
     this.setState({
       fotosEvolucao: await this.resolveFotoUrls(fotos), dietaAtual: (dietas && dietas[0]) || null,
       treinosPlano: treinos || [], agendamentos: agendamentos || [],
       pesoHistorico: pesos || [], execucoes: execucoes || [],
-      pesoInput: pesoHoje ? String(pesoHoje.peso) : '', pesoSalvo: !!pesoHoje
+      pesoInput: pesoHoje ? String(pesoHoje.peso) : '', pesoSalvo: !!pesoHoje,
+      avaliacoesFisicas: avaliacoesFisicas || []
     });
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
@@ -1411,6 +1508,7 @@ class Component extends DCLogic {
         idx,
         teId: te.id,
         treinoId: te.treino_id,
+        grupoId: te.grupo_id || null,
         nome: (te.exercicios || {}).nome || 'Exercício',
         categoria: (te.exercicios || {}).categoria || '',
         seriesAquecimentoLinhas: (te.series_aquecimento || '').split('\n').map(s => s.trim()).filter(Boolean),
@@ -1427,13 +1525,38 @@ class Component extends DCLogic {
     const todos = exData.length > 0 && doneCount === exData.length;
     const DIA_LABELS_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
     const divisoesOrdenadas = this.state.treinosPlano.slice().sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+    // Agrupamento visual de super-set/bi-set/tri-set: mesma lógica de grupo_id usada
+    // em montar-treino.html (.combo-box), só que aqui em modo leitura pro aluno —
+    // exercícios com o mesmo grupo_id ficam dentro de uma caixa com fundo/borda
+    // diferenciados; exercícios avulsos ficam num "grupo" de 1 item sem destaque.
+    const agruparPorCombo = (exs) => {
+      const vistos = new Set();
+      const grupos = [];
+      exs.forEach(e => {
+        if (vistos.has(e.teId)) return;
+        if (e.grupoId) {
+          const membros = exs.filter(x => x.grupoId === e.grupoId);
+          membros.forEach(m => vistos.add(m.teId));
+          grupos.push({
+            isCombo: true, isSolo: false, comboLabel: e.tecnica || 'Combo',
+            wrapBg: 'rgba(168,85,247,.04)', wrapBorder: 'rgba(168,85,247,.3)', wrapPadding: '14px',
+            exercicios: membros
+          });
+        } else {
+          vistos.add(e.teId);
+          grupos.push({ isCombo: false, isSolo: true, comboLabel: '', wrapBg: 'transparent', wrapBorder: 'transparent', wrapPadding: '0', exercicios: [e] });
+        }
+      });
+      return grupos;
+    };
+
     const divisoesData = divisoesOrdenadas.map(tr => {
       const exs = exData.filter(e => e.treinoId === tr.id);
       const contagem = {};
       exs.forEach(e => { if (e.categoria) contagem[e.categoria] = (contagem[e.categoria] || 0) + 1; });
       const grupos = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
       const dias = (tr.dias_semana || []).slice().sort((a, b) => a - b).map(d => DIA_LABELS_LONGO[d]);
-      return { id: tr.id, nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs, semExercicios: exs.length === 0 };
+      return { id: tr.id, nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs, gruposExercicios: agruparPorCombo(exs), semExercicios: exs.length === 0 };
     });
 
     const round1 = (n) => Math.round(n * 10) / 10;
@@ -1485,6 +1608,21 @@ class Component extends DCLogic {
       data: new Date(p.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       valor: String(p.peso).replace('.', ',') + ' kg'
     }));
+
+    const avaliacoesFisicasData = this.state.avaliacoesFisicas.map(av => {
+      const { percGordura } = calcularComposicaoPollock(av.sexo, av.idade, av);
+      const massaGorda = av.peso_kg * (percGordura / 100);
+      const massaMagra = av.peso_kg - massaGorda;
+      return {
+        data: new Date(av.data + 'T00:00:00').toLocaleDateString('pt-BR'),
+        peso: String(av.peso_kg).replace('.', ',') + ' kg',
+        altura: av.altura_cm ? av.altura_cm + ' cm' : '—',
+        percGordura: percGordura.toFixed(1).replace('.', ',') + '%',
+        massaGorda: massaGorda.toFixed(1).replace('.', ',') + ' kg',
+        massaMagra: massaMagra.toFixed(1).replace('.', ',') + ' kg'
+      };
+    });
+    const ultimaAvaliacaoFisica = avaliacoesFisicasData[0] || null;
 
     const DIA_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
     const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -1571,10 +1709,11 @@ class Component extends DCLogic {
         onAceitar: () => this.onAceitarConvite(cv.token, cv.tem_cadastro_previo)
       })),
       navDia: [navItem('hoje', '', 'Hoje', ''), navItem('agenda', '', 'Agenda', '')],
-      navPlano: [navItem('treino', '', 'Meu treino', ''), navItem('dieta', '', 'Minha dieta', ''), navItem('evolucao', '', 'Evolução', '')],
+      navPlano: [navItem('treino', '', 'Meu treino', ''), navItem('dieta', '', 'Minha dieta', ''), navItem('evolucao', '', 'Evolução', ''), navItem('avaliacao_fisica', '', 'Avaliação Física', '')],
       navComigo: [navItem('mensagens', '', 'Mensagens', ''), navItem('plano', '', 'Meu plano', '')],
       isHoje: t === 'hoje', isTreino: t === 'treino', isDieta: t === 'dieta',
       isEvolucao: t === 'evolucao', isAgenda: t === 'agenda', isMensagens: t === 'mensagens', isPlano: t === 'plano',
+      isAvaliacaoFisica: t === 'avaliacao_fisica',
       irTreino: () => this.setState({ tab: 'treino', treinoSelecionadoId: treinoHoje ? treinoHoje.id : null }),
       irAgenda: go('agenda'), irMensagens: go('mensagens'),
 
@@ -1585,6 +1724,7 @@ class Component extends DCLogic {
       bnAgenda: { onClick: () => this.setState({ tab: 'agenda', maisAbertoMobile: false }) },
       bnMensagens: { onClick: () => this.setState({ tab: 'mensagens', maisAbertoMobile: false }) },
       bnPlano: { onClick: () => this.setState({ tab: 'plano', maisAbertoMobile: false }) },
+      bnAvaliacaoFisica: { onClick: () => this.setState({ tab: 'avaliacao_fisica', maisAbertoMobile: false }) },
       maisAbertoMobile: this.state.maisAbertoMobile,
       toggleMaisMobile: () => this.setState(s => ({ maisAbertoMobile: !s.maisAbertoMobile })),
 
@@ -1642,29 +1782,7 @@ class Component extends DCLogic {
       onVoltarListaTreinos: () => this.setState({ treinoSelecionadoId: null }),
       mostrarDetalheTreino: !!this.state.treinoSelecionadoId,
       divisoes: divisoesData.filter(dv => dv.id === this.state.treinoSelecionadoId).map(dv => {
-        const execHoje = this.state.execucoes.find(ex => ex.treino_id === dv.id && ex.data === isoOf(hoje));
-        return {
-        nome: dv.nome,
-        subtitulo: dv.subtitulo,
-        diasLabel: dv.diasLabel,
-        semExercicios: dv.semExercicios,
-        jaFinalizadoHoje: !!execHoje,
-        aindaNaoFinalizadoHoje: !execHoje,
-        finalizadoHorario: execHoje ? new Date(execHoje.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
-        onFinalizarTreino: () => this.onFinalizarTreinoEspecifico(dv.id),
-        feedbackTreinoEnviado: !!this.state.feedbackTreinoEnviado[dv.id],
-        feedbackTreinoNaoEnviado: !this.state.feedbackTreinoEnviado[dv.id],
-        feedbackTreinoTexto: this.state.feedbackTreinoTexto[dv.id] || '',
-        feedbackTreinoLabel: this.state.feedbackTreinoEnviando[dv.id] ? 'Enviando…' : 'Enviar feedback',
-        onFeedbackTreinoChange: (ev) => this.onFeedbackTreinoChange(dv.id, ev.target.value),
-        onEnviarFeedbackTreino: () => this.onEnviarFeedbackTreino(dv.id),
-        temFotoLocal: !!this.state.fotoTreinoPreview[dv.id],
-        temFotoSemPreview: !this.state.fotoTreinoPreview[dv.id] && !!(execHoje && execHoje.foto_url),
-        semFoto: !this.state.fotoTreinoPreview[dv.id] && !(execHoje && execHoje.foto_url),
-        fotoTreinoPreview: this.state.fotoTreinoPreview[dv.id] || '',
-        fotoTreinoLabel: this.state.fotoTreinoUploading[dv.id] ? 'Enviando…' : 'Adicionar foto do treino',
-        onFotoTreinoChange: (ev) => this.onFotoTreinoChange(dv.id, ev),
-        exercicios: dv.exercicios.map(e => {
+        const mapExercicioParaView = (e) => {
           const done = !!exerciciosFeitos[e.teId];
           const seriesValidasData = e.seriesLinhas.map((linha, si) => {
             const key = e.teId + '_' + si;
@@ -1719,7 +1837,34 @@ class Component extends DCLogic {
             nomeColor: done ? '#66707e' : '#e5e9f0',
             onCheck: () => this.onToggleExercicioFeito(e.teId)
           };
-        })
+        };
+        const execHoje = this.state.execucoes.find(ex => ex.treino_id === dv.id && ex.data === isoOf(hoje));
+        return {
+        nome: dv.nome,
+        subtitulo: dv.subtitulo,
+        diasLabel: dv.diasLabel,
+        semExercicios: dv.semExercicios,
+        jaFinalizadoHoje: !!execHoje,
+        aindaNaoFinalizadoHoje: !execHoje,
+        finalizadoHorario: execHoje ? new Date(execHoje.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+        onFinalizarTreino: () => this.onFinalizarTreinoEspecifico(dv.id),
+        feedbackTreinoEnviado: !!this.state.feedbackTreinoEnviado[dv.id],
+        feedbackTreinoNaoEnviado: !this.state.feedbackTreinoEnviado[dv.id],
+        feedbackTreinoTexto: this.state.feedbackTreinoTexto[dv.id] || '',
+        feedbackTreinoLabel: this.state.feedbackTreinoEnviando[dv.id] ? 'Enviando…' : 'Enviar feedback',
+        onFeedbackTreinoChange: (ev) => this.onFeedbackTreinoChange(dv.id, ev.target.value),
+        onEnviarFeedbackTreino: () => this.onEnviarFeedbackTreino(dv.id),
+        temFotoLocal: !!this.state.fotoTreinoPreview[dv.id],
+        temFotoSemPreview: !this.state.fotoTreinoPreview[dv.id] && !!(execHoje && execHoje.foto_url),
+        semFoto: !this.state.fotoTreinoPreview[dv.id] && !(execHoje && execHoje.foto_url),
+        fotoTreinoPreview: this.state.fotoTreinoPreview[dv.id] || '',
+        fotoTreinoLabel: this.state.fotoTreinoUploading[dv.id] ? 'Enviando…' : 'Adicionar foto do treino',
+        onFotoTreinoChange: (ev) => this.onFotoTreinoChange(dv.id, ev),
+        gruposExercicios: dv.gruposExercicios.map(g => ({
+          isCombo: g.isCombo, isSolo: g.isSolo, comboLabel: g.comboLabel,
+          wrapBg: g.wrapBg, wrapBorder: g.wrapBorder, wrapPadding: g.wrapPadding,
+          exercicios: g.exercicios.map(mapExercicioParaView)
+        }))
         };
       }),
       videoModalOpen: !!this.state.videoModalUrl,
@@ -1757,6 +1902,8 @@ class Component extends DCLogic {
       semDieta: !dietaAtual,
       dietaSemRefeicoes: !!dietaAtual && refeicoesData.length === 0,
       dietaSubtitulo: dietaAtual ? (dietaAtual.nome + (dietaAtual.meta_calorica ? ' · ' + dietaAtual.meta_calorica : '')) : 'Você ainda não tem uma dieta',
+      temObservacaoDieta: !!(dietaAtual && dietaAtual.observacoes),
+      observacaoDieta: (dietaAtual && dietaAtual.observacoes) || '',
       refeicoes: refeicoesData,
       temTotalDiario: refeicoesData.length > 0,
       totalDiarioKcal: Math.round(totalDiario.kcal),
@@ -1772,6 +1919,11 @@ class Component extends DCLogic {
       medidas: [],
       semRecordes: true,
       recordes: [],
+
+      semAvaliacoesFisicas: avaliacoesFisicasData.length === 0,
+      temAvaliacoesFisicas: avaliacoesFisicasData.length > 0,
+      ultimaAvaliacaoFisica: ultimaAvaliacaoFisica,
+      avaliacoesFisicasList: avaliacoesFisicasData,
 
       semSessoes: true,
       sessoes: [],

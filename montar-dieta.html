@@ -192,6 +192,7 @@ let clientes = [];
 let dietaId = dietaIdParam || null;
 let dietaNome = '';
 let dietaMeta = '';
+let dietaObservacao = '';
 let dietaClienteId = clienteIdParam || '';
 let dietaHabilitado = true;
 let refeicoes = {}; // key -> { nome, opcoes: [{ nome, itens: [] }] }
@@ -245,6 +246,7 @@ async function init() {
     if (dieta) {
       dietaNome = dieta.nome || '';
       dietaMeta = dieta.meta_calorica || '';
+      dietaObservacao = dieta.observacoes || '';
       dietaClienteId = dieta.cliente_id || '';
       dietaHabilitado = dieta.habilitado !== false;
       (dieta.refeicoes || []).forEach(r => {
@@ -397,6 +399,14 @@ function render() {
   });
   if (addMealRow.children.length) app.appendChild(addMealRow);
 
+  const obsField = el('<div class="field" style="margin-top:6px;"></div>');
+  obsField.appendChild(el('<label>Observação (opcional)</label>'));
+  const obsInput = el('<textarea rows="3" placeholder="Ex: Realizar 1 refeição livre no sábado à noite, mantendo as demais refeições normalmente."></textarea>');
+  obsInput.value = dietaObservacao;
+  obsInput.addEventListener('input', () => dietaObservacao = obsInput.value);
+  obsField.appendChild(obsInput);
+  app.appendChild(obsField);
+
   const daily = somaDiaria();
   const dailyCard = el('<div class="daily-card"></div>');
   dailyCard.appendChild(el('<div class="daily-title">Total diário (opção 1 de cada refeição)</div>'));
@@ -536,6 +546,7 @@ async function salvarDieta() {
     nome: dietaNome.trim(),
     cliente_id: dietaClienteId || null,
     meta_calorica: dietaMeta.trim() || null,
+    observacoes: dietaObservacao.trim() || null,
     refeicoes: refeicoesArr,
     habilitado: dietaHabilitado
   };
