@@ -160,6 +160,25 @@ document.getElementById('btn-salvar').addEventListener('click', async () => {
     return;
   }
 
+  const { data: trainerPlano } = await supabaseClient
+    .from('trainers')
+    .select('plano_id, planos_assinatura(nome, limite_alunos)')
+    .eq('id', user.id)
+    .single();
+  const limite = trainerPlano && trainerPlano.planos_assinatura ? trainerPlano.planos_assinatura.limite_alunos : null;
+  if (limite != null) {
+    const { count } = await supabaseClient
+      .from('clientes')
+      .select('id', { count: 'exact', head: true })
+      .eq('trainer_id', user.id);
+    if ((count || 0) >= limite) {
+      erroGeral.innerHTML = 'Você atingiu o limite de ' + limite + ' alunos do plano "' + trainerPlano.planos_assinatura.nome + '". <a href="assinatura.html">Troque de plano</a> pra continuar cadastrando.';
+      erroGeral.style.display = '';
+      btn.disabled = false; btn.textContent = 'Adicionar cliente';
+      return;
+    }
+  }
+
   const { data: novo, error } = await supabaseClient.from('clientes').insert({
     trainer_id: user.id,
     nome, telefone: whatsapp, email, plano,
