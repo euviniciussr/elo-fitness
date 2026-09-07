@@ -13,133 +13,404 @@ html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkM
 a{color:#f97316;text-decoration:none;}
 button,select{font-family:inherit;cursor:pointer;}
 
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
-.logo-text{font-size:17px;font-weight:800;}
-.logo-text span{color:#f97316;}
+.shell{display:flex;min-height:100vh;}
 
-.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 80px;}
-h1{font-size:20px;font-weight:800;margin:0 0 20px;}
-h2{font-size:13px;font-weight:800;color:#9aa4b2;text-transform:uppercase;letter-spacing:.04em;margin:28px 0 12px;}
+.sidebar{width:240px;flex:none;background:#0d1119;border-right:1px solid #171d29;display:flex;flex-direction:column;padding:20px 14px;}
+.logo{display:flex;align-items:center;gap:10px;padding:4px 8px 20px;}
+.logo-badge{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;flex:none;}
+.logo-text{font-size:16px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.nav-group-label{font-size:10.5px;font-weight:800;color:#66707e;text-transform:uppercase;letter-spacing:.06em;padding:14px 10px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;font-size:13.5px;font-weight:600;color:#c4cad4;cursor:pointer;margin-bottom:1px;}
+.nav-item:hover{background:#141a26;}
+.nav-item.active{background:rgba(249,115,22,.12);color:#f97316;}
+.nav-item .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;flex:none;}
+.sidebar-foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid #171d29;font-size:12px;color:#9aa4b2;}
+.sidebar-foot a{display:block;margin-top:6px;color:#9aa4b2;}
+.sidebar-foot a:hover{color:#f97316;}
+
+.main{flex:1;min-width:0;}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:22px 28px 18px;border-bottom:1px solid #171d29;flex-wrap:wrap;}
+.topbar h1{font-size:20px;font-weight:800;margin:0 0 4px;}
+.topbar .sub{font-size:12.5px;color:#9aa4b2;}
+.topbar-controls{display:flex;align-items:center;gap:8px;flex:none;}
+.period-group{display:flex;background:#10151f;border:1px solid #1a2130;border-radius:9px;padding:3px;}
+.period-btn{background:none;border:none;color:#9aa4b2;font-size:12px;font-weight:700;padding:6px 12px;border-radius:6px;}
+.period-btn.active{background:#1e2633;color:#e5e9f0;}
+.btn-export{background:#10151f;border:1px solid #1a2130;color:#e5e9f0;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:9px;}
+.btn-export:hover{background:#171d29;}
+
+.wrap{max-width:1160px;padding:24px 28px 80px;}
+h2{font-size:13px;font-weight:800;color:#9aa4b2;text-transform:uppercase;letter-spacing:.04em;margin:26px 0 12px;}
 h2:first-of-type{margin-top:0;}
 
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;}
 .card{background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;}
-.card .label{font-size:11.5px;color:#9aa4b2;margin-bottom:6px;}
-.card .val{font-size:22px;font-weight:800;}
+.card.warn{border-color:#3a2418;}
+.card.highlight{border-color:#f97316;}
+.card .label{font-size:11px;font-weight:800;color:#9aa4b2;text-transform:uppercase;letter-spacing:.03em;margin-bottom:8px;}
+.card.warn .label{color:#f97316;}
+.card .val{font-size:24px;font-weight:800;}
+.card .delta{font-size:11.5px;color:#66707e;margin-top:6px;}
 
-table{width:100%;border-collapse:collapse;background:#10151f;border:1px solid #1a2130;border-radius:14px;overflow:hidden;}
-th,td{text-align:left;padding:11px 14px;font-size:13px;border-bottom:1px solid #171d29;}
-th{color:#9aa4b2;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;}
+.panel{background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:20px 22px;margin-top:14px;}
+.panel h3{font-size:14.5px;font-weight:800;margin:0 0 2px;}
+.panel .panel-sub{font-size:12px;color:#9aa4b2;margin-bottom:16px;}
+
+.empty-panel{padding:48px 24px;text-align:center;color:#66707e;font-size:13.5px;}
+.empty-panel strong{display:block;color:#9aa4b2;font-size:14.5px;margin-bottom:6px;}
+
+table{width:100%;border-collapse:collapse;}
+th,td{text-align:left;padding:10px 12px;font-size:13px;border-bottom:1px solid #171d29;}
+th{color:#9aa4b2;font-size:11px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;}
 tr:last-child td{border-bottom:none;}
 .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;}
 .badge-trial{background:rgba(96,165,250,.15);color:#60a5fa;}
 .badge-ativo{background:rgba(74,222,128,.15);color:#4ade80;}
 .badge-inadimplente{background:rgba(249,115,22,.15);color:#f97316;}
 .badge-isento{background:rgba(154,164,178,.15);color:#9aa4b2;}
-select{background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;}
-.btn-mini{background:#1e2633;color:#e5e9f0;border:none;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:700;}
-.btn-mini:hover{background:#2a3444;}
+.bar-track{background:#1a2130;border-radius:999px;height:6px;width:100px;overflow:hidden;display:inline-block;vertical-align:middle;}
+.bar-fill{height:100%;background:#f97316;}
+.funnel-row{margin-bottom:16px;}
+.funnel-row:last-child{margin-bottom:0;}
+.funnel-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
+.funnel-top b{font-weight:700;}
+.funnel-track{background:#171d29;border-radius:6px;height:8px;overflow:hidden;}
+.funnel-fill{height:100%;background:#f97316;border-radius:6px;}
+.funnel-note{font-size:11.5px;color:#66707e;margin-top:4px;}
 .msg{padding:40px;text-align:center;color:#9aa4b2;font-size:14px;}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="logo">
-    <div class="logo-badge">E</div>
-    <div class="logo-text">Elo <span>Fitness</span></div>
+<div class="shell">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-badge">E</div>
+      <div class="logo-text">Elo <span>Fitness</span></div>
+    </div>
+    <div class="nav-group-label">Visão geral</div>
+    <div class="nav-item" data-page="receita"><span class="dot"></span>Receita</div>
+    <div class="nav-item" data-page="usuarios"><span class="dot"></span>Usuários</div>
+    <div class="nav-group-label">Crescimento</div>
+    <div class="nav-item" data-page="afiliados"><span class="dot"></span>Afiliados</div>
+    <div class="nav-group-label">Plataforma</div>
+    <div class="nav-item" data-page="operacao"><span class="dot"></span>Operação</div>
+    <div class="sidebar-foot">
+      <span id="admin-email">—</span>
+      <a href="login.html">Sair</a>
+    </div>
   </div>
-  <a href="dashboard.html">← Voltar</a>
-</div>
 
-<div class="wrap" id="app">
-  <div class="msg">Carregando…</div>
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="page-title">Painel Admin</h1>
+        <div class="sub" id="page-sub"></div>
+      </div>
+      <div class="topbar-controls">
+        <div class="period-group" id="period-group">
+          <button class="period-btn" data-period="7">7d</button>
+          <button class="period-btn active" data-period="30">30d</button>
+          <button class="period-btn" data-period="90">90d</button>
+          <button class="period-btn" data-period="365">12m</button>
+        </div>
+        <button class="btn-export" id="btn-export">Exportar CSV</button>
+      </div>
+    </div>
+    <div class="wrap" id="app">
+      <div class="msg">Carregando…</div>
+    </div>
+  </div>
 </div>
 
 <script>
-const PLANOS_CACHE = {};
-
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function fmtBRL(n) {
+  return 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?=,))/g, '.');
+}
+function fmtPct(n) {
+  return Number(n || 0).toFixed(1).replace('.', ',') + '%';
+}
 function el(html) {
   const t = document.createElement('template');
   t.innerHTML = html.trim();
   return t.content.firstElementChild;
 }
-
-function badgeClass(status) {
-  return 'badge badge-' + status;
+function monthKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
+const MESES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+function last12Months() {
+  const out = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    out.push({ key: monthKey(d), label: MESES_ABREV[d.getMonth()] });
+  }
+  return out;
+}
+
+const STATE = { periodDays: 30, page: 'receita', raw: null };
 
 async function init() {
   const app = document.getElementById('app');
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await supabaseClient.from('admins').select('id').eq('id', user.id).maybeSingle();
+  const { data: eu } = await supabaseClient.from('admins').select('email').eq('id', user.id).maybeSingle();
   if (!eu) {
     app.innerHTML = '';
     app.appendChild(el('<div class="msg">Acesso restrito ao administrador.</div>'));
+    document.querySelectorAll('.topbar-controls, .sidebar').forEach(function (n) { n.style.display = 'none'; });
     return;
   }
+  document.getElementById('admin-email').textContent = eu.email;
 
-  await carregar();
+  document.querySelectorAll('.nav-item').forEach(function (item) {
+    item.addEventListener('click', function () {
+      STATE.page = item.getAttribute('data-page');
+      document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+      item.classList.add('active');
+      render();
+    });
+  });
+  document.querySelectorAll('.period-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      STATE.periodDays = Number(btn.getAttribute('data-period'));
+      document.querySelectorAll('.period-btn').forEach(function (n) { n.classList.remove('active'); });
+      btn.classList.add('active');
+      render();
+    });
+  });
+  document.querySelector('.nav-item[data-page="receita"]').classList.add('active');
+  document.getElementById('btn-export').addEventListener('click', exportCSV);
+
+  await carregarDados();
+  render();
 }
 
-async function carregar() {
-  const app = document.getElementById('app');
-  const [trainersRes, planosRes, pagamentosRes] = await Promise.all([
-    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, assinatura_valida_ate').order('created_at'),
-    supabaseClient.from('planos_assinatura').select('id, nome, valor, ativo').order('valor'),
-    supabaseClient.from('assinatura_pagamentos').select('valor, status, data_pagamento').order('data_pagamento', { ascending: false }),
+async function carregarDados() {
+  const [trainersRes, planosRes, assinPagRes, clientesRes, treinosRes, agendamentosRes, pagamentosRes] = await Promise.all([
+    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, created_at'),
+    supabaseClient.from('planos_assinatura').select('id, nome, valor'),
+    supabaseClient.from('assinatura_pagamentos').select('trainer_id, valor, status, data_pagamento'),
+    supabaseClient.from('clientes').select('id, trainer_id, status, created_at'),
+    supabaseClient.from('treinos').select('id, trainer_id'),
+    supabaseClient.from('agendamentos').select('id, trainer_id'),
+    supabaseClient.from('pagamentos').select('trainer_id, valor, data'),
   ]);
 
-  const trainers = trainersRes.data || [];
-  const planos = planosRes.data || [];
-  planos.forEach(p => { PLANOS_CACHE[p.id] = p; });
-  const pagamentos = pagamentosRes.data || [];
+  STATE.raw = {
+    trainers: trainersRes.data || [],
+    planos: planosRes.data || [],
+    assinaturaPagamentos: assinPagRes.data || [],
+    clientes: clientesRes.data || [],
+    treinos: treinosRes.data || [],
+    agendamentos: agendamentosRes.data || [],
+    pagamentos: pagamentosRes.data || [],
+  };
+}
 
-  const porStatus = { trial: 0, ativo: 0, inadimplente: 0, isento: 0 };
-  trainers.forEach(t => { porStatus[t.status_assinatura] = (porStatus[t.status_assinatura] || 0) + 1; });
-  const receitaTotal = pagamentos.filter(p => ['CONFIRMED', 'RECEIVED'].includes(p.status)).reduce((s, p) => s + Number(p.valor), 0);
+function periodCutoff() {
+  const d = new Date();
+  d.setDate(d.getDate() - STATE.periodDays);
+  return d;
+}
 
+function render() {
+  const titles = {
+    receita: ['Receita', 'Faturamento consolidado da plataforma, MRR e desempenho por plano'],
+    usuarios: ['Usuários', 'Profissionais pagantes, alunos vinculados e ativação da base'],
+    afiliados: ['Afiliados', 'Parceiros, links rastreados e comissões a pagar'],
+    operacao: ['Operação', 'Saúde e consumo da plataforma'],
+  };
+  document.getElementById('page-title').textContent = titles[STATE.page][0];
+  document.getElementById('page-sub').textContent = titles[STATE.page][1];
+
+  const app = document.getElementById('app');
   app.innerHTML = '';
+  if (STATE.page === 'receita') return renderReceita(app);
+  if (STATE.page === 'usuarios') return renderUsuarios(app);
+  if (STATE.page === 'afiliados') return renderEmptyFeature(app, 'Afiliados', 'Ainda não existe programa de indicação/afiliados no Elo Fitness — nenhuma tabela ou fluxo de comissão foi criado. Essa tela está reservada no menu, mas precisa ser desenhada e construída antes de mostrar dados aqui.');
+  if (STATE.page === 'operacao') return renderEmptyFeature(app, 'Operação', 'Ainda não existe rastreamento de custo/consumo de IA nem alertas automáticos da plataforma — não há tabela de log de operações hoje. Essa tela está reservada no menu, mas precisa de instrumentação nova antes de mostrar dados aqui.');
+}
 
-  const header = el('<h1>Painel Admin</h1>');
-  app.appendChild(header);
+function renderEmptyFeature(app, nome, texto) {
+  const panel = el('<div class="panel"></div>');
+  panel.appendChild(el('<div class="empty-panel"><strong>' + esc(nome) + ' ainda não existe no backend</strong>' + esc(texto) + '</div>'));
+  app.appendChild(panel);
+}
+
+function renderReceita(app) {
+  const raw = STATE.raw;
+  const planosById = {};
+  raw.planos.forEach(function (p) { planosById[p.id] = p; });
+
+  const ativos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const inadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
+
+  const mrr = ativos.reduce(function (s, t) { return s + (planosById[t.plano_id] ? Number(planosById[t.plano_id].valor) : 0); }, 0);
+  const arr = mrr * 12;
+  const ticketMedio = ativos.length ? mrr / ativos.length : 0;
+  const inadimplenciaPct = (ativos.length + inadimplentes.length) ? (inadimplentes.length / (ativos.length + inadimplentes.length)) * 100 : 0;
+
+  const cutoff = periodCutoff();
+  const confirmados = raw.assinaturaPagamentos.filter(function (p) { return ['CONFIRMED', 'RECEIVED'].includes(p.status); });
+  const receitaPeriodo = confirmados
+    .filter(function (p) { return p.data_pagamento && new Date(p.data_pagamento + 'T00:00:00') >= cutoff; })
+    .reduce(function (s, p) { return s + Number(p.valor); }, 0);
 
   const cards = el('<div class="cards"></div>');
-  cards.appendChild(el('<div class="card"><div class="label">Trial</div><div class="val">' + porStatus.trial + '</div></div>'));
-  cards.appendChild(el('<div class="card"><div class="label">Ativos</div><div class="val">' + porStatus.ativo + '</div></div>'));
-  cards.appendChild(el('<div class="card"><div class="label">Inadimplentes</div><div class="val">' + porStatus.inadimplente + '</div></div>'));
-  cards.appendChild(el('<div class="card"><div class="label">Isentos</div><div class="val">' + porStatus.isento + '</div></div>'));
-  cards.appendChild(el('<div class="card"><div class="label">Receita confirmada</div><div class="val">R$ ' + receitaTotal.toFixed(2).replace('.', ',') + '</div></div>'));
+  cards.appendChild(el(cardHTML('MRR atual', fmtBRL(mrr), true)));
+  cards.appendChild(el(cardHTML('ARR projetado', fmtBRL(arr), false, 'run rate anualizado (MRR × 12)')));
+  cards.appendChild(el(cardHTML('Receita no período', fmtBRL(receitaPeriodo), false, 'cobranças confirmadas via Asaas')));
+  cards.appendChild(el(cardHTML('Ticket médio', fmtBRL(ticketMedio), false, 'por profissional ativo')));
+  cards.appendChild(el(cardHTML('Inadimplência', fmtPct(inadimplenciaPct), false, inadimplentes.length + ' profissional(is) em atraso', true)));
   app.appendChild(cards);
 
-  app.appendChild(el('<h2>Profissionais</h2>'));
-  const tabela = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Trial até</th><th>Assinatura até</th><th>Ações</th></tr></thead><tbody></tbody></table>');
-  const tbody = tabela.querySelector('tbody');
-  if (trainers.length === 0) {
-    tbody.appendChild(el('<tr><td colspan="7" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
+  const months = last12Months();
+  const monthlyTotals = months.map(function (m) {
+    return confirmados
+      .filter(function (p) { return p.data_pagamento && p.data_pagamento.slice(0, 7) === m.key; })
+      .reduce(function (s, p) { return s + Number(p.valor); }, 0);
+  });
+
+  const chartPanel = el('<div class="panel"><h3>Receita recorrente mensal</h3><div class="panel-sub">Total confirmado por mês · últimos 12 meses</div></div>');
+  chartPanel.appendChild(lineChart(months.map(function (m) { return m.label; }), [{ label: 'Assinaturas', color: '#f97316', values: monthlyTotals }]));
+  app.appendChild(chartPanel);
+
+  const totalReceita = monthlyTotals.reduce(function (a, b) { return a + b; }, 0) || receitaPeriodo;
+  const compPanel = el('<div class="panel"><h3>Composição da receita</h3><div class="panel-sub">Única fonte de receita hoje: assinatura do profissional</div></div>');
+  compPanel.appendChild(el(
+    '<div class="bar-track" style="width:100%;height:8px;margin-bottom:10px;"><div class="bar-fill" style="width:100%"></div></div>' +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;"><span>Assinaturas de personais</span><b>' + fmtBRL(totalReceita) + ' · 100%</b></div>'
+  ));
+  app.appendChild(compPanel);
+
+  renderHistoricoPagamentos(app, raw);
+}
+
+function renderHistoricoPagamentos(app, raw) {
+  const trainersById = {};
+  raw.trainers.forEach(function (t) { trainersById[t.id] = t; });
+  const cutoff = periodCutoff();
+  const rows = raw.assinaturaPagamentos
+    .filter(function (p) { return p.data_pagamento && new Date(p.data_pagamento + 'T00:00:00') >= cutoff; })
+    .sort(function (a, b) { return (b.data_pagamento || '').localeCompare(a.data_pagamento || ''); })
+    .slice(0, 50);
+
+  const panel = el('<div class="panel"><h3>Histórico de pagamentos (Asaas)</h3><div class="panel-sub">Cobranças no período selecionado</div></div>');
+  if (!rows.length) {
+    panel.appendChild(el('<div class="empty-panel">Nenhum pagamento registrado no período.</div>'));
+  } else {
+    const table = el('<table><thead><tr><th>Data</th><th>Profissional</th><th>Valor</th><th>Status</th></tr></thead><tbody></tbody></table>');
+    const tbody = table.querySelector('tbody');
+    rows.forEach(function (p) {
+      const t = trainersById[p.trainer_id];
+      tbody.appendChild(el(
+        '<tr><td>' + new Date(p.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR') + '</td>' +
+        '<td>' + esc(t ? (t.nome || t.email) : '—') + '</td>' +
+        '<td>' + fmtBRL(p.valor) + '</td><td>' + esc(p.status) + '</td></tr>'
+      ));
+    });
+    panel.appendChild(table);
   }
-  trainers.forEach(t => {
+  app.appendChild(panel);
+}
+
+function renderUsuarios(app) {
+  const raw = STATE.raw;
+  const trainersAtivos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const trainersTrial = raw.trainers.filter(function (t) { return t.status_assinatura === 'trial'; });
+  const trainersInadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
+  const alunosPorTrainer = {};
+  raw.clientes.forEach(function (c) { alunosPorTrainer[c.trainer_id] = (alunosPorTrainer[c.trainer_id] || 0) + 1; });
+
+  const cards = el('<div class="cards"></div>');
+  cards.appendChild(el(cardHTML('Personais ativos', String(trainersAtivos.length), true)));
+  cards.appendChild(el(cardHTML('Alunos na base', String(raw.clientes.length))));
+  cards.appendChild(el(cardHTML('Alunos por personal', trainersAtivos.length ? (raw.clientes.length / trainersAtivos.length).toFixed(1) : '0')));
+  cards.appendChild(el(cardHTML('Contas em trial', String(trainersTrial.length))));
+  cards.appendChild(el(cardHTML('Inadimplentes', String(trainersInadimplentes.length), false, null, true)));
+  app.appendChild(cards);
+
+  const months = last12Months();
+  const trainersCum = months.map(function (m) {
+    return raw.trainers.filter(function (t) { return t.created_at && t.created_at.slice(0, 7) <= m.key; }).length;
+  });
+  const clientesCum = months.map(function (m) {
+    return raw.clientes.filter(function (c) { return c.created_at && c.created_at.slice(0, 7) <= m.key; }).length;
+  });
+  const chartPanel = el('<div class="panel"><h3>Base de usuários</h3><div class="panel-sub">Personais pagantes e alunos vinculados (acumulado)</div></div>');
+  chartPanel.appendChild(lineChart(months.map(function (m) { return m.label; }), [
+    { label: 'Personais', color: '#f97316', values: trainersCum },
+    { label: 'Alunos', color: '#60a5fa', values: clientesCum },
+  ]));
+  app.appendChild(chartPanel);
+
+  const totalTrainers = raw.trainers.length;
+  const comAluno = raw.trainers.filter(function (t) { return alunosPorTrainer[t.id] > 0; }).length;
+  const funil = [
+    { label: 'Cadastros de profissionais', val: totalTrainers, pct: 100 },
+    { label: 'Primeiro aluno cadastrado', val: comAluno, pct: totalTrainers ? (comAluno / totalTrainers) * 100 : 0 },
+    { label: 'Converteram em pagante', val: trainersAtivos.length, pct: totalTrainers ? (trainersAtivos.length / totalTrainers) * 100 : 0 },
+  ];
+  const funilPanel = el('<div class="panel"><h3>Funil de ativação</h3><div class="panel-sub">Do cadastro até virar assinante ativo</div></div>');
+  funil.forEach(function (f) {
+    const row = el(
+      '<div class="funnel-row">' +
+      '<div class="funnel-top"><span>' + esc(f.label) + '</span><b>' + f.val + '</b></div>' +
+      '<div class="funnel-track"><div class="funnel-fill" style="width:' + f.pct.toFixed(1) + '%"></div></div>' +
+      '<div class="funnel-note">' + fmtPct(f.pct) + ' do total de cadastros</div>' +
+      '</div>'
+    );
+    funilPanel.appendChild(row);
+  });
+  app.appendChild(funilPanel);
+
+  const usoPanel = el('<div class="panel"><h3>Uso da plataforma</h3><div class="panel-sub">Volume total já registrado</div></div>');
+  [['Treinos prescritos', raw.treinos.length], ['Sessões agendadas', raw.agendamentos.length]].forEach(function (row) {
+    usoPanel.appendChild(el('<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #171d29;font-size:13px;"><span>' + esc(row[0]) + '</span><b>' + row[1] + '</b></div>'));
+  });
+  app.appendChild(usoPanel);
+
+  renderRankingPersonais(app, raw, alunosPorTrainer);
+  renderGestaoAssinaturas(app, raw);
+}
+
+function badgeClass(status) { return 'badge badge-' + status; }
+
+function renderGestaoAssinaturas(app, raw) {
+  const planosById = {};
+  raw.planos.forEach(function (p) { planosById[p.id] = p; });
+
+  const panel = el('<div class="panel"><h3>Gestão de assinaturas</h3><div class="panel-sub">Isentar profissional de cobrança ou trocar de plano manualmente</div></div>');
+  const table = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Ações</th></tr></thead><tbody></tbody></table>');
+  const tbody = table.querySelector('tbody');
+  if (!raw.trainers.length) {
+    tbody.appendChild(el('<tr><td colspan="5" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
+  }
+  raw.trainers.forEach(function (t) {
     const tr = el('<tr></tr>');
-    tr.appendChild(el('<td>' + (t.nome || '—') + '</td>'));
-    tr.appendChild(el('<td>' + t.email + '</td>'));
-    tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + t.status_assinatura + '</span></td>'));
-    tr.appendChild(el('<td>' + (t.plano_id && PLANOS_CACHE[t.plano_id] ? PLANOS_CACHE[t.plano_id].nome : '—') + '</td>'));
-    tr.appendChild(el('<td>' + (t.trial_termina_em || '—') + '</td>'));
-    tr.appendChild(el('<td>' + (t.assinatura_valida_ate || '—') + '</td>'));
+    tr.appendChild(el('<td>' + esc(t.nome || '—') + '</td>'));
+    tr.appendChild(el('<td>' + esc(t.email) + '</td>'));
+    tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + esc(t.status_assinatura) + '</span></td>'));
+    tr.appendChild(el('<td>' + (t.plano_id && planosById[t.plano_id] ? esc(planosById[t.plano_id].nome) : '—') + '</td>'));
 
     const tdAcoes = el('<td></td>');
-    const btnIsento = el('<button class="btn-mini">' + (t.status_assinatura === 'isento' ? 'Remover isenção' : 'Marcar isento') + '</button>');
-    btnIsento.addEventListener('click', () => alternarIsencao(t));
+    const btnIsento = el('<button class="btn-export" style="padding:5px 10px;font-size:12px;">' + (t.status_assinatura === 'isento' ? 'Remover isenção' : 'Marcar isento') + '</button>');
+    btnIsento.addEventListener('click', function () { alternarIsencao(t); });
     tdAcoes.appendChild(btnIsento);
 
-    const selectPlano = el('<select style="margin-left:8px;"></select>');
+    const selectPlano = el('<select style="margin-left:8px;background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;"></select>');
     selectPlano.appendChild(el('<option value="">Trocar plano…</option>'));
-    planos.forEach(p => selectPlano.appendChild(el('<option value="' + p.id + '">' + p.nome + '</option>')));
-    selectPlano.addEventListener('change', (e) => {
+    raw.planos.forEach(function (p) { selectPlano.appendChild(el('<option value="' + p.id + '">' + esc(p.nome) + '</option>')); });
+    selectPlano.addEventListener('change', function (e) {
       if (!e.target.value) return;
       trocarPlano(t, e.target.value);
     });
@@ -148,22 +419,8 @@ async function carregar() {
     tr.appendChild(tdAcoes);
     tbody.appendChild(tr);
   });
-  app.appendChild(tabela);
-
-  app.appendChild(el('<h2>Histórico de pagamentos (Asaas)</h2>'));
-  const tabelaPag = el('<table><thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead><tbody></tbody></table>');
-  const tbodyPag = tabelaPag.querySelector('tbody');
-  if (pagamentos.length === 0) {
-    tbodyPag.appendChild(el('<tr><td colspan="3" style="text-align:center;color:#66707e;">Nenhum pagamento registrado ainda.</td></tr>'));
-  }
-  pagamentos.forEach(p => {
-    const tr = el('<tr></tr>');
-    tr.appendChild(el('<td>' + (p.data_pagamento ? new Date(p.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR') : '—') + '</td>'));
-    tr.appendChild(el('<td>R$ ' + Number(p.valor).toFixed(2).replace('.', ',') + '</td>'));
-    tr.appendChild(el('<td>' + p.status + '</td>'));
-    tbodyPag.appendChild(tr);
-  });
-  app.appendChild(tabelaPag);
+  panel.appendChild(table);
+  app.appendChild(panel);
 }
 
 async function alternarIsencao(trainer) {
@@ -172,7 +429,8 @@ async function alternarIsencao(trainer) {
     body: { trainer_id: trainer.id, status_assinatura: novoStatus },
   });
   if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
-  carregar();
+  await carregarDados();
+  render();
 }
 
 async function trocarPlano(trainer, planoId) {
@@ -180,7 +438,137 @@ async function trocarPlano(trainer, planoId) {
     body: { trainer_id: trainer.id, plano_id: planoId, status_assinatura: 'ativo' },
   });
   if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
-  carregar();
+  await carregarDados();
+  render();
+}
+
+function renderRankingPersonais(app, raw, alunosPorTrainer) {
+  const planosById = {};
+  raw.planos.forEach(function (p) { planosById[p.id] = p; });
+  const cutoff = periodCutoff();
+  const recebidoPorTrainer = {};
+  raw.pagamentos.forEach(function (p) {
+    if (!p.data || new Date(p.data + 'T00:00:00') < cutoff) return;
+    recebidoPorTrainer[p.trainer_id] = (recebidoPorTrainer[p.trainer_id] || 0) + Number(p.valor);
+  });
+  const clientesPorTrainerAtivos = {};
+  raw.clientes.forEach(function (c) {
+    if (c.status !== 'ativo') return;
+    clientesPorTrainerAtivos[c.trainer_id] = (clientesPorTrainerAtivos[c.trainer_id] || 0) + 1;
+  });
+
+  const ranking = raw.trainers
+    .map(function (t) {
+      const alunos = alunosPorTrainer[t.id] || 0;
+      const ativos = clientesPorTrainerAtivos[t.id] || 0;
+      return {
+        nome: t.nome || t.email,
+        plano: t.plano_id && planosById[t.plano_id] ? planosById[t.plano_id].nome : '—',
+        alunos: alunos,
+        recebido: recebidoPorTrainer[t.id] || 0,
+        pctAtivos: alunos ? (ativos / alunos) * 100 : 0,
+      };
+    })
+    .filter(function (r) { return r.alunos > 0; })
+    .sort(function (a, b) { return b.alunos - a.alunos; })
+    .slice(0, 10);
+
+  const panel = el('<div class="panel"><h3>Personais em destaque</h3><div class="panel-sub">Top 10 por alunos vinculados</div></div>');
+  if (!ranking.length) {
+    panel.appendChild(el('<div class="empty-panel">Nenhum profissional com aluno cadastrado ainda.</div>'));
+  } else {
+    const table = el('<table><thead><tr><th>Personal</th><th>Plano</th><th>Alunos</th><th>Recebido no período</th><th>Alunos ativos</th></tr></thead><tbody></tbody></table>');
+    const tbody = table.querySelector('tbody');
+    ranking.forEach(function (r) {
+      tbody.appendChild(el(
+        '<tr><td>' + esc(r.nome) + '</td><td>' + esc(r.plano) + '</td><td>' + r.alunos + '</td><td>' + fmtBRL(r.recebido) + '</td>' +
+        '<td><span class="bar-track"><span class="bar-fill" style="width:' + r.pctAtivos.toFixed(0) + '%"></span></span> ' + fmtPct(r.pctAtivos) + '</td></tr>'
+      ));
+    });
+    panel.appendChild(table);
+    STATE._lastRanking = ranking;
+  }
+  app.appendChild(panel);
+}
+
+function cardHTML(label, val, highlight, delta, warn) {
+  return '<div class="card' + (warn ? ' warn' : (highlight ? ' highlight' : '')) + '">' +
+    '<div class="label">' + esc(label) + '</div>' +
+    '<div class="val"' + (highlight ? ' style="color:#f97316"' : (warn ? ' style="color:#f97316"' : '')) + '>' + val + '</div>' +
+    (delta ? '<div class="delta">' + esc(delta) + '</div>' : '') +
+    '</div>';
+}
+
+function lineChart(labels, series) {
+  const w = 1080, h = 260, padL = 40, padR = 10, padT = 10, padB = 26;
+  const allVals = series.reduce(function (a, s) { return a.concat(s.values); }, [0]);
+  const max = Math.max.apply(null, allVals) || 1;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const stepX = labels.length > 1 ? plotW / (labels.length - 1) : 0;
+
+  function pathFor(values) {
+    return values.map(function (v, i) {
+      const x = padL + i * stepX;
+      const y = padT + plotH - (v / max) * plotH;
+      return (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+    }).join(' ');
+  }
+
+  let svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" style="width:100%;height:260px;display:block;">';
+  [0, 0.5, 1].forEach(function (f) {
+    const y = padT + plotH * f;
+    svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (w - padR) + '" y2="' + y + '" stroke="#1a2130" stroke-width="1"/>';
+    svg += '<text x="4" y="' + (y + 4) + '" font-size="10" fill="#66707e">' + fmtCompact(max * (1 - f)) + '</text>';
+  });
+  series.forEach(function (s) {
+    svg += '<path d="' + pathFor(s.values) + '" fill="none" stroke="' + s.color + '" stroke-width="2.5"/>';
+    s.values.forEach(function (v, i) {
+      const x = padL + i * stepX, y = padT + plotH - (v / max) * plotH;
+      svg += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.5" fill="' + s.color + '"/>';
+    });
+  });
+  labels.forEach(function (lab, i) {
+    const x = padL + i * stepX;
+    svg += '<text x="' + x.toFixed(1) + '" y="' + (h - 6) + '" font-size="10" fill="#66707e" text-anchor="middle">' + esc(lab) + '</text>';
+  });
+  svg += '</svg>';
+  if (series.length > 1) {
+    const legend = el('<div style="display:flex;gap:16px;justify-content:flex-end;margin-bottom:6px;font-size:12px;color:#9aa4b2;"></div>');
+    series.forEach(function (s) {
+      legend.appendChild(el('<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + s.color + ';margin-right:6px;"></span>' + esc(s.label) + '</span>'));
+    });
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(legend);
+    wrapper.appendChild(el(svg));
+    return wrapper;
+  }
+  return el(svg);
+}
+
+function fmtCompact(n) {
+  if (n >= 1000) return (n / 1000).toFixed(0) + 'k';
+  return String(Math.round(n));
+}
+
+function exportCSV() {
+  let rows = [];
+  if (STATE.page === 'usuarios' && STATE._lastRanking) {
+    rows.push(['Personal', 'Plano', 'Alunos', 'Recebido no período', 'Alunos ativos %']);
+    STATE._lastRanking.forEach(function (r) {
+      rows.push([r.nome, r.plano, r.alunos, r.recebido.toFixed(2), r.pctAtivos.toFixed(1)]);
+    });
+  } else {
+    alert('Nada para exportar nesta tela ainda.');
+    return;
+  }
+  const csv = rows.map(function (r) { return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'painel-adm-' + STATE.page + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 init();
