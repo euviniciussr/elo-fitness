@@ -206,7 +206,7 @@ async function carregarDados() {
     supabaseClient.from('planos_assinatura').select('id, nome, valor'),
     supabaseClient.from('assinatura_pagamentos').select('trainer_id, valor, status, data_pagamento'),
     supabaseClient.from('clientes').select('id, trainer_id, status, created_at'),
-    supabaseClient.from('treinos').select('id, trainer_id'),
+    supabaseClient.from('treinos').select('id, trainer_id, cliente_id'),
     supabaseClient.from('agendamentos').select('id, trainer_id'),
     supabaseClient.from('pagamentos').select('trainer_id, valor, data'),
   ]);
@@ -242,7 +242,7 @@ function render() {
 
   const app = document.getElementById('app');
   app.innerHTML = '';
-  if (STATE.page === 'dashboard') { renderReceita(app); renderClientes(app); renderUsuarios(app); return; }
+  if (STATE.page === 'dashboard') return renderDashboardOverview(app);
   if (STATE.page === 'receita') return renderReceita(app);
   if (STATE.page === 'alunos') return renderClientes(app);
   if (STATE.page === 'personal') return renderUsuarios(app);
@@ -253,6 +253,113 @@ function render() {
 function renderEmptyFeature(app, nome, texto) {
   const panel = el('<div class="panel"></div>');
   panel.appendChild(el('<div class="empty-panel"><strong>' + esc(nome) + ' ainda não existe no backend</strong>' + esc(texto) + '</div>'));
+  app.appendChild(panel);
+}
+
+function deltaText(atual, anterior) {
+  if (!anterior) return atual > 0 ? 'sem comparação (período anterior zerado)' : '—';
+  const pct = ((atual - anterior) / anterior) * 100;
+  const seta = pct >= 0 ? '▲' : '▼';
+  return seta + ' ' + Math.abs(pct).toFixed(1).replace('.', ',') + '% vs período anterior';
+}
+
+function renderDashboardOverview(app) {
+  const raw = STATE.raw;
+  const cutoffAtual = periodCutoff();
+  const cutoffAnterior = new Date(cutoffAtual);
+  cutoffAnterior.setDate(cutoffAnterior.getDate() - STATE.periodDays);
+
+  const confirmados = raw.assinaturaPagamentos.filter(function (p) { return ['CONFIRMED', 'RECEIVED'].includes(p.status); });
+  function somaPeriodo(de, ate) {
+    return confirmados.filter(function (p) {
+      if (!p.data_pagamento) return false;
+      const d = new Date(p.data_pagamento + 'T00:00:00');
+      return d >= de && (!ate || d < ate);
+    }).reduce(function (s, p) { return s + Number(p.valor); }, 0);
+  }
+  const receitaAtual = somaPeriodo(cutoffAtual, null);
+  const receitaAnterior = somaPeriodo(cutoffAnterior, cutoffAtual);
+
+  function contarClientes(de, ate) {
+    return raw.clientes.filter(function (c) {
+      if (!c.created_at) return false;
+      const d = new Date(c.created_at);
+      return d >= de && (!ate || d < ate);
+    }).length;
+  }
+  const novosAtual = contarClientes(cutoffAtual, null);
+  const novosAnterior = contarClientes(cutoffAnterior, cutoffAtual);
+
+  const planosById = {};
+  raw.planos.forEach(function (p) { planosById[p.id] = p; });
+  const trainersAtivos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const mrr = trainersAtivos.reduce(function (s, t) { return s + (planosById[t.plano_id] ? Number(planosById[t.plano_id].valor) : 0); }, 0);
+
+  app.appendChild(el('<h2>Resumo do período</h2>'));
+  const cards = el('<div class="cards"></div>');
+  cards.appendChild(el(cardHTML('MRR atual', fmtBRL(mrr), true)));
+  cards.appendChild(el(cardHTML('Receita no período', fmtBRL(receitaAtual), false, deltaText(receitaAtual, receitaAnterior))));
+  cards.appendChild(el(cardHTML('Novos alunos', String(novosAtual), false, deltaText(novosAtual, novosAnterior))));
+  cards.appendChild(el(cardHTML('Personal ativos', String(trainersAtivos.length), false, raw.trainers.length + ' cadastrados no total')));
+  app.appendChild(cards);
+
+  renderAlertas(app, raw);
+
+  const linkRow = el('<div style="display:flex;gap:16px;font-size:12.5px;color:#66707e;margin-top:16px;">Ver detalhe completo:</div>');
+  ['receita', 'alunos', 'personal'].forEach(function (pagina) {
+    const link = el('<a href="#" style="color:#f97316;font-weight:700;margin-left:8px;">' + esc(titlesLabel(pagina)) + '</a>');
+    link.addEventListener('click', function (e) {
+      e.preventDefault();
+      STATE.page = pagina;
+      document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.toggle('active', n.getAttribute('data-page') === pagina); });
+      render();
+    });
+    linkRow.appendChild(link);
+  });
+  app.appendChild(linkRow);
+}
+
+function titlesLabel(pagina) {
+  return { receita: 'Receita', alunos: 'Alunos', personal: 'Personal' }[pagina] || pagina;
+}
+
+function renderAlertas(app, raw) {
+  const hoje = dataLocalStr();
+  const d5 = new Date();
+  d5.setDate(d5.getDate() + 5);
+  const em5dias = d5.getFullYear() + '-' + String(d5.getMonth() + 1).padStart(2, '0') + '-' + String(d5.getDate()).padStart(2, '0');
+
+  const trialVencendo = raw.trainers.filter(function (t) { return t.status_assinatura === 'trial' && t.trial_termina_em && t.trial_termina_em >= hoje && t.trial_termina_em <= em5dias; });
+  const trialVencido = raw.trainers.filter(function (t) { return t.status_assinatura === 'trial' && t.trial_termina_em && t.trial_termina_em < hoje; });
+  const inadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
+  const clientesComTreino = {};
+  raw.treinos.forEach(function (tr) { if (tr.cliente_id) clientesComTreino[tr.cliente_id] = true; });
+  const alunosSemTreino = raw.clientes.filter(function (c) { return c.status === 'ativo' && !clientesComTreino[c.id]; });
+  const trainersComAluno = {};
+  raw.clientes.forEach(function (c) { trainersComAluno[c.trainer_id] = true; });
+  const trainersSemAluno = raw.trainers.filter(function (t) { return ['trial', 'ativo'].includes(t.status_assinatura) && !trainersComAluno[t.id]; });
+
+  const nomeOuEmail = function (t) { return t.nome || t.email; };
+  const itens = [];
+  if (trialVencido.length) itens.push({ nivel: 'critico', texto: trialVencido.length + ' profissional(is) com trial vencido, ainda sem plano: ' + trialVencido.map(nomeOuEmail).join(', ') });
+  if (inadimplentes.length) itens.push({ nivel: 'critico', texto: inadimplentes.length + ' profissional(is) inadimplente(s): ' + inadimplentes.map(nomeOuEmail).join(', ') });
+  if (trialVencendo.length) itens.push({ nivel: 'atencao', texto: trialVencendo.length + ' profissional(is) com trial vencendo em até 5 dias: ' + trialVencendo.map(nomeOuEmail).join(', ') });
+  if (alunosSemTreino.length) itens.push({ nivel: 'atencao', texto: alunosSemTreino.length + ' aluno(s) ativo(s) sem nenhum treino cadastrado' });
+  if (trainersSemAluno.length) itens.push({ nivel: 'info', texto: trainersSemAluno.length + ' profissional(is) sem nenhum aluno cadastrado ainda' });
+
+  const panel = el('<div class="panel"><h3>Alertas</h3><div class="panel-sub">Pontos que provavelmente precisam da sua atenção</div></div>');
+  if (!itens.length) {
+    panel.appendChild(el('<div class="empty-panel">Nada fora do normal por enquanto.</div>'));
+  } else {
+    itens.forEach(function (it) {
+      const cor = it.nivel === 'critico' ? '#f87171' : (it.nivel === 'atencao' ? '#f97316' : '#60a5fa');
+      panel.appendChild(el(
+        '<div style="padding:10px 0;border-bottom:1px solid #171d29;font-size:13px;display:flex;gap:10px;align-items:flex-start;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + cor + ';margin-top:5px;flex:none;"></span>' +
+        '<span>' + esc(it.texto) + '</span></div>'
+      ));
+    });
+  }
   app.appendChild(panel);
 }
 
