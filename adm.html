@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acesso Admin — Elo Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
+.box{width:100%;max-width:380px;}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;}
+.brand-badge{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:19px;}
+.brand-name{font-size:21px;font-weight:800;}
+.brand-name span{color:#f97316;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:28px 26px;}
+.card h1{font-size:16px;font-weight:800;margin:0 0 4px;}
+.card .sub{font-size:12.5px;color:#9aa4b2;margin-bottom:20px;}
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:14px;}
+.erro{color:#f87171;font-size:12.5px;margin-top:2px;margin-bottom:10px;display:none;}
+button{width:100%;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;}
+button:disabled{opacity:.6;cursor:default;}
+.back{display:block;text-align:center;margin-top:16px;font-size:12px;color:#66707e;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="box">
+    <div class="brand">
+      <div class="brand-badge">E</div>
+      <div class="brand-name">Elo <span>Fitness</span></div>
+    </div>
+    <div class="card">
+      <h1>Acesso administrativo</h1>
+      <div class="sub">Restrito à equipe Elo Fitness</div>
+      <label for="email">E-mail</label>
+      <input id="email" type="email" placeholder="admin@elofitness.com" autocomplete="username">
+      <label for="senha">Senha</label>
+      <input id="senha" type="password" placeholder="••••••••" autocomplete="current-password">
+      <div class="erro" id="erro"></div>
+      <button id="btn-entrar">Entrar</button>
+    </div>
+    <a class="back" href="login.html">← Voltar para o login do app</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  var btn = document.getElementById('btn-entrar');
+  var erroEl = document.getElementById('erro');
+  var emailEl = document.getElementById('email');
+  var senhaEl = document.getElementById('senha');
+
+  function mostrarErro(msg) {
+    erroEl.textContent = msg;
+    erroEl.style.display = 'block';
+  }
+
+  async function entrar() {
+    erroEl.style.display = 'none';
+    var email = emailEl.value.trim();
+    var senha = senhaEl.value;
+    if (!email || !senha) { mostrarErro('Preencha e-mail e senha.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Entrando…';
+    var { data, error } = await supabaseClient.auth.signInWithPassword({ email: email, password: senha });
+    if (error || !data.session) {
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      mostrarErro('E-mail ou senha inválidos.');
+      return;
+    }
+
+    var { data: eu } = await supabaseClient.from('admins').select('id').eq('id', data.user.id).maybeSingle();
+    if (!eu) {
+      await supabaseClient.auth.signOut();
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      mostrarErro('Esta conta não tem acesso administrativo.');
+      return;
+    }
+
+    window.location.href = 'painel-adm.html';
+  }
+
+  btn.addEventListener('click', entrar);
+  senhaEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar(); });
+
+  supabaseClient.auth.getUser().then(function (res) {
+    if (!res.data.user) return;
+    supabaseClient.from('admins').select('id').eq('id', res.data.user.id).maybeSingle().then(function (r) {
+      if (r.data) window.location.href = 'painel-adm.html';
+    });
+  });
+})();
+</script>
+</body>
+</html>
