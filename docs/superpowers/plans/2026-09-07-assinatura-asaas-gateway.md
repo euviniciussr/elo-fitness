@@ -436,12 +436,14 @@ curl -s -X POST https://api-sandbox.asaas.com/v3/webhooks \
     "email": "contabusinessvini@gmail.com",
     "enabled": true,
     "interrupted": false,
+    "apiVersion": 3,
     "authToken": "'"$WEBHOOK_TOKEN"'",
+    "sendType": "SEQUENTIALLY",
     "events": ["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_OVERDUE"]
   }'
 ```
 
-Expected: `200`/`201` with the created webhook's `id`.
+Expected: `200`/`201` with the created webhook's `id`. (`sendType` is required — omitting it fails with `invalid_object`/"É necessário informar um tipo de envio para essa configuração.", confirmed while running this step.)
 
 - [ ] **Step 5: Verify**
 
