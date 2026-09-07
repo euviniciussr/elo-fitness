@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return jsonResponse({ error: "Não autenticado." }, 401);
 
-    const { data: caller } = await supabase.from("trainers").select("is_admin").eq("id", user.id).single();
-    if (!caller || !caller.is_admin) return jsonResponse({ error: "Apenas admin pode fazer isso." }, 403);
+    const { data: caller } = await supabase.from("admins").select("id").eq("id", user.id).maybeSingle();
+    if (!caller) return jsonResponse({ error: "Apenas admin pode fazer isso." }, 403);
 
     const update: Record<string, unknown> = {};
     for (const campo of CAMPOS_PERMITIDOS) {

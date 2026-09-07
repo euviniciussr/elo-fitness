@@ -76,8 +76,8 @@ async function init() {
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) { window.location.href = 'login.html'; return; }
 
-  const { data: eu } = await supabaseClient.from('trainers').select('is_admin').eq('id', user.id).single();
-  if (!eu || !eu.is_admin) {
+  const { data: eu } = await supabaseClient.from('admins').select('id').eq('id', user.id).maybeSingle();
+  if (!eu) {
     app.innerHTML = '';
     app.appendChild(el('<div class="msg">Acesso restrito ao administrador.</div>'));
     return;
@@ -89,12 +89,12 @@ async function init() {
 async function carregar() {
   const app = document.getElementById('app');
   const [trainersRes, planosRes, pagamentosRes] = await Promise.all([
-    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, assinatura_valida_ate, is_admin').order('created_at'),
+    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, assinatura_valida_ate').order('created_at'),
     supabaseClient.from('planos_assinatura').select('id, nome, valor, ativo').order('valor'),
     supabaseClient.from('assinatura_pagamentos').select('valor, status, data_pagamento').order('data_pagamento', { ascending: false }),
   ]);
 
-  const trainers = (trainersRes.data || []).filter(t => !t.is_admin);
+  const trainers = trainersRes.data || [];
   const planos = planosRes.data || [];
   planos.forEach(p => { PLANOS_CACHE[p.id] = p; });
   const pagamentos = pagamentosRes.data || [];
