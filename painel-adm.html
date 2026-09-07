@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel Admin — Elo Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button,select{font-family:inherit;cursor:pointer;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+
+.wrap{max-width:1100px;margin:0 auto;padding:28px 20px 80px;}
+h1{font-size:20px;font-weight:800;margin:0 0 20px;}
+h2{font-size:13px;font-weight:800;color:#9aa4b2;text-transform:uppercase;letter-spacing:.04em;margin:28px 0 12px;}
+h2:first-of-type{margin-top:0;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;}
+.card .label{font-size:11.5px;color:#9aa4b2;margin-bottom:6px;}
+.card .val{font-size:22px;font-weight:800;}
+
+table{width:100%;border-collapse:collapse;background:#10151f;border:1px solid #1a2130;border-radius:14px;overflow:hidden;}
+th,td{text-align:left;padding:11px 14px;font-size:13px;border-bottom:1px solid #171d29;}
+th{color:#9aa4b2;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;font-weight:700;}
+tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+.badge-trial{background:rgba(96,165,250,.15);color:#60a5fa;}
+.badge-ativo{background:rgba(74,222,128,.15);color:#4ade80;}
+.badge-inadimplente{background:rgba(249,115,22,.15);color:#f97316;}
+.badge-isento{background:rgba(154,164,178,.15);color:#9aa4b2;}
+select{background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;}
+.btn-mini{background:#1e2633;color:#e5e9f0;border:none;border-radius:7px;padding:6px 10px;font-size:12px;font-weight:700;}
+.btn-mini:hover{background:#2a3444;}
+.msg{padding:40px;text-align:center;color:#9aa4b2;font-size:14px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">E</div>
+    <div class="logo-text">Elo <span>Fitness</span></div>
+  </div>
+  <a href="dashboard.html">← Voltar</a>
+</div>
+
+<div class="wrap" id="app">
+  <div class="msg">Carregando…</div>
+</div>
+
+<script>
+const PLANOS_CACHE = {};
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function badgeClass(status) {
+  return 'badge badge-' + status;
+}
+
+async function init() {
+  const app = document.getElementById('app');
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) { window.location.href = 'login.html'; return; }
+
+  const { data: eu } = await supabaseClient.from('trainers').select('is_admin').eq('id', user.id).single();
+  if (!eu || !eu.is_admin) {
+    app.innerHTML = '';
+    app.appendChild(el('<div class="msg">Acesso restrito ao administrador.</div>'));
+    return;
+  }
+
+  await carregar();
+}
+
+async function carregar() {
+  const app = document.getElementById('app');
+  const [trainersRes, planosRes, pagamentosRes] = await Promise.all([
+    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, assinatura_valida_ate, is_admin').order('created_at'),
+    supabaseClient.from('planos_assinatura').select('id, nome, valor, ativo').order('valor'),
+    supabaseClient.from('assinatura_pagamentos').select('valor, status, data_pagamento').order('data_pagamento', { ascending: false }),
+  ]);
+
+  const trainers = (trainersRes.data || []).filter(t => !t.is_admin);
+  const planos = planosRes.data || [];
+  planos.forEach(p => { PLANOS_CACHE[p.id] = p; });
+  const pagamentos = pagamentosRes.data || [];
+
+  const porStatus = { trial: 0, ativo: 0, inadimplente: 0, isento: 0 };
+  trainers.forEach(t => { porStatus[t.status_assinatura] = (porStatus[t.status_assinatura] || 0) + 1; });
+  const receitaTotal = pagamentos.filter(p => ['CONFIRMED', 'RECEIVED'].includes(p.status)).reduce((s, p) => s + Number(p.valor), 0);
+
+  app.innerHTML = '';
+
+  const header = el('<h1>Painel Admin</h1>');
+  app.appendChild(header);
+
+  const cards = el('<div class="cards"></div>');
+  cards.appendChild(el('<div class="card"><div class="label">Trial</div><div class="val">' + porStatus.trial + '</div></div>'));
+  cards.appendChild(el('<div class="card"><div class="label">Ativos</div><div class="val">' + porStatus.ativo + '</div></div>'));
+  cards.appendChild(el('<div class="card"><div class="label">Inadimplentes</div><div class="val">' + porStatus.inadimplente + '</div></div>'));
+  cards.appendChild(el('<div class="card"><div class="label">Isentos</div><div class="val">' + porStatus.isento + '</div></div>'));
+  cards.appendChild(el('<div class="card"><div class="label">Receita confirmada</div><div class="val">R$ ' + receitaTotal.toFixed(2).replace('.', ',') + '</div></div>'));
+  app.appendChild(cards);
+
+  app.appendChild(el('<h2>Profissionais</h2>'));
+  const tabela = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Trial até</th><th>Assinatura até</th><th>Ações</th></tr></thead><tbody></tbody></table>');
+  const tbody = tabela.querySelector('tbody');
+  if (trainers.length === 0) {
+    tbody.appendChild(el('<tr><td colspan="7" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
+  }
+  trainers.forEach(t => {
+    const tr = el('<tr></tr>');
+    tr.appendChild(el('<td>' + (t.nome || '—') + '</td>'));
+    tr.appendChild(el('<td>' + t.email + '</td>'));
+    tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + t.status_assinatura + '</span></td>'));
+    tr.appendChild(el('<td>' + (t.plano_id && PLANOS_CACHE[t.plano_id] ? PLANOS_CACHE[t.plano_id].nome : '—') + '</td>'));
+    tr.appendChild(el('<td>' + (t.trial_termina_em || '—') + '</td>'));
+    tr.appendChild(el('<td>' + (t.assinatura_valida_ate || '—') + '</td>'));
+
+    const tdAcoes = el('<td></td>');
+    const btnIsento = el('<button class="btn-mini">' + (t.status_assinatura === 'isento' ? 'Remover isenção' : 'Marcar isento') + '</button>');
+    btnIsento.addEventListener('click', () => alternarIsencao(t));
+    tdAcoes.appendChild(btnIsento);
+
+    const selectPlano = el('<select style="margin-left:8px;"></select>');
+    selectPlano.appendChild(el('<option value="">Trocar plano…</option>'));
+    planos.forEach(p => selectPlano.appendChild(el('<option value="' + p.id + '">' + p.nome + '</option>')));
+    selectPlano.addEventListener('change', (e) => {
+      if (!e.target.value) return;
+      trocarPlano(t, e.target.value);
+    });
+    tdAcoes.appendChild(selectPlano);
+
+    tr.appendChild(tdAcoes);
+    tbody.appendChild(tr);
+  });
+  app.appendChild(tabela);
+
+  app.appendChild(el('<h2>Histórico de pagamentos (Asaas)</h2>'));
+  const tabelaPag = el('<table><thead><tr><th>Data</th><th>Valor</th><th>Status</th></tr></thead><tbody></tbody></table>');
+  const tbodyPag = tabelaPag.querySelector('tbody');
+  if (pagamentos.length === 0) {
+    tbodyPag.appendChild(el('<tr><td colspan="3" style="text-align:center;color:#66707e;">Nenhum pagamento registrado ainda.</td></tr>'));
+  }
+  pagamentos.forEach(p => {
+    const tr = el('<tr></tr>');
+    tr.appendChild(el('<td>' + (p.data_pagamento ? new Date(p.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR') : '—') + '</td>'));
+    tr.appendChild(el('<td>R$ ' + Number(p.valor).toFixed(2).replace('.', ',') + '</td>'));
+    tr.appendChild(el('<td>' + p.status + '</td>'));
+    tbodyPag.appendChild(tr);
+  });
+  app.appendChild(tabelaPag);
+}
+
+async function alternarIsencao(trainer) {
+  const novoStatus = trainer.status_assinatura === 'isento' ? 'trial' : 'isento';
+  const { error } = await supabaseClient.functions.invoke('admin-atualizar-trainer', {
+    body: { trainer_id: trainer.id, status_assinatura: novoStatus },
+  });
+  if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
+  carregar();
+}
+
+async function trocarPlano(trainer, planoId) {
+  const { error } = await supabaseClient.functions.invoke('admin-atualizar-trainer', {
+    body: { trainer_id: trainer.id, plano_id: planoId, status_assinatura: 'ativo' },
+  });
+  if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
+  carregar();
+}
+
+init();
+</script>
+</body>
+</html>
