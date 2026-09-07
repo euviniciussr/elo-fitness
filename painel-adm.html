@@ -91,8 +91,7 @@ tr:last-child td{border-bottom:none;}
     <div class="nav-group-label">Visão geral</div>
     <div class="nav-item" data-page="dashboard"><span class="dot"></span>Dashboard</div>
     <div class="nav-item" data-page="receita"><span class="dot"></span>Receita</div>
-    <div class="nav-item" data-page="alunos"><span class="dot"></span>Alunos</div>
-    <div class="nav-item" data-page="personal"><span class="dot"></span>Personal</div>
+    <div class="nav-item" data-page="usuarios"><span class="dot"></span>Usuários</div>
     <div class="nav-group-label">Crescimento</div>
     <div class="nav-item" data-page="afiliados"><span class="dot"></span>Afiliados</div>
     <div class="nav-group-label">Plataforma</div>
@@ -156,7 +155,7 @@ function last12Months() {
   return out;
 }
 
-const STATE = { periodDays: 30, page: 'dashboard', raw: null };
+const STATE = { periodDays: 30, page: 'dashboard', raw: null, usuariosSubTab: 'personal' };
 
 async function init() {
   const app = document.getElementById('app');
@@ -232,8 +231,7 @@ function render() {
   const titles = {
     dashboard: ['Dashboard', 'Financeiro, profissionais e alunos da plataforma, tudo em um lugar'],
     receita: ['Receita', 'Faturamento consolidado da plataforma, MRR e desempenho por plano'],
-    alunos: ['Alunos', 'Quem entrou, quem está ativo e quem saiu da base'],
-    personal: ['Personal', 'Profissionais pagantes, funil de ativação e assinaturas'],
+    usuarios: ['Usuários', 'Profissionais e alunos da plataforma'],
     afiliados: ['Afiliados', 'Parceiros, links rastreados e comissões a pagar'],
     operacao: ['Operação', 'Saúde e consumo da plataforma'],
   };
@@ -244,8 +242,7 @@ function render() {
   app.innerHTML = '';
   if (STATE.page === 'dashboard') return renderDashboardOverview(app);
   if (STATE.page === 'receita') return renderReceita(app);
-  if (STATE.page === 'alunos') return renderClientes(app);
-  if (STATE.page === 'personal') return renderUsuarios(app);
+  if (STATE.page === 'usuarios') return renderUsuariosPage(app);
   if (STATE.page === 'afiliados') return renderEmptyFeature(app, 'Afiliados', 'Ainda não existe programa de indicação/afiliados no Elo Fitness — nenhuma tabela ou fluxo de comissão foi criado. Essa tela está reservada no menu, mas precisa ser desenhada e construída antes de mostrar dados aqui.');
   if (STATE.page === 'operacao') return renderEmptyFeature(app, 'Operação', 'Ainda não existe rastreamento de custo/consumo de IA nem alertas automáticos da plataforma — não há tabela de log de operações hoje. Essa tela está reservada no menu, mas precisa de instrumentação nova antes de mostrar dados aqui.');
 }
@@ -350,7 +347,7 @@ function renderDashboardOverview(app) {
   renderRankingPersonais(app, raw, alunosPorTrainer, 5);
 
   const linkRow = el('<div style="display:flex;gap:16px;font-size:12.5px;color:#66707e;margin-top:16px;">Ver detalhe completo:</div>');
-  ['receita', 'alunos', 'personal'].forEach(function (pagina) {
+  ['receita', 'usuarios'].forEach(function (pagina) {
     const link = el('<a href="#" style="color:#f97316;font-weight:700;margin-left:8px;">' + esc(titlesLabel(pagina)) + '</a>');
     link.addEventListener('click', function (e) {
       e.preventDefault();
@@ -364,7 +361,7 @@ function renderDashboardOverview(app) {
 }
 
 function titlesLabel(pagina) {
-  return { receita: 'Receita', alunos: 'Alunos', personal: 'Personal' }[pagina] || pagina;
+  return { receita: 'Receita', usuarios: 'Usuários' }[pagina] || pagina;
 }
 
 function renderAlertas(app, raw) {
@@ -507,6 +504,25 @@ function renderClientes(app) {
   const panel = el('<div class="panel"><h3>Entradas de alunos por mês</h3><div class="panel-sub">Novos cadastros de aluno · últimos 12 meses</div></div>');
   panel.appendChild(lineChart(months.map(function (m) { return m.label; }), [{ label: 'Novos alunos', color: '#60a5fa', values: entradasPorMes }]));
   app.appendChild(panel);
+}
+
+function renderUsuariosPage(app) {
+  const tabs = el(
+    '<div class="period-group" style="margin-bottom:18px;display:inline-flex;">' +
+    '<button class="period-btn' + (STATE.usuariosSubTab === 'personal' ? ' active' : '') + '" data-sub="personal">Personal</button>' +
+    '<button class="period-btn' + (STATE.usuariosSubTab === 'alunos' ? ' active' : '') + '" data-sub="alunos">Alunos</button>' +
+    '</div>'
+  );
+  tabs.querySelectorAll('[data-sub]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      STATE.usuariosSubTab = btn.getAttribute('data-sub');
+      render();
+    });
+  });
+  app.appendChild(tabs);
+
+  if (STATE.usuariosSubTab === 'alunos') return renderClientes(app);
+  return renderUsuarios(app);
 }
 
 function renderUsuarios(app) {
@@ -757,7 +773,7 @@ function fmtCompact(n) {
 
 function exportCSV() {
   let rows = [];
-  if (['dashboard', 'personal'].includes(STATE.page) && STATE._lastRanking) {
+  if (['dashboard', 'usuarios'].includes(STATE.page) && STATE._lastRanking) {
     rows.push(['Personal', 'Plano', 'Alunos', 'Recebido no período', 'Alunos ativos %']);
     STATE._lastRanking.forEach(function (r) {
       rows.push([r.nome, r.plano, r.alunos, r.recebido.toFixed(2), r.pctAtivos.toFixed(1)]);
