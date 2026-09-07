@@ -1267,8 +1267,10 @@ class Component extends DCLogic {
 
     const diasLabel = (dias) => (!dias || !dias.length) ? 'Sem dias definidos' : dias.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', ');
 
-    const buscaGeralNorm = this.state.buscaGeral.trim().toLowerCase();
-    const combinaBusca = (nome) => !buscaGeralNorm || (nome || '').toLowerCase().includes(buscaGeralNorm);
+    const DIACRITICOS_ACERVO = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+    const normAcervo = s => (s || '').toLowerCase().normalize('NFD').replace(DIACRITICOS_ACERVO, '');
+    const buscaGeralNorm = normAcervo(this.state.buscaGeral.trim());
+    const combinaBusca = (nome) => !buscaGeralNorm || normAcervo(nome).includes(buscaGeralNorm);
 
     const dados = {
       exercicios: this.state.exerciciosDb.filter(ex => combinaBusca(ex.nome)).map(ex => ({

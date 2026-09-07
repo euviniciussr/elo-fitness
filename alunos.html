@@ -295,9 +295,24 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">{{ subtituloAba }}</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:8px;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:9px 14px;">
-          <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#4a5364" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-          <input placeholder="Buscar aluno…" style="background:transparent;border:none;outline:none;color:#e5e9f0;font-family:inherit;font-size:13px;width:150px;">
+        <div style="position:relative;">
+          <div style="display:flex;align-items:center;gap:8px;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:9px 14px;">
+            <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#4a5364" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+            <input value="{{ busca }}" sc-camel-on-change="{{ onBuscaChange }}" placeholder="Buscar aluno…" style="background:transparent;border:none;outline:none;color:#e5e9f0;font-family:inherit;font-size:13px;width:150px;">
+          </div>
+          <sc-if value="{{ buscaAberta }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;top:calc(100% + 8px);left:0;right:0;min-width:240px;max-height:320px;overflow-y:auto;background:#10151f;border:1px solid #1a2130;border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.45);z-index:60;">
+              <sc-if value="{{ semResultadosBusca }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:18px 16px;text-align:center;font-size:12.5px;color:#66707e;">Nenhum aluno encontrado.</div>
+              </sc-if>
+              <sc-for list="{{ resultadosBusca }}" as="r" hint-placeholder-count="3">
+                <div sc-camel-on-click="{{ r.onClick }}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid #171d29;" style-hover="background:#151b28;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0;">{{ r.initials }}</div>
+                  <div style="font-size:13px;font-weight:600;">{{ r.nome }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
         </div>
         <div style="position:relative;">
           <button sc-camel-on-click="{{ toggleNotif }}" style="position:relative;display:flex;align-items:center;justify-content:center;width:38px;height:38px;background:#10151f;border:1px solid #1a2130;border-radius:10px;color:#9aa4b2;cursor:pointer;" style-hover="color:#e5e9f0;">
@@ -719,7 +734,7 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 
 class Component extends DCLogic {
   state = {
-    tab: 'ativos', chat: 'ana', filtroTodos: 'todos', notifOpen: false, notificacoes: [],
+    tab: 'ativos', chat: 'ana', filtroTodos: 'todos', notifOpen: false, notificacoes: [], busca: '',
     clientes: [], convites: [], exerciciosDb: [], treinosPorCliente: [], execucoes: [],
     convidarOpen: false, convidarEmail: '', convidarErro: '', convidarCarregando: false, convidarLink: '', copiarLabel: 'Copiar', gerarLabel: 'Gerar convite'
   };
@@ -744,6 +759,10 @@ class Component extends DCLogic {
       clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: exerciciosRes.data || [], notificacoes: notifRes.data || [],
       treinosPorCliente: treinosRes.data || [], execucoes: execucoesRes.data || []
     });
+  }
+
+  onBuscaChange(e) {
+    this.setState({ busca: e.target.value });
   }
 
   toggleNotif() {
@@ -832,6 +851,18 @@ class Component extends DCLogic {
     });
 
     const iniciais = (nome) => (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    const DIACRITICOS = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+    const normalizar = (s) => (s || '').normalize('NFD').replace(DIACRITICOS, '').toLowerCase();
+
+    const buscaTexto = this.state.busca.trim();
+    const buscaAberta = buscaTexto.length > 0;
+    const resultadosBusca = buscaAberta
+      ? this.state.clientes.filter(c => normalizar(c.nome).includes(normalizar(buscaTexto))).map(c => ({
+          id: c.id, nome: c.nome, initials: iniciais(c.nome),
+          onClick: () => this.abrirAluno(c.id, c.nome)
+        }))
+      : [];
+    const semResultadosBusca = buscaAberta && resultadosBusca.length === 0;
 
     const isoOf = (d) => d.toISOString().slice(0, 10);
     const hojeMeiaNoite = new Date(); hojeMeiaNoite.setHours(0, 0, 0, 0);
@@ -887,6 +918,9 @@ class Component extends DCLogic {
         color: tab === k ? '#f97316' : '#66707e',
         bg: tab === k ? 'rgba(249,115,22,.1)' : 'transparent'
       })),
+      busca: this.state.busca, onBuscaChange: (e) => this.onBuscaChange(e),
+      buscaAberta, resultadosBusca, semResultadosBusca,
+
       isAtivos: tab === 'ativos', isFeedbacks: tab === 'feedbacks', isDiario: tab === 'diario',
       isMensagens: tab === 'mensagens', isTodos: tab === 'todos',
       isPrescricoes: tab === 'prescricoes', isRenovacoes: tab === 'renovacoes',
