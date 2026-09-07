@@ -293,17 +293,61 @@ function renderDashboardOverview(app) {
   const planosById = {};
   raw.planos.forEach(function (p) { planosById[p.id] = p; });
   const trainersAtivos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const trainersTrial = raw.trainers.filter(function (t) { return t.status_assinatura === 'trial'; });
+  const trainersInadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
+  const trainersIsentos = raw.trainers.filter(function (t) { return t.status_assinatura === 'isento'; });
   const mrr = trainersAtivos.reduce(function (s, t) { return s + (planosById[t.plano_id] ? Number(planosById[t.plano_id].valor) : 0); }, 0);
+  const ticketMedio = trainersAtivos.length ? mrr / trainersAtivos.length : 0;
+  const alunosAtivos = raw.clientes.filter(function (c) { return c.status === 'ativo'; });
 
   app.appendChild(el('<h2>Resumo do período</h2>'));
   const cards = el('<div class="cards"></div>');
   cards.appendChild(el(cardHTML('MRR atual', fmtBRL(mrr), true)));
   cards.appendChild(el(cardHTML('Receita no período', fmtBRL(receitaAtual), false, deltaText(receitaAtual, receitaAnterior))));
+  cards.appendChild(el(cardHTML('Ticket médio', fmtBRL(ticketMedio))));
   cards.appendChild(el(cardHTML('Novos alunos', String(novosAtual), false, deltaText(novosAtual, novosAnterior))));
+  cards.appendChild(el(cardHTML('Alunos ativos', String(alunosAtivos.length), false, raw.clientes.length + ' no total')));
   cards.appendChild(el(cardHTML('Personal ativos', String(trainersAtivos.length), false, raw.trainers.length + ' cadastrados no total')));
   app.appendChild(cards);
 
+  const months = last12Months();
+  const receitaMensal = months.map(function (m) {
+    return confirmados.filter(function (p) { return p.data_pagamento && p.data_pagamento.slice(0, 7) === m.key; }).reduce(function (s, p) { return s + Number(p.valor); }, 0);
+  });
+  const alunosMensal = months.map(function (m) {
+    return raw.clientes.filter(function (c) { return c.created_at && c.created_at.slice(0, 7) === m.key; }).length;
+  });
+
+  const chartsRow = el('<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;"></div>');
+  const painelReceita = el('<div class="panel" style="margin-top:0;"><h3>Receita mensal</h3><div class="panel-sub">Últimos 12 meses</div></div>');
+  painelReceita.appendChild(lineChart(months.map(function (m) { return m.label; }), [{ label: 'Receita', color: '#f97316', values: receitaMensal }]));
+  chartsRow.appendChild(painelReceita);
+  const painelAlunos = el('<div class="panel" style="margin-top:0;"><h3>Novos alunos por mês</h3><div class="panel-sub">Últimos 12 meses</div></div>');
+  painelAlunos.appendChild(lineChart(months.map(function (m) { return m.label; }), [{ label: 'Novos alunos', color: '#60a5fa', values: alunosMensal }]));
+  chartsRow.appendChild(painelAlunos);
+  app.appendChild(chartsRow);
+
+  const statusPanel = el('<div class="panel"><h3>Profissionais por status</h3><div class="panel-sub">Distribuição da base de trainers</div></div>');
+  const totalTrainers = raw.trainers.length || 1;
+  [
+    ['Ativo', trainersAtivos.length, '#4ade80'],
+    ['Trial', trainersTrial.length, '#60a5fa'],
+    ['Inadimplente', trainersInadimplentes.length, '#f97316'],
+    ['Isento', trainersIsentos.length, '#9aa4b2'],
+  ].forEach(function (row) {
+    const pct = (row[1] / totalTrainers) * 100;
+    statusPanel.appendChild(el(
+      '<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>' + row[0] + '</span><b>' + row[1] + ' · ' + fmtPct(pct) + '</b></div>' +
+      '<div class="funnel-track"><div class="funnel-fill" style="width:' + pct.toFixed(1) + '%;background:' + row[2] + '"></div></div></div>'
+    ));
+  });
+  app.appendChild(statusPanel);
+
   renderAlertas(app, raw);
+
+  const alunosPorTrainer = {};
+  raw.clientes.forEach(function (c) { alunosPorTrainer[c.trainer_id] = (alunosPorTrainer[c.trainer_id] || 0) + 1; });
+  renderRankingPersonais(app, raw, alunosPorTrainer, 5);
 
   const linkRow = el('<div style="display:flex;gap:16px;font-size:12.5px;color:#66707e;margin-top:16px;">Ver detalhe completo:</div>');
   ['receita', 'alunos', 'personal'].forEach(function (pagina) {
@@ -602,7 +646,8 @@ async function trocarPlano(trainer, planoId) {
   render();
 }
 
-function renderRankingPersonais(app, raw, alunosPorTrainer) {
+function renderRankingPersonais(app, raw, alunosPorTrainer, limite) {
+  limite = limite || 10;
   const planosById = {};
   raw.planos.forEach(function (p) { planosById[p.id] = p; });
   const cutoff = periodCutoff();
@@ -631,9 +676,9 @@ function renderRankingPersonais(app, raw, alunosPorTrainer) {
     })
     .filter(function (r) { return r.alunos > 0; })
     .sort(function (a, b) { return b.alunos - a.alunos; })
-    .slice(0, 10);
+    .slice(0, limite);
 
-  const panel = el('<div class="panel"><h3>Personais em destaque</h3><div class="panel-sub">Top 10 por alunos vinculados</div></div>');
+  const panel = el('<div class="panel"><h3>Personais em destaque</h3><div class="panel-sub">Top ' + limite + ' por alunos vinculados</div></div>');
   if (!ranking.length) {
     panel.appendChild(el('<div class="empty-panel">Nenhum profissional com aluno cadastrado ainda.</div>'));
   } else {
