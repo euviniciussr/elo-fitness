@@ -90,6 +90,9 @@ tr:last-child td{border-bottom:none;}
     </div>
     <div class="nav-group-label">Visão geral</div>
     <div class="nav-item" data-page="dashboard"><span class="dot"></span>Dashboard</div>
+    <div class="nav-item" data-page="receita"><span class="dot"></span>Receita</div>
+    <div class="nav-item" data-page="alunos"><span class="dot"></span>Alunos</div>
+    <div class="nav-item" data-page="personal"><span class="dot"></span>Personal</div>
     <div class="nav-group-label">Crescimento</div>
     <div class="nav-item" data-page="afiliados"><span class="dot"></span>Afiliados</div>
     <div class="nav-group-label">Plataforma</div>
@@ -228,6 +231,9 @@ function periodCutoff() {
 function render() {
   const titles = {
     dashboard: ['Dashboard', 'Financeiro, profissionais e alunos da plataforma, tudo em um lugar'],
+    receita: ['Receita', 'Faturamento consolidado da plataforma, MRR e desempenho por plano'],
+    alunos: ['Alunos', 'Quem entrou, quem está ativo e quem saiu da base'],
+    personal: ['Personal', 'Profissionais pagantes, funil de ativação e assinaturas'],
     afiliados: ['Afiliados', 'Parceiros, links rastreados e comissões a pagar'],
     operacao: ['Operação', 'Saúde e consumo da plataforma'],
   };
@@ -237,6 +243,9 @@ function render() {
   const app = document.getElementById('app');
   app.innerHTML = '';
   if (STATE.page === 'dashboard') { renderReceita(app); renderClientes(app); renderUsuarios(app); return; }
+  if (STATE.page === 'receita') return renderReceita(app);
+  if (STATE.page === 'alunos') return renderClientes(app);
+  if (STATE.page === 'personal') return renderUsuarios(app);
   if (STATE.page === 'afiliados') return renderEmptyFeature(app, 'Afiliados', 'Ainda não existe programa de indicação/afiliados no Elo Fitness — nenhuma tabela ou fluxo de comissão foi criado. Essa tela está reservada no menu, mas precisa ser desenhada e construída antes de mostrar dados aqui.');
   if (STATE.page === 'operacao') return renderEmptyFeature(app, 'Operação', 'Ainda não existe rastreamento de custo/consumo de IA nem alertas automáticos da plataforma — não há tabela de log de operações hoje. Essa tela está reservada no menu, mas precisa de instrumentação nova antes de mostrar dados aqui.');
 }
@@ -596,7 +605,7 @@ function fmtCompact(n) {
 
 function exportCSV() {
   let rows = [];
-  if (STATE.page === 'dashboard' && STATE._lastRanking) {
+  if (['dashboard', 'personal'].includes(STATE.page) && STATE._lastRanking) {
     rows.push(['Personal', 'Plano', 'Alunos', 'Recebido no período', 'Alunos ativos %']);
     STATE._lastRanking.forEach(function (r) {
       rows.push([r.nome, r.plano, r.alunos, r.recebido.toFixed(2), r.pctAtivos.toFixed(1)]);
