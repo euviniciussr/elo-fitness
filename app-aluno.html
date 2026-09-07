@@ -1208,7 +1208,7 @@ class Component extends DCLogic {
   async resolveFotoUrls(fotos) {
     if (!fotos || !fotos.length) return [];
     const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotos.map(f => f.url), 60 * 60 * 24 * 7);
-    return fotos.map((f, i) => ({ ...f, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
+    return fotos.map((f, i) => ({ ...f, path: f.url, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
   }
 
   async loadTreino() {
@@ -1561,6 +1561,7 @@ class Component extends DCLogic {
     if (!confirm('Excluir esta foto? Essa ação não poderá ser desfeita.')) return;
     const { error } = await supabaseClient.from('fotos_evolucao').delete().eq('id', foto.id);
     if (error) { alert('Não foi possível excluir a foto: ' + error.message); return; }
+    if (foto.path) await supabaseClient.storage.from('fotos-evolucao').remove([foto.path]);
     this.setState({ fotosEvolucao: this.state.fotosEvolucao.filter(f => f.id !== foto.id) });
   }
 
