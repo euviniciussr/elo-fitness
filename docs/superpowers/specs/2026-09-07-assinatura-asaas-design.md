@@ -17,9 +17,8 @@ Elo Fitness → profissional.
 - **Quem paga quem:** o profissional (personal/nutricionista) paga o Elo
   Fitness. Aluno pagando pra usar fica pra uma fase futura, não faz parte
   deste trabalho.
-- **Gateway:** Asaas. Conta já criada e aprovada (CNPJ 68.294.387 Vinicius
-  Souto Rocha), com ambiente Sandbox configurado e uma chave de API de teste
-  já gerada (`elofitness-sandbox`).
+- **Gateway:** Asaas. Conta já criada e aprovada, com ambiente Sandbox
+  configurado e uma chave de API de teste já gerada (`elofitness-sandbox`).
 - **Multi-SaaS na mesma conta Asaas:** essa mesma conta Asaas vai receber
   pagamentos de outros produtos do usuário (ex: TJV Sistema), todos no mesmo
   CNPJ — sem subconta. A separação é feita marcando todo cliente/cobrança/
