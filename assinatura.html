@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assinatura — Elo Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+
+.wrap{max-width:640px;margin:0 auto;padding:32px 20px 80px;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;margin-bottom:16px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;}
+
+.planos{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.plano{border:2px solid #1a2130;border-radius:12px;padding:18px;cursor:pointer;}
+.plano.selecionado{border-color:#f97316;background:rgba(249,115,22,.06);}
+.plano h3{margin:0 0 4px;font-size:15px;font-weight:800;}
+.plano .preco{font-size:22px;font-weight:800;color:#f97316;margin:6px 0;}
+.plano .desc{font-size:12.5px;color:#9aa4b2;}
+
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;}
+.field{margin-bottom:14px;}
+
+.erro-geral{color:#f87171;font-size:12.5px;margin:14px 0;display:none;}
+.btn{border:none;border-radius:10px;padding:12px 18px;font-size:13.5px;font-weight:700;cursor:pointer;width:100%;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn:disabled{opacity:.55;cursor:default;}
+.msg{font-size:14px;line-height:1.5;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">E</div>
+    <div class="logo-text">Elo <span>Fitness</span></div>
+  </div>
+  <a href="dashboard.html">← Voltar</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="card-resultado" style="display:none;"></div>
+
+  <div class="card" id="card-form">
+    <h1>Assinar Elo Fitness</h1>
+    <div class="sub">Escolha o plano e cadastre o cartão pra continuar usando a plataforma. A cobrança é mensal, automática, direto pelo Asaas.</div>
+
+    <div class="planos" id="planos"></div>
+
+    <div class="field">
+      <label>CPF ou CNPJ</label>
+      <input id="f-cpf-cnpj" placeholder="Só números">
+    </div>
+
+    <div class="erro-geral" id="erro-geral"></div>
+    <button class="btn btn-primary" id="btn-assinar" disabled>Selecione um plano</button>
+  </div>
+</div>
+
+<script>
+let planoSelecionadoId = null;
+
+async function init() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('sucesso')) return mostrarResultadoESincronizar();
+  if (params.get('cancelado')) return mostrarResultado('Checkout cancelado. Você pode tentar de novo quando quiser.');
+  if (params.get('expirado')) return mostrarResultado('O link de checkout expirou. Tente assinar novamente.');
+
+  const { data: planos } = await supabaseClient.from('planos_assinatura').select('id, nome, valor, limite_alunos').eq('ativo', true).order('valor');
+  const cont = document.getElementById('planos');
+  (planos || []).forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'plano';
+    div.innerHTML = '<h3>' + p.nome + '</h3><div class="preco">R$ ' + p.valor.toFixed(2).replace('.', ',') + '/mês</div><div class="desc">' + (p.limite_alunos ? 'Até ' + p.limite_alunos + ' alunos' : 'Alunos ilimitados') + '</div>';
+    div.addEventListener('click', () => {
+      document.querySelectorAll('.plano').forEach(el => el.classList.remove('selecionado'));
+      div.classList.add('selecionado');
+      planoSelecionadoId = p.id;
+      document.getElementById('btn-assinar').disabled = false;
+      document.getElementById('btn-assinar').textContent = 'Assinar ' + p.nome;
+    });
+    cont.appendChild(div);
+  });
+}
+
+function mostrarResultado(msg) {
+  document.getElementById('card-form').style.display = 'none';
+  const card = document.getElementById('card-resultado');
+  card.style.display = '';
+  card.innerHTML = '<div class="msg">' + msg + '</div><br><a href="dashboard.html">Voltar ao Dashboard</a>';
+}
+
+async function mostrarResultadoESincronizar() {
+  document.getElementById('card-form').style.display = 'none';
+  const card = document.getElementById('card-resultado');
+  card.style.display = '';
+  card.innerHTML = '<div class="msg">Confirmando seu pagamento…</div>';
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  for (let i = 0; i < 10; i++) {
+    const { data: trainer } = await supabaseClient.from('trainers').select('status_assinatura').eq('id', user.id).single();
+    if (trainer && trainer.status_assinatura === 'ativo') {
+      card.innerHTML = '<div class="msg">Pagamento confirmado! Sua assinatura está ativa.</div><br><a href="dashboard.html">Ir pro Dashboard</a>';
+      return;
+    }
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  card.innerHTML = '<div class="msg">Recebemos seu pagamento e ainda estamos confirmando — pode levar até um minuto. Você pode voltar e recarregar a página em seguida.</div><br><a href="dashboard.html">Voltar ao Dashboard</a>';
+}
+
+document.getElementById('btn-assinar').addEventListener('click', async () => {
+  const cpfCnpj = document.getElementById('f-cpf-cnpj').value.replace(/\D/g, '');
+  const erroGeral = document.getElementById('erro-geral');
+  const btn = document.getElementById('btn-assinar');
+  erroGeral.style.display = 'none';
+
+  if (!planoSelecionadoId) return;
+  if (cpfCnpj.length !== 11 && cpfCnpj.length !== 14) {
+    erroGeral.textContent = 'Digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.';
+    erroGeral.style.display = '';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Gerando checkout…';
+
+  const base = location.origin + location.pathname;
+  const { data, error } = await supabaseClient.functions.invoke('asaas-checkout', {
+    body: {
+      plano_id: planoSelecionadoId,
+      cpf_cnpj: cpfCnpj,
+      successUrl: base + '?sucesso=1',
+      cancelUrl: base + '?cancelado=1',
+      expiredUrl: base + '?expirado=1',
+    },
+  });
+
+  if (error || !data || !data.link) {
+    erroGeral.textContent = 'Não foi possível gerar o checkout. Tente de novo em alguns instantes.';
+    erroGeral.style.display = '';
+    btn.disabled = false; btn.textContent = 'Assinar';
+    return;
+  }
+
+  window.location.href = data.link;
+});
+
+init();
+</script>
+</body>
+</html>
