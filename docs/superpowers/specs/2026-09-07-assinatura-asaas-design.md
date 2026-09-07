@@ -24,7 +24,7 @@ Elo Fitness → profissional.
   pagamentos de outros produtos do usuário (ex: TJV Sistema), todos no mesmo
   CNPJ — sem subconta. A separação é feita marcando todo cliente/cobrança/
   assinatura criado pelo Elo Fitness com `externalReference` no formato
-  `elofitness:<trainer_id>`, o que permite filtrar no próprio painel do Asaas
+  `elofitness:<trainer_id>:<plano_id>`, o que permite filtrar no painel do Asaas
   e garante que o webhook do Elo Fitness só processe eventos que ele mesmo
   criou (ignora silenciosamente qualquer evento de referência que não comece
   com `elofitness:`).
@@ -47,9 +47,18 @@ Elo Fitness → profissional.
   marcada como `isento` permanentemente — nunca entra no fluxo de cobrança,
   mesmo depois do gateway estar ativo. Qualquer profissional novo que se
   cadastrar a partir de agora entra no fluxo normal (trial → cobrança).
-- **Preço:** ainda não decidido. Fica configurável (uma linha numa tabela
-  `planos_assinatura`, não um número fixo no código) — trocar o valor não
-  deve exigir deploy de código.
+- **Preço:** dois planos por faixa de alunos, já decididos:
+  - **Até 30 alunos** — R$ 59,90/mês.
+  - **Ilimitado** — R$ 99,90/mês.
+
+  Guardados como linhas na tabela `planos_assinatura` (não hardcoded) —
+  trocar valor/limite não exige deploy de código. Essa cobrança só vale
+  **depois dos 14 dias de teste**; durante o trial o profissional usa sem
+  escolher plano e sem limite de alunos.
+- **Limite de alunos por plano:** se o profissional está no plano "Até 30
+  alunos" e já tem 30 cadastrados, tentar cadastrar o 31º é **bloqueado**
+  (precisa trocar pro plano Ilimitado primeiro). Durante o trial não existe
+  esse limite.
 - **Sem cron job:** o status "vencido"/"bloqueado" nunca é calculado e
   gravado por um job periódico — é sempre derivado na hora, comparando a data
   de hoje com `trial_termina_em`/`assinatura_valida_ate` + 3 dias, o mesmo
@@ -67,6 +76,8 @@ Elo Fitness → profissional.
 | `assinatura_valida_ate` | date, nullable | até quando o último pagamento confirmado cobre; atualizado pelo webhook |
 | `asaas_customer_id` | text, nullable | id do cliente criado no Asaas |
 | `asaas_subscription_id` | text, nullable | id da assinatura recorrente no Asaas |
+| `plano_id` | uuid, nullable, `references planos_assinatura(id)` | qual dos dois planos o profissional escolheu no checkout; `null` durante o trial |
+| `cpf_cnpj` | text, nullable | documento do profissional, pedido uma vez na tela de checkout (o Asaas exige pra criar a cobrança); reaproveitado se ele trocar de plano depois |
 
 `status_assinatura` guarda a última transição conhecida (útil pra listagem/
 suporte: "quem está trial", "quem está inadimplente"), mas a decisão real de
@@ -81,13 +92,15 @@ create table planos_assinatura (
   id uuid primary key default gen_random_uuid(),
   nome text not null,
   valor numeric not null,
+  limite_alunos int, -- null = sem limite (plano Ilimitado)
   ativo boolean not null default true,
   created_at timestamptz not null default now()
 );
 ```
 
-Uma linha (`"Mensal"`, valor a definir) inserida na migration. Trocar o preço
-= `update` nessa tabela, sem deploy.
+Duas linhas inseridas na migration: `("Até 30 alunos", 59.90, 30)` e
+`("Ilimitado", 99.90, null)`. Trocar valor/limite = `update` nessa tabela,
+sem deploy.
 
 ### Nova tabela `assinatura_pagamentos`
 
@@ -114,15 +127,26 @@ insert/update pra usuário comum.
 
 ## Fluxo de checkout
 
-1. Profissional bloqueado/em aviso vê um botão "Assinar agora" → chama uma
-   nova Edge Function `asaas-checkout` (mesmo padrão das `food-*` que já
-   existem em `supabase/functions/`).
-2. A function: se o trainer ainda não tem `asaas_customer_id`, cria o cliente
-   no Asaas (`POST /customers`, com `externalReference: 'elofitness:' + trainer_id`);
-   depois cria a assinatura (`POST /subscriptions`, cartão recorrente,
-   `externalReference` igual) e devolve a URL de checkout hospedada do Asaas.
-3. Frontend redireciona pra essa URL. Profissional cadastra o cartão lá.
-4. Asaas cobra e manda webhook de confirmação.
+1. Profissional bloqueado/em aviso vê uma tela "Assinar agora" com os dois
+   planos (Até 30 alunos / Ilimitado) e escolhe um.
+2. O frontend chama a Edge Function `asaas-checkout` (mesmo padrão das
+   `food-*` que já existem em `supabase/functions/`) passando o
+   `plano_id` escolhido e o CPF/CNPJ do profissional (pedido no mesmo
+   formulário — o Asaas exige documento pra criar a cobrança e hoje
+   `trainers` não guarda isso).
+3. A function usa o endpoint de **Asaas Checkout** (`POST /v3/checkouts`,
+   hospedado pelo próprio Asaas): manda `billingTypes: ["CREDIT_CARD"]`,
+   `chargeTypes: ["RECURRENT"]`, `subscription: { cycle: "MONTHLY",
+   nextDueDate: <hoje+1> }`, `customerData` (nome, cpfCnpj, email do
+   trainer), `value` = o valor do plano escolhido, e
+   `externalReference: 'elofitness:' + trainer_id + ':' + plano_id`.
+   Devolve o campo `link` da resposta — a URL hospedada pra onde o
+   frontend redireciona.
+4. Profissional cadastra o cartão nessa página do próprio Asaas.
+5. Asaas cobra e manda webhook de confirmação; é o **webhook** (não o
+   checkout) quem grava `asaas_customer_id`/`asaas_subscription_id` e
+   `plano_id` definitivos em `trainers`, extraindo `trainer_id` e
+   `plano_id` do `externalReference` do evento confirmado.
 
 ## Webhook
 
@@ -135,10 +159,13 @@ Ao receber um evento:
 1. Confirma o token do header.
 2. Ignora se `payment.externalReference` não começa com `elofitness:` (evento
    de outro produto na mesma conta Asaas).
-3. Extrai o `trainer_id` do `externalReference`.
+3. Extrai `trainer_id` e `plano_id` do `externalReference`
+   (`elofitness:<trainer_id>:<plano_id>`).
 4. Em `PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`: grava/atualiza linha em
    `assinatura_pagamentos`, atualiza `trainers.assinatura_valida_ate` pra
-   "hoje + 1 mês" e `status_assinatura = 'ativo'`.
+   "hoje + 1 mês", `status_assinatura = 'ativo'`, `plano_id`,
+   `asaas_customer_id = payment.customer`, `asaas_subscription_id =
+   payment.subscription`.
 5. Em `PAYMENT_OVERDUE`/falha de cobrança: atualiza `status_assinatura` pra
    `'inadimplente'` (a data `assinatura_valida_ate` não muda — o bloqueio real
    continua sendo calculado a partir dela + 3 dias, não desse campo).
@@ -159,12 +186,21 @@ trainer logado; se `isento`, libera; senão calcula
 Nenhuma policy de RLS muda nas ~30 tabelas existentes — o bloqueio é só de
 UI/UX no app do profissional, não no banco.
 
+### Limite de alunos por plano
+
+Independente do bloqueio por pagamento, o formulário de "novo aluno"
+(`adicionar-aluno.html`) ganha uma checagem própria: antes de inserir,
+conta quantos `clientes` o trainer já tem; se o `plano_id` atual aponta
+pra um plano com `limite_alunos` definido (hoje, só "Até 30 alunos") e a
+contagem já bateu nesse limite, bloqueia a criação com uma mensagem
+convidando a trocar pro plano Ilimitado — sem tocar em RLS, só na UI,
+mesmo espírito do bloqueio por pagamento. Durante o trial (`plano_id`
+ainda `null`) não há limite nenhum.
+
 ## Fora de escopo (confirmado com o usuário)
 
 - Aluno pagando para usar o app.
 - Pix e boleto como forma de pagamento.
-- Preço fixo definido no código.
-- Suporte a múltiplos planos/tiers (só um plano "Mensal" por enquanto).
 - Subconta Asaas (não necessário — mesmo CNPJ, separação via `externalReference`).
 
 ## Verificação
@@ -178,3 +214,6 @@ UI/UX no app do profissional, não no banco.
    14 vê o banner (dias 15-17), e só bloqueia ações no dia 18.
 5. Confirmar que pagar em qualquer momento (mesmo já bloqueado) libera de
    volta imediatamente após o webhook confirmar.
+6. Confirmar que um trainer no plano "Até 30 alunos" com 30 `clientes` não
+   consegue cadastrar o 31º, e que o mesmo trainer sem plano (trial) não
+   tem esse limite.
