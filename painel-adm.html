@@ -89,8 +89,7 @@ tr:last-child td{border-bottom:none;}
       <div class="logo-text">Elo <span>Fitness</span></div>
     </div>
     <div class="nav-group-label">Visão geral</div>
-    <div class="nav-item" data-page="receita"><span class="dot"></span>Receita</div>
-    <div class="nav-item" data-page="usuarios"><span class="dot"></span>Usuários</div>
+    <div class="nav-item" data-page="dashboard"><span class="dot"></span>Dashboard</div>
     <div class="nav-group-label">Crescimento</div>
     <div class="nav-item" data-page="afiliados"><span class="dot"></span>Afiliados</div>
     <div class="nav-group-label">Plataforma</div>
@@ -154,7 +153,7 @@ function last12Months() {
   return out;
 }
 
-const STATE = { periodDays: 30, page: 'receita', raw: null };
+const STATE = { periodDays: 30, page: 'dashboard', raw: null };
 
 async function init() {
   const app = document.getElementById('app');
@@ -191,7 +190,7 @@ async function init() {
       render();
     });
   });
-  document.querySelector('.nav-item[data-page="receita"]').classList.add('active');
+  document.querySelector('.nav-item[data-page="dashboard"]').classList.add('active');
   document.getElementById('btn-export').addEventListener('click', exportCSV);
 
   await carregarDados();
@@ -228,8 +227,7 @@ function periodCutoff() {
 
 function render() {
   const titles = {
-    receita: ['Receita', 'Faturamento consolidado da plataforma, MRR e desempenho por plano'],
-    usuarios: ['Usuários', 'Profissionais pagantes, alunos vinculados e ativação da base'],
+    dashboard: ['Dashboard', 'Financeiro, profissionais e alunos da plataforma, tudo em um lugar'],
     afiliados: ['Afiliados', 'Parceiros, links rastreados e comissões a pagar'],
     operacao: ['Operação', 'Saúde e consumo da plataforma'],
   };
@@ -238,8 +236,7 @@ function render() {
 
   const app = document.getElementById('app');
   app.innerHTML = '';
-  if (STATE.page === 'receita') return renderReceita(app);
-  if (STATE.page === 'usuarios') return renderUsuarios(app);
+  if (STATE.page === 'dashboard') { renderReceita(app); renderClientes(app); renderUsuarios(app); return; }
   if (STATE.page === 'afiliados') return renderEmptyFeature(app, 'Afiliados', 'Ainda não existe programa de indicação/afiliados no Elo Fitness — nenhuma tabela ou fluxo de comissão foi criado. Essa tela está reservada no menu, mas precisa ser desenhada e construída antes de mostrar dados aqui.');
   if (STATE.page === 'operacao') return renderEmptyFeature(app, 'Operação', 'Ainda não existe rastreamento de custo/consumo de IA nem alertas automáticos da plataforma — não há tabela de log de operações hoje. Essa tela está reservada no menu, mas precisa de instrumentação nova antes de mostrar dados aqui.');
 }
@@ -269,6 +266,7 @@ function renderReceita(app) {
     .filter(function (p) { return p.data_pagamento && new Date(p.data_pagamento + 'T00:00:00') >= cutoff; })
     .reduce(function (s, p) { return s + Number(p.valor); }, 0);
 
+  app.appendChild(el('<h2>Financeiro</h2>'));
   const cards = el('<div class="cards"></div>');
   cards.appendChild(el(cardHTML('MRR atual', fmtBRL(mrr), true)));
   cards.appendChild(el(cardHTML('ARR projetado', fmtBRL(arr), false, 'run rate anualizado (MRR × 12)')));
@@ -327,6 +325,30 @@ function renderHistoricoPagamentos(app, raw) {
   app.appendChild(panel);
 }
 
+function renderClientes(app) {
+  const raw = STATE.raw;
+  const cutoff = periodCutoff();
+  const novos = raw.clientes.filter(function (c) { return c.created_at && new Date(c.created_at) >= cutoff; });
+  const ativos = raw.clientes.filter(function (c) { return c.status === 'ativo'; });
+  const inativos = raw.clientes.filter(function (c) { return c.status !== 'ativo'; });
+
+  app.appendChild(el('<h2>Clientes (alunos)</h2>'));
+  const cards = el('<div class="cards"></div>');
+  cards.appendChild(el(cardHTML('Novos alunos no período', String(novos.length), true, 'entraram nos últimos ' + STATE.periodDays + ' dias')));
+  cards.appendChild(el(cardHTML('Alunos ativos', String(ativos.length))));
+  cards.appendChild(el(cardHTML('Alunos inativos', String(inativos.length), false, 'total atual, não é por período', inativos.length > 0)));
+  cards.appendChild(el(cardHTML('Total de alunos', String(raw.clientes.length))));
+  app.appendChild(cards);
+
+  const months = last12Months();
+  const entradasPorMes = months.map(function (m) {
+    return raw.clientes.filter(function (c) { return c.created_at && c.created_at.slice(0, 7) === m.key; }).length;
+  });
+  const panel = el('<div class="panel"><h3>Entradas de alunos por mês</h3><div class="panel-sub">Novos cadastros de aluno · últimos 12 meses</div></div>');
+  panel.appendChild(lineChart(months.map(function (m) { return m.label; }), [{ label: 'Novos alunos', color: '#60a5fa', values: entradasPorMes }]));
+  app.appendChild(panel);
+}
+
 function renderUsuarios(app) {
   const raw = STATE.raw;
   const trainersAtivos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
@@ -334,6 +356,8 @@ function renderUsuarios(app) {
   const trainersInadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
   const alunosPorTrainer = {};
   raw.clientes.forEach(function (c) { alunosPorTrainer[c.trainer_id] = (alunosPorTrainer[c.trainer_id] || 0) + 1; });
+
+  app.appendChild(el('<h2>Profissionais</h2>'));
 
   const cards = el('<div class="cards"></div>');
   cards.appendChild(el(cardHTML('Personais ativos', String(trainersAtivos.length), true)));
@@ -572,7 +596,7 @@ function fmtCompact(n) {
 
 function exportCSV() {
   let rows = [];
-  if (STATE.page === 'usuarios' && STATE._lastRanking) {
+  if (STATE.page === 'dashboard' && STATE._lastRanking) {
     rows.push(['Personal', 'Plano', 'Alunos', 'Recebido no período', 'Alunos ativos %']);
     STATE._lastRanking.forEach(function (r) {
       rows.push([r.nome, r.plano, r.alunos, r.recebido.toFixed(2), r.pctAtivos.toFixed(1)]);
