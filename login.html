@@ -239,18 +239,6 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <div style="{{ criarContaDisplay }}text-align:center;margin-top:18px;font-size:12px;color:#66707e;">{{ criarContaTexto }} <span sc-camel-on-click="{{ toggleModo }}" style="color:#f97316;font-weight:700;cursor:pointer;">{{ criarContaLink }}</span></div>
     <div style="text-align:center;margin-top:10px;"><a href="adm.html" style="font-size:11px;color:#4a5364;">Acesso admin</a></div>
 
-    <div style="{{ acessoRapidoDisplay }}margin-top:22px;">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-        <div style="flex:1;height:1px;background:#1a2130;"></div>
-        <span style="font-size:11px;color:#66707e;font-weight:700;">ACESSO RÁPIDO · TESTE</span>
-        <div style="flex:1;height:1px;background:#1a2130;"></div>
-      </div>
-      <div style="display:flex;gap:10px;">
-        <button id="qa-savera" style="flex:1;background:#10151f;border:1px solid #1a2130;color:#e5e9f0;font-family:inherit;font-size:12.5px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">Entrar como Savera</button>
-        <button id="qa-vinicius" style="flex:1;background:#10151f;border:1px solid #1a2130;color:#e5e9f0;font-family:inherit;font-size:12.5px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">Entrar como Vinícius</button>
-        <button id="qa-admin" style="flex:1;background:#10151f;border:1px solid #1a2130;color:#e5e9f0;font-family:inherit;font-size:12.5px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">Entrar como ADM</button>
-      </div>
-    </div>
   </div>
 </div>
 </x-dc>
@@ -314,53 +302,9 @@ class Component extends DCLogic {
       criarContaDisplay: isPersonal ? '' : 'display:none;',
       criarContaTexto: isCadastro ? 'Já tem conta?' : 'Não tem conta?',
       criarContaLink: isCadastro ? 'Entrar' : 'Criar conta grátis',
-      toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', erro: '' }),
-      acessoRapidoDisplay: ''
+      toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', erro: '' })
     };
   }
 }
-</script>
-<script>
-(function(){
-  var CONTAS = {
-    'qa-savera': { email: 'savera.personal@gmail.com', senha: 'Savera2026!', destino: 'dashboard.html' },
-    'qa-vinicius': { email: 'vinicius.aluno@gmail.com', senha: 'Vinicius2026!', destino: 'app-aluno.html' },
-    'qa-admin': { email: 'contabusinessvini@gmail.com', senha: 'Admin2026!', destino: 'painel-adm.html' }
-  };
-  var emAndamento = false;
-
-  document.addEventListener('click', async function(e){
-    var btn = e.target.closest && e.target.closest('#qa-savera, #qa-vinicius, #qa-admin');
-    if (!btn || emAndamento) return;
-    var conta = CONTAS[btn.id];
-    if (!conta) return;
-    emAndamento = true;
-    var original = btn.textContent;
-    btn.textContent = 'Entrando…';
-    var { error } = await supabaseClient.auth.signInWithPassword({ email: conta.email, password: conta.senha });
-    if (error) {
-      var signUpResult = await supabaseClient.auth.signUp({ email: conta.email, password: conta.senha });
-      if (signUpResult.error || !signUpResult.data.session) {
-        emAndamento = false;
-        btn.textContent = original;
-        alert('Acesso rápido falhou: ' + (signUpResult.error ? signUpResult.error.message : 'não foi possível criar a conta demo automaticamente.'));
-        return;
-      }
-      if (btn.id === 'qa-vinicius') {
-        var uid = signUpResult.data.user.id;
-        var { error: clienteError } = await supabaseClient.from('clientes').insert({
-          trainer_id: uid, auth_user_id: uid, nome: 'Vinícius (demo)', status: 'ativo'
-        });
-        if (clienteError) {
-          emAndamento = false;
-          btn.textContent = original;
-          alert('Acesso rápido falhou ao provisionar aluno demo: ' + clienteError.message);
-          return;
-        }
-      }
-    }
-    window.location.href = conta.destino;
-  }, true);
-})();
 </script>
 </body></html>
