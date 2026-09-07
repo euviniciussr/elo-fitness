@@ -200,7 +200,7 @@ async function init() {
 
 async function carregarDados() {
   const [trainersRes, planosRes, assinPagRes, clientesRes, treinosRes, agendamentosRes, pagamentosRes] = await Promise.all([
-    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, created_at'),
+    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, created_at'),
     supabaseClient.from('planos_assinatura').select('id, nome, valor'),
     supabaseClient.from('assinatura_pagamentos').select('trainer_id, valor, status, data_pagamento'),
     supabaseClient.from('clientes').select('id, trainer_id, status, created_at'),
@@ -393,11 +393,11 @@ function renderGestaoAssinaturas(app, raw) {
   const planosById = {};
   raw.planos.forEach(function (p) { planosById[p.id] = p; });
 
-  const panel = el('<div class="panel"><h3>Gestão de assinaturas</h3><div class="panel-sub">Isentar profissional de cobrança ou trocar de plano manualmente</div></div>');
-  const table = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Ações</th></tr></thead><tbody></tbody></table>');
+  const panel = el('<div class="panel"><h3>Gestão de assinaturas</h3><div class="panel-sub">Trocar de plano ou estender o trial manualmente</div></div>');
+  const table = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Trial até</th><th>Ações</th></tr></thead><tbody></tbody></table>');
   const tbody = table.querySelector('tbody');
   if (!raw.trainers.length) {
-    tbody.appendChild(el('<tr><td colspan="5" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
+    tbody.appendChild(el('<tr><td colspan="6" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
   }
   raw.trainers.forEach(function (t) {
     const tr = el('<tr></tr>');
@@ -405,13 +405,11 @@ function renderGestaoAssinaturas(app, raw) {
     tr.appendChild(el('<td>' + esc(t.email) + '</td>'));
     tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + esc(t.status_assinatura) + '</span></td>'));
     tr.appendChild(el('<td>' + (t.plano_id && planosById[t.plano_id] ? esc(planosById[t.plano_id].nome) : '—') + '</td>'));
+    tr.appendChild(el('<td>' + (t.trial_termina_em ? new Date(t.trial_termina_em + 'T00:00:00').toLocaleDateString('pt-BR') : '—') + '</td>'));
 
-    const tdAcoes = el('<td></td>');
-    const btnIsento = el('<button class="btn-export" style="padding:5px 10px;font-size:12px;">' + (t.status_assinatura === 'isento' ? 'Remover isenção' : 'Marcar isento') + '</button>');
-    btnIsento.addEventListener('click', function () { alternarIsencao(t); });
-    tdAcoes.appendChild(btnIsento);
+    const tdAcoes = el('<td style="white-space:nowrap;"></td>');
 
-    const selectPlano = el('<select style="margin-left:8px;background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;"></select>');
+    const selectPlano = el('<select style="background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;"></select>');
     selectPlano.appendChild(el('<option value="">Trocar plano…</option>'));
     raw.planos.forEach(function (p) { selectPlano.appendChild(el('<option value="' + p.id + '">' + esc(p.nome) + '</option>')); });
     selectPlano.addEventListener('change', function (e) {
@@ -420,6 +418,16 @@ function renderGestaoAssinaturas(app, raw) {
     });
     tdAcoes.appendChild(selectPlano);
 
+    const inputDias = el('<input type="number" placeholder="dias" style="width:56px;margin-left:8px;background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 6px;color:#e5e9f0;font-size:12px;">');
+    const btnEstender = el('<button class="btn-export" style="padding:5px 10px;font-size:12px;margin-left:6px;">Estender trial</button>');
+    btnEstender.addEventListener('click', function () {
+      const dias = parseInt(inputDias.value, 10);
+      if (!dias || dias <= 0) { alert('Informe quantos dias adicionar ao trial.'); return; }
+      estenderTrial(t, dias);
+    });
+    tdAcoes.appendChild(inputDias);
+    tdAcoes.appendChild(btnEstender);
+
     tr.appendChild(tdAcoes);
     tbody.appendChild(tr);
   });
@@ -427,14 +435,22 @@ function renderGestaoAssinaturas(app, raw) {
   app.appendChild(panel);
 }
 
-async function alternarIsencao(trainer) {
-  const novoStatus = trainer.status_assinatura === 'isento' ? 'trial' : 'isento';
+async function estenderTrial(trainer, dias) {
+  const base = trainer.trial_termina_em && trainer.trial_termina_em >= dataLocalStr() ? trainer.trial_termina_em : dataLocalStr();
+  const [y, m, d] = base.split('-').map(Number);
+  const nova = new Date(y, m - 1, d + dias);
+  const novaStr = nova.getFullYear() + '-' + String(nova.getMonth() + 1).padStart(2, '0') + '-' + String(nova.getDate()).padStart(2, '0');
   const { error } = await supabaseClient.functions.invoke('admin-atualizar-trainer', {
-    body: { trainer_id: trainer.id, status_assinatura: novoStatus },
+    body: { trainer_id: trainer.id, trial_termina_em: novaStr, status_assinatura: 'trial' },
   });
   if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
   await carregarDados();
   render();
+}
+
+function dataLocalStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
 async function trocarPlano(trainer, planoId) {
