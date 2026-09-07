@@ -161,12 +161,14 @@ This simulates what a trainer's browser session can do — run it as the `authen
 
 ```bash
 supabase db query --linked "
-set local role authenticated;
+set local request.jwt.claim.role to 'authenticated';
 set local request.jwt.claim.sub to 'b938902d-4a00-4b07-9666-00bc183b90a4';
 update trainers set status_assinatura = 'ativo' where id = 'b938902d-4a00-4b07-9666-00bc183b90a4';
 select status_assinatura from trainers where id = 'b938902d-4a00-4b07-9666-00bc183b90a4';
 "
 ```
+
+(`auth.role()` reads the `request.jwt.claim.role` session setting, not Postgres's own `role` — confirmed by reading `auth.role()`'s source during execution; `set local role authenticated` alone does not trigger the lock.)
 
 Expected: `status_assinatura` still reads `isento` — the trigger silently reverted the change.
 
