@@ -14,7 +14,7 @@ button,select{font-family:inherit;cursor:pointer;}
 
 .shell{display:flex;min-height:100vh;}
 
-.sidebar{width:240px;flex:none;background:#0d1119;border-right:1px solid #171d29;display:flex;flex-direction:column;padding:20px 14px;}
+.sidebar{width:240px;flex:none;background:#0d1119;border-right:1px solid #171d29;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .logo{display:flex;align-items:center;gap:10px;padding:4px 8px 20px;}
 .logo-badge{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;flex:none;}
 .logo-text{font-size:16px;font-weight:800;}
@@ -24,9 +24,14 @@ button,select{font-family:inherit;cursor:pointer;}
 .nav-item:hover{background:#141a26;}
 .nav-item.active{background:rgba(249,115,22,.12);color:#f97316;}
 .nav-item .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;flex:none;}
-.sidebar-foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid #171d29;font-size:12px;color:#9aa4b2;}
-.sidebar-foot a{display:block;margin-top:6px;color:#9aa4b2;}
-.sidebar-foot a:hover{color:#f97316;}
+.sidebar-foot{margin-top:auto;padding-top:10px;}
+.sidebar-foot .sair-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;font-size:13.5px;font-weight:600;color:#c4cad4;cursor:pointer;text-decoration:none;}
+.sidebar-foot .sair-item:hover{background:#141a26;color:#f87171;}
+.sidebar-foot .conta{display:flex;align-items:center;gap:10px;padding:14px 10px 0;border-top:1px solid #171d29;margin-top:10px;}
+.sidebar-foot .conta-avatar{width:34px;height:34px;flex:none;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+.sidebar-foot .conta-info{min-width:0;}
+.sidebar-foot .conta-badge{font-size:10px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.04em;}
+.sidebar-foot .conta-email{font-size:11.5px;color:#66707e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 .main{flex:1;min-width:0;}
 .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:22px 28px 18px;border-bottom:1px solid #171d29;flex-wrap:wrap;}
@@ -97,8 +102,17 @@ tr:last-child td{border-bottom:none;}
     <div class="nav-group-label">Plataforma</div>
     <div class="nav-item" data-page="operacao"><span class="dot"></span>Operação</div>
     <div class="sidebar-foot">
-      <span id="admin-email">—</span>
-      <a href="#" id="btn-sair">Sair</a>
+      <a href="#" id="btn-sair" class="sair-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg>
+        Sair
+      </a>
+      <div class="conta">
+        <div class="conta-avatar" id="admin-avatar">A</div>
+        <div class="conta-info">
+          <div class="conta-badge">Admin</div>
+          <div class="conta-email" id="admin-email">—</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -170,6 +184,7 @@ async function init() {
     return;
   }
   document.getElementById('admin-email').textContent = eu.email;
+  document.getElementById('admin-avatar').textContent = (eu.email || '?')[0].toUpperCase();
   document.getElementById('btn-sair').addEventListener('click', async function (e) {
     e.preventDefault();
     await supabaseClient.auth.signOut();
@@ -600,16 +615,37 @@ function renderGestaoAssinaturas(app, raw) {
     tbody.appendChild(el('<tr><td colspan="6" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
   }
   raw.trainers.forEach(function (t) {
+    const vitalicio = t.status_assinatura === 'isento';
     const tr = el('<tr></tr>');
     tr.appendChild(el('<td>' + esc(t.nome || '—') + '</td>'));
     tr.appendChild(el('<td>' + esc(t.email) + '</td>'));
-    tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + esc(t.status_assinatura) + '</span></td>'));
-    tr.appendChild(el('<td>' + (t.plano_id && planosById[t.plano_id] ? esc(planosById[t.plano_id].nome) : '—') + '</td>'));
-    tr.appendChild(el('<td>' + (t.trial_termina_em ? new Date(t.trial_termina_em + 'T00:00:00').toLocaleDateString('pt-BR') : '—') + '</td>'));
+    tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + (vitalicio ? 'Vitalício' : esc(t.status_assinatura)) + '</span></td>'));
+    tr.appendChild(el('<td>' + (vitalicio ? '—' : (t.plano_id && planosById[t.plano_id] ? esc(planosById[t.plano_id].nome) : '—')) + '</td>'));
+    tr.appendChild(el('<td>' + (vitalicio ? '—' : (t.trial_termina_em ? new Date(t.trial_termina_em + 'T00:00:00').toLocaleDateString('pt-BR') : '—')) + '</td>'));
 
     const tdAcoes = el('<td style="white-space:nowrap;"></td>');
 
-    const selectPlano = el('<select style="background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;"></select>');
+    if (vitalicio) {
+      tdAcoes.appendChild(el('<span style="font-size:12px;color:#9aa4b2;margin-right:8px;">Acesso vitalício</span>'));
+      const btnRemover = el('<button class="btn-export" style="padding:5px 10px;font-size:12px;">Remover vitalício</button>');
+      btnRemover.addEventListener('click', function () {
+        if (!confirm('Remover o acesso vitalício de ' + (t.nome || 'esse profissional') + '? Ele volta a precisar de um plano/trial normal.')) return;
+        removerVitalicio(t);
+      });
+      tdAcoes.appendChild(btnRemover);
+      tr.appendChild(tdAcoes);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    const btnVitalicio = el('<button class="btn-export" style="padding:5px 10px;font-size:12px;">Tornar vitalício</button>');
+    btnVitalicio.addEventListener('click', function () {
+      if (!confirm('Dar acesso vitalício (grátis, sem cobrança) pra ' + (t.nome || 'esse profissional') + '?')) return;
+      tornarVitalicio(t);
+    });
+    tdAcoes.appendChild(btnVitalicio);
+
+    const selectPlano = el('<select style="background:#0d1119;border:1px solid #1e2633;border-radius:7px;padding:5px 8px;color:#e5e9f0;font-size:12px;margin-left:8px;"></select>');
     selectPlano.appendChild(el('<option value="">Trocar plano…</option>'));
     raw.planos.forEach(function (p) { selectPlano.appendChild(el('<option value="' + p.id + '">' + esc(p.nome) + '</option>')); });
     selectPlano.addEventListener('change', function (e) {
@@ -654,8 +690,33 @@ function dataLocalStr() {
 }
 
 async function trocarPlano(trainer, planoId) {
+  // assinatura_valida_ate precisa ir junto — sem isso o bloqueio de
+  // assinatura usa o trial_termina_em antigo (geralmente já vencido) como
+  // data de corte e a pessoa aparece bloqueada mesmo tendo acabado de
+  // ganhar um plano. Dá 1 ano, prazo generoso pra um ajuste manual do admin.
+  const daqui1Ano = new Date();
+  daqui1Ano.setFullYear(daqui1Ano.getFullYear() + 1);
+  const validaAteStr = daqui1Ano.getFullYear() + '-' + String(daqui1Ano.getMonth() + 1).padStart(2, '0') + '-' + String(daqui1Ano.getDate()).padStart(2, '0');
   const { error } = await supabaseClient.functions.invoke('admin-atualizar-trainer', {
-    body: { trainer_id: trainer.id, plano_id: planoId, status_assinatura: 'ativo' },
+    body: { trainer_id: trainer.id, plano_id: planoId, status_assinatura: 'ativo', assinatura_valida_ate: validaAteStr },
+  });
+  if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
+  await carregarDados();
+  render();
+}
+
+async function tornarVitalicio(trainer) {
+  const { error } = await supabaseClient.functions.invoke('admin-atualizar-trainer', {
+    body: { trainer_id: trainer.id, status_assinatura: 'isento' },
+  });
+  if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
+  await carregarDados();
+  render();
+}
+
+async function removerVitalicio(trainer) {
+  const { error } = await supabaseClient.functions.invoke('admin-atualizar-trainer', {
+    body: { trainer_id: trainer.id, status_assinatura: 'trial' },
   });
   if (error) { alert('Não foi possível atualizar: ' + error.message); return; }
   await carregarDados();
