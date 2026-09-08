@@ -207,7 +207,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     </div>
 
     <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:28px 26px;">
-      <div style="display:flex;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:3px;margin-bottom:22px;">
+      <div style="{{ topTabsDisplay }}background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:3px;margin-bottom:22px;">
         <button sc-camel-on-click="{{ setPersonal }}" style="flex:1;border:none;font-family:inherit;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;background:{{ personalBg }};color:{{ personalColor }};">Sou personal</button>
         <button sc-camel-on-click="{{ setAluno }}" style="flex:1;border:none;font-family:inherit;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;background:{{ alunoBg }};color:{{ alunoColor }};">Sou aluno</button>
       </div>
@@ -215,7 +215,22 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="font-size:18px;font-weight:800;margin-bottom:4px;">{{ tituloLogin }}</div>
       <div style="font-size:13px;color:#9aa4b2;margin-bottom:20px;">{{ subtituloLogin }}</div>
 
-      <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="{{ chooserDisplay }}flex-direction:column;gap:10px;">
+        <button sc-camel-on-click="{{ escolherPersonal }}" style="text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:14px 16px;color:#e5e9f0;font-family:inherit;cursor:pointer;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:2px;">Sou personal trainer</div>
+          <div style="font-size:12px;color:#9aa4b2;">Vou gerenciar meus alunos, treinos e financeiro</div>
+        </button>
+        <button sc-camel-on-click="{{ escolherAluno }}" style="text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:14px 16px;color:#e5e9f0;font-family:inherit;cursor:pointer;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:2px;">Sou aluno</div>
+          <div style="font-size:12px;color:#9aa4b2;">Recebi um convite do meu personal trainer</div>
+        </button>
+      </div>
+
+      <div style="{{ alunoInfoDisplay }}background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:16px;font-size:12.5px;color:#9aa4b2;line-height:1.5;">
+        Conta de aluno é criada a partir do link de convite enviado pelo seu personal trainer — não dá pra se cadastrar por aqui. Peça o link a ele(a).
+      </div>
+
+      <div style="{{ fieldsDisplay }}flex-direction:column;gap:12px;">
         <div style="{{ nomeFieldDisplay }}">
           <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
           <input value="{{ nome }}" sc-camel-on-change="{{ onNomeChange }}" placeholder="Seu nome" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
@@ -235,11 +250,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
       <div style="{{ erroDisplay }}color:#f87171;font-size:12.5px;margin-top:12px;">{{ erro }}</div>
 
-      <button sc-camel-on-click="{{ onEntrarClick }}" style="display:block;text-align:center;width:100%;margin-top:18px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ botaoLabel }}</button>
-      <div style="text-align:center;margin-top:12px;"><span style="font-size:12px;color:#66707e;cursor:pointer;">Esqueci minha senha</span></div>
+      <button sc-camel-on-click="{{ onEntrarClick }}" style="{{ botaoDisplay }}text-align:center;width:100%;margin-top:18px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ botaoLabel }}</button>
+      <div style="{{ esqueciSenhaDisplay }}text-align:center;margin-top:12px;"><span style="font-size:12px;color:#66707e;cursor:pointer;">Esqueci minha senha</span></div>
     </div>
 
-    <div style="{{ criarContaDisplay }}text-align:center;margin-top:18px;font-size:12px;color:#66707e;">{{ criarContaTexto }} <span sc-camel-on-click="{{ toggleModo }}" style="color:#f97316;font-weight:700;cursor:pointer;">{{ criarContaLink }}</span></div>
+    <div style="text-align:center;margin-top:18px;font-size:12px;color:#66707e;">{{ criarContaTexto }} <span sc-camel-on-click="{{ toggleModo }}" style="color:#f97316;font-weight:700;cursor:pointer;">{{ criarContaLink }}</span></div>
     <div style="text-align:center;margin-top:10px;"><a href="adm.html" style="font-size:11px;color:#4a5364;">Acesso admin</a></div>
 
   </div>
@@ -247,10 +262,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:480}}">
 class Component extends DCLogic {
-  state = { perfil: 'personal', modo: 'login', nome: '', email: '', senha: '', erro: '', carregando: false };
+  state = { perfil: 'personal', modo: 'login', cadastroTipo: null, nome: '', email: '', senha: '', erro: '', carregando: false };
 
   async onEntrarClick() {
-    const { perfil, modo, nome, email, senha } = this.state;
+    const { perfil, modo, cadastroTipo, nome, email, senha } = this.state;
+    if (modo === 'cadastro' && cadastroTipo !== 'personal') return;
     if (!email || !senha) {
       this.setState({ erro: 'Preencha e-mail e senha.' });
       return;
@@ -265,7 +281,7 @@ class Component extends DCLogic {
         this.setState({ carregando: false, erro: error.message });
         return;
       }
-      this.setState({ carregando: false, erro: 'Conta criada! Verifique seu e-mail para confirmar, depois faça login.', modo: 'login' });
+      this.setState({ carregando: false, erro: 'Conta criada! Verifique seu e-mail para confirmar, depois faça login.', modo: 'login', cadastroTipo: null });
       return;
     }
 
@@ -284,28 +300,43 @@ class Component extends DCLogic {
     const perfil = this.state.perfil;
     const isPersonal = perfil === 'personal';
     const isCadastro = this.state.modo === 'cadastro';
+    const cadastroTipo = this.state.cadastroTipo;
+    // No cadastro, o tipo de conta é uma pergunta explícita (chooser), não
+    // herdado da aba "Sou personal/Sou aluno" do login — personal e aluno
+    // usam caminhos completamente diferentes: personal se auto-cadastra
+    // aqui, aluno só entra via link de convite do seu personal trainer.
+    const showChooser = isCadastro && !cadastroTipo;
+    const showAlunoInfo = isCadastro && cadastroTipo === 'aluno';
+    const showFields = !isCadastro || cadastroTipo === 'personal';
 
     return {
       personalBg: isPersonal ? '#1e2633' : 'transparent', personalColor: isPersonal ? '#e5e9f0' : '#66707e',
       alunoBg: !isPersonal ? '#1e2633' : 'transparent', alunoColor: !isPersonal ? '#e5e9f0' : '#66707e',
       setPersonal: () => this.setState({ perfil: 'personal' }),
       setAluno: () => this.setState({ perfil: 'aluno', modo: 'login' }),
-      tituloLogin: isCadastro ? 'Criar conta de personal trainer' : (isPersonal ? 'Entrar como personal trainer' : 'Entrar como aluno'),
-      subtituloLogin: isPersonal ? 'Acesse seu painel de alunos, produtos e financeiro' : 'Acesse seu treino, dieta e evolução',
+      topTabsDisplay: isCadastro ? 'display:none;' : 'display:flex;',
+      tituloLogin: showChooser ? 'Criar conta' : showAlunoInfo ? 'Conta de aluno' : isCadastro ? 'Criar conta de personal trainer' : (isPersonal ? 'Entrar como personal trainer' : 'Entrar como aluno'),
+      subtituloLogin: showChooser ? 'Primeiro, diga que tipo de conta você quer criar' : showAlunoInfo ? '' : isCadastro ? 'Vai gerenciar seus alunos, treinos e financeiro' : (isPersonal ? 'Acesse seu painel de alunos, produtos e financeiro' : 'Acesse seu treino, dieta e evolução'),
       emailPlaceholder: isPersonal ? 'personal@demo.com' : 'aluno@demo.com',
+      chooserDisplay: showChooser ? 'display:flex;' : 'display:none;',
+      alunoInfoDisplay: showAlunoInfo ? 'display:block;' : 'display:none;',
+      escolherPersonal: () => this.setState({ cadastroTipo: 'personal', erro: '' }),
+      escolherAluno: () => this.setState({ cadastroTipo: 'aluno', erro: '' }),
+      fieldsDisplay: showFields ? 'display:flex;' : 'display:none;',
       nome: this.state.nome, email: this.state.email, senha: this.state.senha,
       nomeFieldDisplay: isCadastro ? '' : 'display:none;',
       onNomeChange: (e) => this.setState({ nome: e.target.value }),
       onEmailChange: (e) => this.setState({ email: e.target.value }),
       onSenhaChange: (e) => this.setState({ senha: e.target.value }),
       onEntrarClick: () => this.onEntrarClick(),
+      botaoDisplay: showFields ? 'display:block;' : 'display:none;',
       botaoLabel: this.state.carregando ? 'Aguarde…' : (isCadastro ? 'Criar conta' : 'Entrar'),
+      esqueciSenhaDisplay: showFields ? '' : 'display:none;',
       erro: this.state.erro,
       erroDisplay: this.state.erro ? '' : 'display:none;',
-      criarContaDisplay: isPersonal ? '' : 'display:none;',
       criarContaTexto: isCadastro ? 'Já tem conta?' : 'Não tem conta?',
       criarContaLink: isCadastro ? 'Entrar' : 'Criar conta grátis',
-      toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', erro: '' })
+      toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', cadastroTipo: null, erro: '' })
     };
   }
 }
