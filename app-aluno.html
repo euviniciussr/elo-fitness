@@ -1376,10 +1376,36 @@ class Component extends DCLogic {
         this._descansoInterval = null;
         try { localStorage.removeItem('descansoAtivo'); } catch (e) {}
         this.setState({ descansoAtivo: null });
+        this._avisarFimDescanso();
         return;
       }
       this.setState({}); // só força recalcular "restante" (feito em renderVals a partir de fimEm)
     }, 1000);
+  }
+
+  // Aviso sonoro + vibração quando o descanso zera — o aluno costuma
+  // largar o celular de lado durante o descanso entre séries, então só
+  // o número mudando na tela não é suficiente.
+  _avisarFimDescanso() {
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      [0, 0.18].forEach((atraso) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + atraso);
+        gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + atraso + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + atraso + 0.16);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + atraso);
+        osc.stop(ctx.currentTime + atraso + 0.18);
+      });
+      setTimeout(() => ctx.close(), 600);
+    } catch (e) {}
   }
 
   // Ao recarregar a página/reabrir o app, retoma um descanso que ainda não
