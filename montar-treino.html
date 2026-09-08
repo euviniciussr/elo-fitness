@@ -860,6 +860,32 @@ function volumeSeriesPorGrupo(treinosArr) {
   return contagem;
 }
 
+// Copia treino_exercicios de `origemTreino` (objeto com ._exercicios já
+// carregado) pra `destinoTreinoId`, preservando todos os campos de
+// configuração (inclusive grupo_id de combos Super/Bi/Tri-Set, remapeado
+// pra um novo uuid por grupo) e SEM copiar nada específico do aluno de
+// origem (carga registrada, execuções, feedback — essas tabelas nem são
+// tocadas aqui, só treino_exercicios).
+async function copiarExerciciosParaTreino(origemTreino, destinoTreinoId) {
+  const exs = origemTreino._exercicios || [];
+  if (!exs.length) return;
+  const grupoMap = {};
+  await supabaseClient.from('treino_exercicios').insert(exs.map((te, i) => {
+    let novoGrupoId = null;
+    if (te.grupo_id) {
+      if (!grupoMap[te.grupo_id]) grupoMap[te.grupo_id] = crypto.randomUUID();
+      novoGrupoId = grupoMap[te.grupo_id];
+    }
+    return {
+      treino_id: destinoTreinoId, exercicio_id: te.exercicio_id, ordem: i,
+      series_aquecimento: te.series_aquecimento, series: te.series,
+      intervalo_descanso: te.intervalo_descanso, descanso_segundos: te.descanso_segundos,
+      tecnica_avancada: te.tecnica_avancada, tecnica_instrucoes: te.tecnica_instrucoes,
+      observacoes: te.observacoes, carga: te.carga, grupo_id: novoGrupoId
+    };
+  }));
+}
+
 async function duplicarTreino(treino) {
   const usados = new Set(treinos.map(t => t.nome));
   let novoNome = null;
@@ -870,27 +896,111 @@ async function duplicarTreino(treino) {
   }
   if (!novoNome) novoNome = treino.nome + ' (cópia)';
 
+  const maiorOrdem = treinos.reduce((max, t) => Math.max(max, t.ordem), -1);
   const { data: novo, error } = await supabaseClient.from('treinos').insert({
     trainer_id: userId, cliente_id: treino.cliente_id, nome: novoNome,
     dias_semana: treino.dias_semana || [], habilitado: true,
-    split_id: splitId, ordem: treinos.length
+    split_id: splitId, ordem: maiorOrdem + 1
   }).select().single();
   if (error) { alert('Não foi possível duplicar: ' + error.message); return; }
 
-  const exs = treino._exercicios || [];
-  if (exs.length) {
-    await supabaseClient.from('treino_exercicios').insert(exs.map((te, i) => ({
-      treino_id: novo.id, exercicio_id: te.exercicio_id,
-      ordem: i, series_aquecimento: te.series_aquecimento, series: te.series, intervalo_descanso: te.intervalo_descanso,
-      descanso_segundos: te.descanso_segundos, tecnica_avancada: te.tecnica_avancada
-    })));
-  }
+  await copiarExerciciosParaTreino(treino, novo.id);
 
   novo._exercicios = [];
   await loadExerciciosDoTreino(novo);
   treinos.push(novo);
   activeIndex = treinos.length - 1;
   renderMontar();
+}
+
+async function excluirTreino(treino) {
+  if (!window.confirm('Excluir "' + treino.nome + '"? Essa ação não pode ser desfeita.')) return;
+  const { error } = await supabaseClient.from('treinos').delete().eq('id', treino.id);
+  if (error) { alert('Não foi possível excluir: ' + error.message); return; }
+
+  const i = treinos.indexOf(treino);
+  treinos.splice(i, 1);
+  if (treinos.length === 0) {
+    window.location.href = 'alunos.html';
+    return;
+  }
+  activeIndex = Math.min(i, treinos.length - 1);
+  formMode = { type: 'add' };
+  renderMontar();
+}
+
+function abrirModalCopiarParaAluno(treino) {
+  const outrosAlunos = clientes.filter(c => c.id !== treino.cliente_id);
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:420px;"></div>');
+  box.appendChild(el('<h2>Copiar treino para outro aluno</h2>'));
+
+  if (!outrosAlunos.length) {
+    box.appendChild(el('<div class="sub" style="margin:0;">Você não tem outro aluno cadastrado ainda.</div>'));
+    const fecharBtn = el('<button type="button" class="btn btn-secondary" style="margin-top:16px;">Fechar</button>');
+    fecharBtn.addEventListener('click', () => overlay.remove());
+    box.appendChild(fecharBtn);
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    return;
+  }
+
+  const label = el('<label>Selecione o aluno para receber este treino</label>');
+  const sel = el('<select><option value="">Escolha o aluno…</option></select>');
+  outrosAlunos.forEach(c => sel.appendChild(el('<option value="' + c.id + '">' + c.nome + '</option>')));
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  const confirmWrap = el('<div style="display:none;margin-top:14px;"></div>');
+  const confirmTexto = el('<div class="sub" style="margin:0 0 14px;"></div>');
+  const btnRow = el('<div style="display:flex;gap:10px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const copiarConfirmBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Copiar treino</button>');
+  cancelBtn.addEventListener('click', () => { confirmWrap.style.display = 'none'; });
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(copiarConfirmBtn);
+  confirmWrap.appendChild(confirmTexto);
+  confirmWrap.appendChild(btnRow);
+
+  const escolherBtn = el('<button type="button" class="btn btn-primary" style="margin-top:14px;width:100%;" disabled>Copiar treino</button>');
+  sel.addEventListener('change', () => { escolherBtn.disabled = !sel.value; erro.style.display = 'none'; });
+  escolherBtn.addEventListener('click', () => {
+    const aluno = outrosAlunos.find(c => c.id === sel.value);
+    if (!aluno) return;
+    confirmTexto.textContent = 'Copiar este treino para ' + aluno.nome + '?';
+    confirmWrap.style.display = '';
+  });
+
+  copiarConfirmBtn.addEventListener('click', async () => {
+    const aluno = outrosAlunos.find(c => c.id === sel.value);
+    if (!aluno) return;
+    copiarConfirmBtn.disabled = true;
+    copiarConfirmBtn.textContent = 'Copiando…';
+    const novoSplitId = crypto.randomUUID();
+    const { data: novo, error } = await supabaseClient.from('treinos').insert({
+      trainer_id: userId, cliente_id: aluno.id, nome: treino.nome,
+      dias_semana: treino.dias_semana || [], habilitado: false,
+      split_id: novoSplitId, ordem: 0
+    }).select().single();
+    if (error) {
+      erro.textContent = error.message;
+      erro.style.display = '';
+      copiarConfirmBtn.disabled = false;
+      copiarConfirmBtn.textContent = 'Copiar treino';
+      return;
+    }
+    await copiarExerciciosParaTreino(treino, novo.id);
+    overlay.remove();
+    alert('Treino copiado para ' + aluno.nome + '. Ele está oculto pro aluno até você habilitar a visibilidade na divisão dele.');
+  });
+
+  box.appendChild(label);
+  box.appendChild(sel);
+  box.appendChild(erro);
+  box.appendChild(escolherBtn);
+  box.appendChild(confirmWrap);
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function renderQuantidade() {
@@ -1208,6 +1318,12 @@ function renderTreinoBody(treino) {
   const duplicarBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;">⎘ Duplicar treino</button>');
   duplicarBtn.addEventListener('click', () => duplicarTreino(treino));
   nomeRow.appendChild(duplicarBtn);
+  const copiarAlunoBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;">↷ Copiar para outro aluno</button>');
+  copiarAlunoBtn.addEventListener('click', () => abrirModalCopiarParaAluno(treino));
+  nomeRow.appendChild(copiarAlunoBtn);
+  const excluirBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;color:var(--erro);">🗑 Excluir treino</button>');
+  excluirBtn.addEventListener('click', () => excluirTreino(treino));
+  nomeRow.appendChild(excluirBtn);
   body.appendChild(nomeRow);
 
   const diasLabel = el('<label style="margin-top:16px;">Dias da semana</label>');
