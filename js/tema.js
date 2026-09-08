@@ -203,25 +203,34 @@ function temaCriarBotao() {
 // inclusive na primeira renderização, que acontece um instante DEPOIS
 // do DOMContentLoaded. Por isso o botão precisa ser reinserido sempre
 // que sumir, e não só uma vez no carregamento.
+var TEMA_CSS_ANCORADO = 'position:relative;width:38px;height:38px;border-radius:10px;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
+// top:64px (não 16px) de propósito — páginas sem sino de notificação
+// ainda podem ter outros links/botões no canto superior direito (ex:
+// "Voltar" em montar-treino.html), e 16px ficava em cima deles.
+// Descer alguns pixels funciona em qualquer página sem precisar saber
+// a posição exata de cada uma.
+var TEMA_CSS_FIXO = 'position:fixed;top:64px;right:16px;z-index:99998;width:38px;height:38px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+
 function temaGarantirBotaoNoLugar() {
   let btn = document.getElementById('tema-toggle-btn');
   const anchor = document.getElementById('tema-toggle-anchor');
   let mudou = false;
   if (anchor) {
-    if (!btn) {
-      btn = temaCriarBotao();
-      btn.style.cssText = 'position:relative;width:38px;height:38px;border-radius:10px;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
+    if (!btn) { btn = temaCriarBotao(); mudou = true; }
+    // Reaplica o CSS "ancorado" sempre que o botão é movido pra
+    // dentro do marcador — se ele tinha sido criado antes como
+    // fallback fixo (marcador ainda não existia nesse instante), o
+    // style.cssText antigo (position:fixed) precisa ser substituído,
+    // senão ele continua "flutuando" por cima da página mesmo já
+    // estando no lugar certo do DOM.
+    if (btn.parentElement !== anchor) {
+      anchor.appendChild(btn);
+      btn.style.cssText = TEMA_CSS_ANCORADO;
       mudou = true;
     }
-    if (btn.parentElement !== anchor) { anchor.appendChild(btn); mudou = true; }
   } else if (!btn) {
     btn = temaCriarBotao();
-    // top:64px (não 16px) de propósito — páginas sem sino de
-    // notificação ainda podem ter outros links/botões no canto
-    // superior direito (ex: "Voltar" em montar-treino.html), e 16px
-    // ficava em cima deles. Descer alguns pixels funciona em qualquer
-    // página sem precisar saber a posição exata de cada uma.
-    btn.style.cssText = 'position:fixed;top:64px;right:16px;z-index:99998;width:38px;height:38px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+    btn.style.cssText = TEMA_CSS_FIXO;
     document.body.appendChild(btn);
     mudou = true;
   }
