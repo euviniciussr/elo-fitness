@@ -97,6 +97,34 @@ function temaConverterArvore(raiz) {
   if (raiz.querySelectorAll) raiz.querySelectorAll('[style]').forEach(temaConverterElemento);
 }
 
+// O atributo `style-hover="..."` usado nas páginas x-dc não vira um
+// style="" inline — o runtime compila ele numa regra `:hover { ... }`
+// de verdade numa <style> própria, com !important, e gera uma classe
+// nova (ex: .scp0) por elemento renderizado. Isso fica fora do alcance
+// do DOM-walk acima, que só olha atributo style="" — sem essa função,
+// qualquer elemento com hover configurado volta pra cor escura assim
+// que o mouse passa por cima (ou, em touch, ao tocar), mesmo com o
+// tema claro ativo. Cacheia o texto original da regra (igual ao
+// dataset.temaOriginal dos elementos) pra poder restaurar no escuro.
+const temaHoverCache = new Map();
+function temaConverterHoverRules() {
+  const claro = temaAtual() === 'claro';
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch (e) { continue; }
+    for (const rule of rules) {
+      if (!rule.selectorText || rule.selectorText.indexOf(':hover') === -1) continue;
+      if (!rule.style || !rule.style.cssText) continue;
+      if (!temaHoverCache.has(rule)) temaHoverCache.set(rule, rule.style.cssText);
+      const original = temaHoverCache.get(rule);
+      const alvo = claro
+        ? original.replace(TEMA_REGEX_CLARO, function (m) { return TEMA_MAPA_CLARO[m.toLowerCase()] || m; })
+        : original;
+      if (rule.style.cssText !== alvo) rule.style.cssText = alvo;
+    }
+  }
+}
+
 // O runtime x-dc re-renderiza a página inteira a cada mudança de estado
 // (troca de aba, erro de validação, o "chooser" de tipo de conta etc.),
 // criando ou substituindo elementos com a cor escura original de novo —
@@ -105,16 +133,23 @@ function temaConverterArvore(raiz) {
 // tema claro estiver ativo. Desconecta durante a própria escrita pra não
 // entrar num loop reagindo à própria mudança.
 let temaObserver = null;
+let temaHoverInterval = null;
 
 function temaObservar() {
-  if (temaObserver) return;
-  temaObserver = new MutationObserver(function (mutacoes) {
+  // NÃO retorna cedo só porque temaObserver já existe — depois de um
+  // temaObserver.disconnect() (ao trocar pra escuro) a variável continua
+  // apontando pro mesmo objeto, só que desconectado. Sem reconectar aqui,
+  // a partir do segundo ciclo escuro→claro o observer fica "morto": para
+  // de reagir a elementos novos (troca de aba, modais etc.), que ficam
+  // presos na cor escura mesmo com o tema claro ativo.
+  if (!temaObserver) temaObserver = new MutationObserver(function (mutacoes) {
     if (temaAtual() !== 'claro') return;
     temaObserver.disconnect();
     mutacoes.forEach(function (m) {
       if (m.type === 'attributes' && m.target) temaConverterElemento(m.target);
       if (m.type === 'childList') m.addedNodes.forEach(temaConverterArvore);
     });
+    temaConverterHoverRules();
     temaObserver.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true, childList: true });
   });
   temaObserver.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true, childList: true });
@@ -123,12 +158,22 @@ function temaObservar() {
 function temaAplicarNoDom(tema) {
   document.documentElement.setAttribute('data-tema', tema);
   temaAplicarBase(tema);
+  temaConverterHoverRules();
   if (tema === 'claro') {
     if (temaObserver) temaObserver.disconnect();
     temaConverterArvore(document.body);
     temaObservar();
+    // Rede de segurança pras regras :hover: o x-dc injeta a regra CSS de
+    // um style-hover num momento que não bate exatamente com a mutação
+    // de DOM que insere o elemento (às vezes a regra chega um instante
+    // depois) — o MutationObserver, que só enxerga DOM, pode processar
+    // a varredura antes da regra existir. Uma varredura leve a cada
+    // poucos segundos garante que ela seja pega logo em seguida.
+    if (temaHoverInterval) clearInterval(temaHoverInterval);
+    temaHoverInterval = setInterval(temaConverterHoverRules, 1500);
   } else {
     if (temaObserver) temaObserver.disconnect();
+    if (temaHoverInterval) { clearInterval(temaHoverInterval); temaHoverInterval = null; }
     document.querySelectorAll('[data-tema-original]').forEach(function (el) {
       el.setAttribute('style', el.dataset.temaOriginal);
       delete el.dataset.temaOriginal;
