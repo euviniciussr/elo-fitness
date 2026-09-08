@@ -251,7 +251,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="{{ erroDisplay }}color:#f87171;font-size:12.5px;margin-top:12px;">{{ erro }}</div>
 
       <button sc-camel-on-click="{{ onEntrarClick }}" style="{{ botaoDisplay }}text-align:center;width:100%;margin-top:18px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ botaoLabel }}</button>
-      <div style="{{ esqueciSenhaDisplay }}text-align:center;margin-top:12px;"><span style="font-size:12px;color:#66707e;cursor:pointer;">Esqueci minha senha</span></div>
+      <div style="{{ esqueciSenhaDisplay }}text-align:center;margin-top:12px;"><span sc-camel-on-click="{{ onEsqueciSenha }}" style="font-size:12px;color:#66707e;cursor:pointer;">{{ esqueciSenhaLabel }}</span></div>
+      <div style="{{ resetMensagemDisplay }}text-align:center;margin-top:8px;font-size:12px;color:#9aa4b2;">{{ resetMensagem }}</div>
     </div>
 
     <div style="text-align:center;margin-top:18px;font-size:12px;color:#66707e;">{{ criarContaTexto }} <span sc-camel-on-click="{{ toggleModo }}" style="color:#f97316;font-weight:700;cursor:pointer;">{{ criarContaLink }}</span></div>
@@ -262,7 +263,31 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:480}}">
 class Component extends DCLogic {
-  state = { perfil: 'personal', modo: 'login', cadastroTipo: null, nome: '', email: '', senha: '', erro: '', carregando: false };
+  state = { perfil: 'personal', modo: 'login', cadastroTipo: null, nome: '', email: '', senha: '', erro: '', carregando: false, resetMensagem: '', resetEnviando: false };
+
+  // Cooldown fica no localStorage (não no state) pra sobreviver a um F5 —
+  // sem isso dava pra recarregar a página e pedir de novo na hora, o que
+  // não segura nada contra alguém ficando clicando (e cada pedido consome
+  // do limite de envio de e-mail compartilhado do Supabase, que já é baixo).
+  async onEsqueciSenha() {
+    const agora = Date.now();
+    const cooldownAte = Number(localStorage.getItem('resetSenhaCooldownAte') || 0);
+    if (agora < cooldownAte) {
+      const restante = Math.ceil((cooldownAte - agora) / 1000);
+      this.setState({ resetMensagem: 'Aguarde ' + restante + 's antes de pedir de novo.' });
+      return;
+    }
+    const email = this.state.email.trim();
+    if (!email) {
+      this.setState({ resetMensagem: 'Digite seu e-mail no campo acima primeiro.' });
+      return;
+    }
+    this.setState({ resetEnviando: true, resetMensagem: '' });
+    const redirectTo = window.location.origin + window.location.pathname.replace('login.html', '') + 'redefinir-senha.html';
+    await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+    localStorage.setItem('resetSenhaCooldownAte', String(Date.now() + 60000));
+    this.setState({ resetEnviando: false, resetMensagem: 'Se esse e-mail tiver conta, enviamos um link pra redefinir a senha.' });
+  }
 
   async onEntrarClick() {
     const { perfil, modo, cadastroTipo, nome, email, senha } = this.state;
@@ -332,6 +357,10 @@ class Component extends DCLogic {
       botaoDisplay: showFields ? 'display:block;' : 'display:none;',
       botaoLabel: this.state.carregando ? 'Aguarde…' : (isCadastro ? 'Criar conta' : 'Entrar'),
       esqueciSenhaDisplay: showFields ? '' : 'display:none;',
+      esqueciSenhaLabel: this.state.resetEnviando ? 'Enviando…' : 'Esqueci minha senha',
+      onEsqueciSenha: () => this.onEsqueciSenha(),
+      resetMensagem: this.state.resetMensagem,
+      resetMensagemDisplay: (showFields && this.state.resetMensagem) ? '' : 'display:none;',
       erro: this.state.erro,
       erroDisplay: this.state.erro ? '' : 'display:none;',
       criarContaTexto: isCadastro ? 'Já tem conta?' : 'Não tem conta?',

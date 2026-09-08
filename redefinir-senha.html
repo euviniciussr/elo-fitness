@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redefinir senha — Elo Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+*{box-sizing:border-box;}
+.wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
+.box{width:100%;max-width:380px;}
+.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;}
+.brand-badge{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:19px;}
+.brand-name{font-size:21px;font-weight:800;}
+.brand-name span{color:#f97316;}
+.card{background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:28px 26px;}
+.card h1{font-size:16px;font-weight:800;margin:0 0 4px;}
+.card .sub{font-size:12.5px;color:#9aa4b2;margin-bottom:20px;}
+label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
+input{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;margin-bottom:14px;}
+.field-senha{position:relative;}
+.field-senha input{padding-right:64px;}
+.btn-ver-senha{position:absolute;right:6px;top:6px;width:auto;background:none;border:none;color:#9aa4b2;font-size:11.5px;font-weight:700;padding:5px 8px;margin:0;cursor:pointer;}
+.btn-ver-senha:hover{color:#e5e9f0;}
+.erro{color:#f87171;font-size:12.5px;margin-top:2px;margin-bottom:10px;display:none;}
+.sucesso{color:#4ade80;font-size:12.5px;margin-top:2px;margin-bottom:10px;display:none;}
+button{width:100%;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;}
+button:disabled{opacity:.6;cursor:default;}
+.back{display:block;text-align:center;margin-top:16px;font-size:12px;color:#66707e;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="box">
+    <div class="brand">
+      <div class="brand-badge">E</div>
+      <div class="brand-name">Elo <span>Fitness</span></div>
+    </div>
+    <div class="card" id="card-form" style="display:none;">
+      <h1>Redefinir senha</h1>
+      <div class="sub">Escolha uma nova senha pra sua conta.</div>
+      <label for="senha">Nova senha</label>
+      <div class="field-senha">
+        <input id="senha" type="password" placeholder="••••••••" autocomplete="new-password">
+        <button type="button" class="btn-ver-senha" id="btn-ver-senha">Mostrar</button>
+      </div>
+      <label for="senha-confirma">Confirmar nova senha</label>
+      <input id="senha-confirma" type="password" placeholder="••••••••" autocomplete="new-password">
+      <div class="erro" id="erro"></div>
+      <div class="sucesso" id="sucesso">Senha atualizada! Redirecionando…</div>
+      <button id="btn-salvar">Salvar nova senha</button>
+    </div>
+    <div class="card" id="card-invalido" style="display:none;">
+      <h1>Link inválido ou expirado</h1>
+      <div class="sub">Peça um novo link em "Esqueci minha senha" na tela de login.</div>
+    </div>
+    <a class="back" href="login.html">← Voltar para o login</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  var cardForm = document.getElementById('card-form');
+  var cardInvalido = document.getElementById('card-invalido');
+  var senhaEl = document.getElementById('senha');
+  var senhaConfirmaEl = document.getElementById('senha-confirma');
+  var erroEl = document.getElementById('erro');
+  var sucessoEl = document.getElementById('sucesso');
+  var btn = document.getElementById('btn-salvar');
+
+  function mostrarErro(msg) {
+    erroEl.textContent = msg;
+    erroEl.style.display = 'block';
+  }
+
+  async function salvar() {
+    erroEl.style.display = 'none';
+    var senha = senhaEl.value;
+    var confirma = senhaConfirmaEl.value;
+    if (!senha || senha.length < 6) { mostrarErro('A senha precisa ter pelo menos 6 caracteres.'); return; }
+    if (senha !== confirma) { mostrarErro('As senhas não são iguais.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Salvando…';
+    var { error } = await supabaseClient.auth.updateUser({ password: senha });
+    if (error) {
+      btn.disabled = false;
+      btn.textContent = 'Salvar nova senha';
+      mostrarErro(error.message);
+      return;
+    }
+    sucessoEl.style.display = 'block';
+    btn.style.display = 'none';
+    setTimeout(function () {
+      supabaseClient.auth.signOut().finally(function () {
+        window.location.href = 'login.html';
+      });
+    }, 2000);
+  }
+
+  btn.addEventListener('click', salvar);
+  senhaConfirmaEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') salvar(); });
+
+  var btnVerSenha = document.getElementById('btn-ver-senha');
+  btnVerSenha.addEventListener('click', function () {
+    var mostrando = senhaEl.type === 'text';
+    senhaEl.type = mostrando ? 'password' : 'text';
+    senhaConfirmaEl.type = senhaEl.type;
+    btnVerSenha.textContent = mostrando ? 'Mostrar' : 'Ocultar';
+  });
+
+  // O link do e-mail (PASSWORD_RECOVERY) já chega com a sessão sendo
+  // processada pelo próprio supabase-js a partir da URL — só precisa
+  // esperar esse processamento terminar pra saber se o link era válido.
+  var resolvido = false;
+  function liberarForm() {
+    if (resolvido) return;
+    resolvido = true;
+    cardForm.style.display = 'block';
+  }
+  function mostrarInvalido() {
+    if (resolvido) return;
+    resolvido = true;
+    cardInvalido.style.display = 'block';
+  }
+
+  supabaseClient.auth.onAuthStateChange(function (event, session) {
+    if (event === 'PASSWORD_RECOVERY' && session) liberarForm();
+  });
+  supabaseClient.auth.getSession().then(function (res) {
+    if (res.data.session) liberarForm();
+  });
+  setTimeout(mostrarInvalido, 3000);
+})();
+</script>
+</body>
+</html>
