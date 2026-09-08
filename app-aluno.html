@@ -1732,25 +1732,28 @@ class Component extends DCLogic {
       return { label, w: pct + '%', cor: diff == null ? '#9aa4b2' : diff === 0 ? '#9aa4b2' : '#f97316', delta };
     }).filter(Boolean) : [];
 
-    const DIA_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+    const DIA_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+    const DIA_ORDEM = [1, 2, 3, 4, 5, 6, 0];
     const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
     const hoje = new Date();
     const hojeDow = hoje.getDay();
     const hojeMeiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const isoOf = (d) => dataLocalStr(d);
-    const weekStart = new Date(hoje); weekStart.setDate(hoje.getDate() - hojeDow);
+    const mondayOffset = (hojeDow + 6) % 7;
+    const weekStart = new Date(hoje); weekStart.setDate(hoje.getDate() - mondayOffset);
     const treinosPlano = this.state.treinosPlano;
     const treinoHoje = treinosPlano.find(tr => (tr.dias_semana || []).includes(hojeDow));
     const qtdExHoje = treinoHoje ? this.state.exerciciosDoTreino.filter(te => te.treino_id === treinoHoje.id).length : 0;
     const execDates = new Set(this.state.execucoes.map(e => e.data));
 
     const semanaReal = DIA_LABELS.map((label, i) => {
+      const dow = DIA_ORDEM[i];
       const dayDate = new Date(weekStart); dayDate.setDate(weekStart.getDate() + i);
       const iso = isoOf(dayDate);
-      const temTreino = treinosPlano.some(tr => (tr.dias_semana || []).includes(i));
+      const temTreino = treinosPlano.some(tr => (tr.dias_semana || []).includes(dow));
       const feito = execDates.has(iso);
       const isPassado = dayDate < hojeMeiaNoite;
-      const isHojeCel = i === hojeDow;
+      const isHojeCel = dow === hojeDow;
       let icon = '·', lbl = 'descanso', iconColor = '#66707e';
       // Um treino feito nesse dia sempre conta como "feito", mesmo que não
       // fosse o dia agendado pra ele (o aluno pode trocar a ordem/dia dos
