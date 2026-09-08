@@ -1776,30 +1776,41 @@ class Component extends DCLogic {
 
     const scheduledDow = new Set();
     treinosPlano.forEach(tr => (tr.dias_semana || []).forEach(d => scheduledDow.add(d)));
-    // "Semanas seguidas": conta pra trás quantas semanas consecutivas
-    // tiveram treinos concluídos em pelo menos a quantidade de dias
-    // programados por semana. Conta por QUANTIDADE de dias treinados
-    // na semana, não por bater exatamente com o dia programado de cada
-    // treino — o aluno pode trocar a ordem dos treinos na prática (o
-    // mesmo critério já usado no card "treinos na semana"). A semana
-    // atual só entra na contagem quando já estiver completa — enquanto
-    // ainda tem dia programado pela frente, ela é pulada (sem quebrar
-    // a sequência).
-    function semanaCompleta(wStart) {
+    // "Semanas seguidas": sequência ativa de semanas sem nenhum dia
+    // programado perdido, contando por QUANTIDADE de dias treinados na
+    // semana (não por bater exatamente com o dia programado de cada
+    // treino — o aluno pode trocar a ordem na prática, mesmo critério
+    // do card "treinos na semana"). A semana atual entra na contagem
+    // desde que esteja "em dia" até agora (nenhum dia programado já
+    // passado ficou sem treino) — não precisa estar 100% completa
+    // ainda, só não pode ter quebrado.
+    function diasEsperadosAteAgora(wStart) {
+      let n = 0;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(wStart); d.setDate(wStart.getDate() + i);
+        if (d <= hojeMeiaNoite && scheduledDow.has(d.getDay())) n++;
+      }
+      return n;
+    }
+    function diasFeitosNaSemana(wStart) {
       const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
-      let feitos = 0;
+      let n = 0;
       execDates.forEach(function (dataStr) {
         const d = new Date(dataStr + 'T00:00:00');
-        if (d >= wStart && d <= wEnd) feitos++;
+        if (d >= wStart && d <= wEnd) n++;
       });
-      return feitos >= scheduledDow.size;
+      return n;
     }
     let semanasSeguidas = 0;
     if (scheduledDow.size > 0) {
       let cursor = new Date(weekStart);
-      if (!semanaCompleta(cursor)) cursor.setDate(cursor.getDate() - 7);
+      // Semana atual ainda sem nenhum dia programado decorrido (ex: hoje
+      // é domingo e o primeiro treino da semana é segunda) — não conta
+      // nem quebra, só ainda não começou.
+      if (diasEsperadosAteAgora(cursor) === 0) cursor.setDate(cursor.getDate() - 7);
       for (let guard = 0; guard < 104; guard++) {
-        if (!semanaCompleta(cursor)) break;
+        const esperados = diasEsperadosAteAgora(cursor);
+        if (esperados === 0 || diasFeitosNaSemana(cursor) < esperados) break;
         semanasSeguidas++;
         cursor.setDate(cursor.getDate() - 7);
       }
