@@ -185,7 +185,12 @@ function temaInserirBotao() {
   btn.id = 'tema-toggle-btn';
   btn.type = 'button';
   btn.title = 'Alternar tema claro/escuro';
-  btn.style.cssText = 'position:fixed;top:16px;right:16px;z-index:99998;width:38px;height:38px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+  // top:64px (não 16px) de propósito — várias telas já têm ícones/botões
+  // fixos no canto superior direito (sininho de notificação, principalmente),
+  // e um valor pequeno ficava exatamente em cima. Descer alguns pixels
+  // funciona em qualquer página sem precisar saber a posição exata de cada
+  // uma.
+  btn.style.cssText = 'position:fixed;top:64px;right:16px;z-index:99998;width:38px;height:38px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);';
   btn.addEventListener('click', function () {
     temaSalvar(temaAtual() === 'claro' ? 'escuro' : 'claro');
   });
