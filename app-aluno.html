@@ -1739,7 +1739,7 @@ class Component extends DCLogic {
     const hojeDow = hoje.getDay();
     const hojeMeiaNoite = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     const isoOf = (d) => dataLocalStr(d);
-    const weekStart = new Date(hoje); weekStart.setDate(hoje.getDate() - hojeDow);
+    const weekStart = new Date(hojeMeiaNoite); weekStart.setDate(hojeMeiaNoite.getDate() - hojeDow);
     const treinosPlano = this.state.treinosPlano;
     const treinoHoje = treinosPlano.find(tr => (tr.dias_semana || []).includes(hojeDow));
     const qtdExHoje = treinoHoje ? this.state.exerciciosDoTreino.filter(te => te.treino_id === treinoHoje.id).length : 0;
@@ -1777,15 +1777,22 @@ class Component extends DCLogic {
     const scheduledDow = new Set();
     treinosPlano.forEach(tr => (tr.dias_semana || []).forEach(d => scheduledDow.add(d)));
     // "Semanas seguidas": conta pra trás quantas semanas consecutivas
-    // tiveram TODOS os treinos programados concluídos. A semana atual só
-    // entra na contagem quando já estiver completa — enquanto ainda tem
-    // dia programado pela frente, ela é pulada (sem quebrar a sequência).
+    // tiveram treinos concluídos em pelo menos a quantidade de dias
+    // programados por semana. Conta por QUANTIDADE de dias treinados
+    // na semana, não por bater exatamente com o dia programado de cada
+    // treino — o aluno pode trocar a ordem dos treinos na prática (o
+    // mesmo critério já usado no card "treinos na semana"). A semana
+    // atual só entra na contagem quando já estiver completa — enquanto
+    // ainda tem dia programado pela frente, ela é pulada (sem quebrar
+    // a sequência).
     function semanaCompleta(wStart) {
-      for (const dow of scheduledDow) {
-        const d = new Date(wStart); d.setDate(wStart.getDate() + dow);
-        if (!execDates.has(isoOf(d))) return false;
-      }
-      return true;
+      const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 6);
+      let feitos = 0;
+      execDates.forEach(function (dataStr) {
+        const d = new Date(dataStr + 'T00:00:00');
+        if (d >= wStart && d <= wEnd) feitos++;
+      });
+      return feitos >= scheduledDow.size;
     }
     let semanasSeguidas = 0;
     if (scheduledDow.size > 0) {
