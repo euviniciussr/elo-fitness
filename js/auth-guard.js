@@ -78,12 +78,23 @@ function diffDias(deStr, ateStr) {
   return Math.max(0, Math.round(ms / 86400000));
 }
 
+// Banner é position:fixed (fica por cima da página em vez de empurrar
+// scroll), então sem isso ele tampa o topo do conteúdo por baixo dele.
+// Compensa com padding-top no body do tamanho real do banner renderizado
+// (varia com quebra de linha em telas estreitas) e recalcula no resize.
+function inserirBannerFixo(banner) {
+  document.body.prepend(banner);
+  const ajustar = () => { document.body.style.paddingTop = banner.offsetHeight + 'px'; };
+  ajustar();
+  window.addEventListener('resize', ajustar);
+}
+
 function mostrarAvisoAssinatura(diasRestantes) {
   const banner = document.createElement('div');
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#f97316;color:#fff;padding:10px 16px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;';
   banner.innerHTML = '<span>Seu período de teste terminou. Faltam ' + diasRestantes + ' dia(s) pra sua conta ser bloqueada.</span>'
     + '<a href="assinatura.html" style="background:#fff;color:#ea580c;border-radius:8px;padding:6px 14px;font-weight:700;font-size:13px;">Assinar agora</a>';
-  document.body.prepend(banner);
+  inserirBannerFixo(banner);
 }
 
 function mostrarAvisoPlanoGratis() {
@@ -91,7 +102,7 @@ function mostrarAvisoPlanoGratis() {
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#1e2633;color:#e5e9f0;padding:10px 16px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;';
   banner.innerHTML = '<span>Você está no plano grátis (até 5 alunos).</span>'
     + '<a href="assinatura.html" style="background:#f97316;color:#fff;border-radius:8px;padding:6px 14px;font-weight:700;font-size:13px;">Ver planos pagos</a>';
-  document.body.prepend(banner);
+  inserirBannerFixo(banner);
 }
 
 function bloquearEdicao() {
@@ -99,7 +110,7 @@ function bloquearEdicao() {
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#dc2626;color:#fff;padding:10px 16px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;';
   banner.innerHTML = '<span>Sua assinatura está pendente. Você continua vendo seus dados, mas não consegue criar ou editar nada até assinar.</span>'
     + '<a href="assinatura.html" style="background:#fff;color:#dc2626;border-radius:8px;padding:6px 14px;font-weight:700;font-size:13px;">Assinar agora</a>';
-  document.body.prepend(banner);
+  inserirBannerFixo(banner);
 
   const style = document.createElement('style');
   style.textContent = 'body.assinatura-bloqueada input, body.assinatura-bloqueada textarea, body.assinatura-bloqueada select { pointer-events:none !important; opacity:.5 !important; }';
