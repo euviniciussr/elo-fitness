@@ -737,7 +737,7 @@ aside + * table{display:block!important;overflow-x:auto!important}
             <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Tudo que você registra aqui aparece pro seu personal no diário</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">+ Peso</button>
+            <button sc-camel-on-click="{{ onIrRegistrarPeso }}" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">+ Peso</button>
             <div style="position:relative;display:inline-flex;">
               <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">{{ fotoUploadLabel }}</button>
               <input type="file" accept="image/*" sc-camel-on-change="{{ onFotoUpload }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;">
@@ -1836,6 +1836,7 @@ class Component extends DCLogic {
       isAvaliacaoFisica: t === 'avaliacao_fisica',
       irTreino: () => this.setState({ tab: 'treino', treinoSelecionadoId: treinoHoje ? treinoHoje.id : null }),
       irAgenda: go('agenda'), irMensagens: go('mensagens'),
+      onIrRegistrarPeso: go('hoje'),
 
       bnHoje: { activeClass: t === 'hoje' ? ' pf-active' : '', onClick: go('hoje') },
       bnTreino: { activeClass: t === 'treino' ? ' pf-active' : '', onClick: () => { this.setState({ tab: 'treino', treinoSelecionadoId: treinoHoje ? treinoHoje.id : null, maisAbertoMobile: false }); } },
