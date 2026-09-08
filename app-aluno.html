@@ -455,7 +455,7 @@ aside + * table{display:block!important;overflow-x:auto!important}
                       <span style="font-size:10px;font-weight:800;color:#f97316;background:rgba(249,115,22,.12);padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em;">hoje</span>
                     </sc-if>
                   </div>
-                  <div style="font-size:12px;color:#9aa4b2;margin-top:4px;">{{ dv.subtitulo }}<sc-if value="{{ dv.diasLabel }}" hint-placeholder-val="{{ false }}"> · {{ dv.diasLabel }}</sc-if></div>
+                  <div style="font-size:12px;color:#9aa4b2;margin-top:4px;">{{ dv.subtitulo }}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
                   <span style="font-size:11.5px;color:#66707e;">{{ dv.qtdLabel }}</span>
@@ -475,9 +475,6 @@ aside + * table{display:block!important;overflow-x:auto!important}
                   <div style="font-size:15.5px;font-weight:800;letter-spacing:.02em;">{{ dv.nome }}</div>
                   <sc-if value="{{ dv.subtitulo }}" hint-placeholder-val="{{ true }}">
                     <div style="font-size:12px;color:#9aa4b2;">{{ dv.subtitulo }}</div>
-                  </sc-if>
-                  <sc-if value="{{ dv.diasLabel }}" hint-placeholder-val="{{ true }}">
-                    <div style="font-size:11px;color:#66707e;margin-left:auto;">{{ dv.diasLabel }}</div>
                   </sc-if>
                 </div>
                 <sc-if value="{{ dv.semExercicios }}" hint-placeholder-val="{{ false }}">
@@ -1581,7 +1578,6 @@ class Component extends DCLogic {
     });
     const doneCount = exData.filter(e => exerciciosFeitos[e.teId]).length;
     const todos = exData.length > 0 && doneCount === exData.length;
-    const DIA_LABELS_LONGO = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
     const divisoesOrdenadas = this.state.treinosPlano.slice().sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     // Agrupamento visual de super-set/bi-set/tri-set: mesma lógica de grupo_id usada
     // em montar-treino.html (.combo-box), só que aqui em modo leitura pro aluno —
@@ -1613,8 +1609,7 @@ class Component extends DCLogic {
       const contagem = {};
       exs.forEach(e => { if (e.categoria) contagem[e.categoria] = (contagem[e.categoria] || 0) + 1; });
       const grupos = Object.keys(contagem).sort((a, b) => contagem[b] - contagem[a]);
-      const dias = (tr.dias_semana || []).slice().sort((a, b) => a - b).map(d => DIA_LABELS_LONGO[d]);
-      return { id: tr.id, nome: tr.nome, subtitulo: grupos.join(' e '), diasLabel: dias.length ? dias.join(', ') : '', exercicios: exs, gruposExercicios: agruparPorCombo(exs), semExercicios: exs.length === 0 };
+      return { id: tr.id, nome: tr.nome, subtitulo: grupos.join(' e '), exercicios: exs, gruposExercicios: agruparPorCombo(exs), semExercicios: exs.length === 0 };
     });
 
     const round1 = (n) => Math.round(n * 10) / 10;
@@ -1912,7 +1907,6 @@ class Component extends DCLogic {
         id: dv.id,
         nome: dv.nome,
         subtitulo: dv.subtitulo,
-        diasLabel: dv.diasLabel,
         qtdLabel: dv.exercicios.length + (dv.exercicios.length === 1 ? ' exercício' : ' exercícios'),
         isHoje: !!(treinoHoje && dv.id === treinoHoje.id),
         onSelecionar: () => this.setState({ treinoSelecionadoId: dv.id })
@@ -1981,7 +1975,6 @@ class Component extends DCLogic {
         return {
         nome: dv.nome,
         subtitulo: dv.subtitulo,
-        diasLabel: dv.diasLabel,
         semExercicios: dv.semExercicios,
         jaFinalizadoHoje: !!execHoje,
         aindaNaoFinalizadoHoje: !execHoje,
