@@ -970,8 +970,8 @@ aside + * table{display:block!important;overflow-x:auto!important}
           </sc-for>
         </div>
         <div style="display:flex;gap:10px;padding:14px 20px;border-top:1px solid #171d29;">
-          <input placeholder="Mensagem pro seu personal…" style="flex:1;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:11px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;min-width:0;">
-          <button style="background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;padding:11px 20px;border-radius:10px;cursor:pointer;">Enviar</button>
+          <input value="{{ mensagemTexto }}" sc-camel-on-change="{{ onMensagemChange }}" placeholder="Mensagem pro seu personal…" style="flex:1;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:11px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;min-width:0;">
+          <button sc-camel-on-click="{{ onEnviarMensagem }}" style="background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;padding:11px 20px;border-radius:10px;cursor:pointer;">{{ enviarMensagemLabel }}</button>
         </div>
       </div>
     </sc-if>
@@ -1146,7 +1146,8 @@ class Component extends DCLogic {
     feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {},
     maisAbertoMobile: false,
     fotoTreinoUploading: {}, fotoTreinoPreview: {},
-    descansoAtivo: null
+    descansoAtivo: null,
+    mensagens: [], mensagemTexto: '', enviandoMensagem: false
   };
   _descansoInterval = null;
 
@@ -1226,7 +1227,7 @@ class Component extends DCLogic {
     const desde90 = new Date(); desde90.setDate(desde90.getDate() - 90);
     const desde90Str = dataLocalStr(desde90);
     const hojeStr = dataLocalStr();
-    const [{ data: treinos }, { data: fotos }, { data: dietas }, { data: agendamentos }, { data: pesos }, { data: execucoes }, { data: avaliacoesFisicas }, { data: medidas }, { data: comparacoes }] = await Promise.all([
+    const [{ data: treinos }, { data: fotos }, { data: dietas }, { data: agendamentos }, { data: pesos }, { data: execucoes }, { data: avaliacoesFisicas }, { data: medidas }, { data: comparacoes }, { data: mensagens }] = await Promise.all([
       supabaseClient.from('treinos').select('id, nome, dias_semana, ordem').eq('cliente_id', cliente.id).eq('habilitado', true).order('ordem', { ascending: true }),
       supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
       supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1),
@@ -1235,7 +1236,8 @@ class Component extends DCLogic {
       supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str),
       supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', cliente.id).order('data', { ascending: false }),
       supabaseClient.from('medidas_corporais').select('*').eq('cliente_id', cliente.id).order('data', { ascending: false }),
-      supabaseClient.from('comparacoes_fotos').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false })
+      supabaseClient.from('comparacoes_fotos').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
+      supabaseClient.from('mensagens').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: true })
     ]);
     const pesoHoje = (pesos || []).find(p => p.data === hojeStr);
     this.setState({
@@ -1244,7 +1246,8 @@ class Component extends DCLogic {
       pesoHistorico: pesos || [], execucoes: execucoes || [],
       pesoInput: pesoHoje ? String(pesoHoje.peso) : '', pesoSalvo: !!pesoHoje,
       avaliacoesFisicas: avaliacoesFisicas || [],
-      medidasCorporais: medidas || [], comparacoesFotos: comparacoes || []
+      medidasCorporais: medidas || [], comparacoesFotos: comparacoes || [],
+      mensagens: mensagens || []
     });
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
@@ -1516,6 +1519,24 @@ class Component extends DCLogic {
       titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou um feedback') : 'Novo feedback recebido'
     });
     this.setState({ feedbackGeralEnviando: false, feedbackGeralEnviado: true, feedbackGeralTexto: '' });
+  }
+
+  async onEnviarMensagem() {
+    const texto = this.state.mensagemTexto.trim();
+    if (!texto || this.state.enviandoMensagem) return;
+    this.setState({ enviandoMensagem: true });
+    const { data: nova, error } = await supabaseClient.from('mensagens').insert({
+      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, remetente: 'aluno', texto
+    }).select().single();
+    if (error) {
+      this.setState({ enviandoMensagem: false });
+      return;
+    }
+    await supabaseClient.from('notificacoes').insert({
+      trainer_id: this.state.trainerId, cliente_id: this.state.clienteId, destino: 'trainer',
+      titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou uma mensagem') : 'Nova mensagem recebida'
+    });
+    this.setState(s => ({ mensagens: [...s.mensagens, nova], mensagemTexto: '', enviandoMensagem: false }));
   }
 
   onFeedbackTreinoChange(treinoId, valor) {
@@ -2061,8 +2082,19 @@ class Component extends DCLogic {
       semSessoes: true,
       sessoes: [],
 
-      semChat: true,
-      chat: [],
+      semChat: this.state.mensagens.length === 0,
+      chat: this.state.mensagens.map(m => ({
+        texto: m.texto,
+        hora: new Date(m.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+        align: m.remetente === 'aluno' ? 'flex-end' : 'flex-start',
+        bg: m.remetente === 'aluno' ? 'rgba(249,115,22,.12)' : '#131a26',
+        border: m.remetente === 'aluno' ? 'rgba(249,115,22,.3)' : '#1e2633',
+        color: '#e5e9f0'
+      })),
+      mensagemTexto: this.state.mensagemTexto,
+      onMensagemChange: (e) => this.setState({ mensagemTexto: e.target.value }),
+      onEnviarMensagem: () => this.onEnviarMensagem(),
+      enviarMensagemLabel: this.state.enviandoMensagem ? 'Enviando…' : 'Enviar',
 
       semPagamentos: true,
       pagamentos: []

@@ -136,7 +136,8 @@ const TABS = [
   ['cardio', 'Cardio'],
   ['evolucao', 'Evolução'],
   ['feedback', 'Feedback'],
-  ['agendamentos', 'Agendamentos']
+  ['agendamentos', 'Agendamentos'],
+  ['mensagens', 'Mensagens']
 ];
 
 const OBJETIVO_LABEL = { emagrecimento: 'Emagrecimento', hipertrofia: 'Hipertrofia', condicionamento: 'Condicionamento', saude: 'Saúde geral' };
@@ -249,6 +250,8 @@ let comparacaoFormOpen = false;
 let comparacaoSelecaoAntes = [];
 let comparacaoSelecaoDepois = [];
 let feedbacksList = [];
+let mensagensList = [];
+let mensagemEnviando = false;
 let convite = null;
 let conviteLinkAberto = false;
 let activeTab = tabParam || 'treino';
@@ -290,7 +293,7 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes] = await Promise.all([
+  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes, msgRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
@@ -306,7 +309,8 @@ async function init() {
     supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('feedbacks_treino').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true }),
-    supabaseClient.from('convites').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    supabaseClient.from('convites').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabaseClient.from('mensagens').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: true })
   ]);
   exerciciosLib = exsRes.data || [];
   tecnicasLib = tecsRes.data || [];
@@ -334,6 +338,7 @@ async function init() {
   feedbacksList = feedbacksRes.data || [];
   agendamentosList = agRes.data || [];
   convite = convRes.data || null;
+  mensagensList = msgRes.data || [];
 
   render();
 }
@@ -359,6 +364,7 @@ function render() {
   else if (activeTab === 'evolucao') renderEvolucaoTab(body);
   else if (activeTab === 'feedback') renderFeedbackTab(body);
   else if (activeTab === 'agendamentos') renderAgendamentosTab(body);
+  else if (activeTab === 'mensagens') renderMensagensTab(body);
   app.appendChild(body);
 }
 
@@ -1934,6 +1940,63 @@ function renderAgendamentoForm(container) {
   actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
   box.appendChild(actions);
   container.appendChild(box);
+}
+
+// ---------- MENSAGENS ----------
+
+async function renderMensagensTab(container) {
+  const naoLidas = mensagensList.filter(m => m.remetente === 'aluno' && !m.lida);
+  if (naoLidas.length) {
+    supabaseClient.from('mensagens').update({ lida: true }).in('id', naoLidas.map(m => m.id)).then(() => {});
+    naoLidas.forEach(m => { m.lida = true; });
+  }
+
+  const box = el('<div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;display:flex;flex-direction:column;min-height:440px;"></div>');
+  const lista = el('<div style="flex:1;padding:18px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:520px;"></div>');
+  if (!mensagensList.length) {
+    lista.appendChild(el('<div class="empty" style="margin:auto;">Nenhuma mensagem ainda.</div>'));
+  }
+  mensagensList.forEach(m => {
+    const souEu = m.remetente === 'trainer';
+    const hora = new Date(m.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    lista.appendChild(el(
+      '<div style="max-width:76%;align-self:' + (souEu ? 'flex-end' : 'flex-start') + ';background:' + (souEu ? 'rgba(249,115,22,.12)' : '#131a26') + ';border:1px solid ' + (souEu ? 'rgba(249,115,22,.3)' : '#1e2633') + ';border-radius:12px;padding:11px 15px;">' +
+      '<div style="font-size:13px;color:#e5e9f0;line-height:1.5;">' + esc(m.texto) + '</div>' +
+      '<div style="font-size:10.5px;color:#66707e;margin-top:5px;text-align:right;">' + hora + '</div>' +
+      '</div>'
+    ));
+  });
+  box.appendChild(lista);
+
+  const rodape = el('<div style="display:flex;gap:10px;padding:14px 18px;border-top:1px solid #171d29;"></div>');
+  const input = el('<input placeholder="Mensagem pro aluno…" style="flex:1;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:11px 15px;color:#e5e9f0;font-family:inherit;font-size:13px;outline:none;min-width:0;">');
+  const btn = el('<button class="btn btn-primary">' + (mensagemEnviando ? 'Enviando…' : 'Enviar') + '</button>');
+  btn.disabled = mensagemEnviando;
+  async function enviar() {
+    const texto = input.value.trim();
+    if (!texto || mensagemEnviando) return;
+    mensagemEnviando = true;
+    render();
+    const { data: nova, error } = await supabaseClient.from('mensagens').insert({
+      trainer_id: userId, cliente_id: clienteIdParam, remetente: 'trainer', texto
+    }).select().single();
+    mensagemEnviando = false;
+    if (error) { alert('Não foi possível enviar: ' + error.message); render(); return; }
+    await supabaseClient.from('notificacoes').insert({
+      trainer_id: userId, cliente_id: clienteIdParam, destino: 'aluno',
+      titulo: 'Seu personal enviou uma mensagem'
+    });
+    mensagensList.push(nova);
+    render();
+  }
+  btn.addEventListener('click', enviar);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') enviar(); });
+  rodape.appendChild(input);
+  rodape.appendChild(btn);
+  box.appendChild(rodape);
+
+  container.appendChild(box);
+  lista.scrollTop = lista.scrollHeight;
 }
 
 init();
