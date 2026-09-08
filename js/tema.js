@@ -11,7 +11,7 @@
 // então aqui só setamos o atributo e cuidamos do restante (localStorage,
 // banco, botão).
 
-const TEMA_MAPA_CLARO = {
+const TEMA_MAPA_HEX = {
   // fundos
   '#0a0d13': '#f4f5f7', '#0d1119': '#eef0f3', '#10151f': '#ffffff',
   '#131a26': '#e9ebef', '#141a26': '#e9ebef', '#141018': '#ffffff', '#151b28': '#ffffff',
@@ -27,6 +27,21 @@ const TEMA_MAPA_CLARO = {
   '#3a2418': '#fdece3', '#1a1408': '#fdf6e3', '#0a1a10': '#e9f9ee',
 };
 
+// O runtime x-dc renderiza cor via propriedade JS do CSSOM (não como texto
+// cru no atributo), então o navegador devolve `style` já normalizado pra
+// `rgb(r, g, b)` — o hex original do template não sobrevive no DOM final.
+// Por isso o mapa de troca precisa reconhecer as duas formas: cada entrada
+// hex abaixo gera automaticamente sua equivalente `rgb(...)`.
+function temaHexParaRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgb(' + [(n >> 16) & 255, (n >> 8) & 255, n & 255].join(', ') + ')';
+}
+const TEMA_MAPA_CLARO = {};
+Object.keys(TEMA_MAPA_HEX).forEach(function (hex) {
+  TEMA_MAPA_CLARO[hex] = TEMA_MAPA_HEX[hex];
+  TEMA_MAPA_CLARO[temaHexParaRgb(hex)] = TEMA_MAPA_HEX[hex];
+});
+
 const TEMA_CHAVE_LOCAL = 'elofitness_tema';
 
 function temaAtual() {
@@ -41,23 +56,82 @@ function temaAtual() {
 // passada, o texto que acabou de virar `#10151f` seria trocado de novo por
 // engano. Uma regex com callback de lookup evita isso: cada match no
 // string original vira o destino certo de uma vez, sem reprocessar saída.
-const TEMA_REGEX_CLARO = new RegExp(Object.keys(TEMA_MAPA_CLARO).join('|'), 'gi');
+function temaEscaparRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+const TEMA_REGEX_CLARO = new RegExp(Object.keys(TEMA_MAPA_CLARO).map(temaEscaparRegex).join('|'), 'gi');
+
+// Toda página tem uma regra base `html,body{background:#0a0d13;color:#e5e9f0}`
+// no <style> do <head> — texto que não define a própria cor herda dali. Isso
+// é uma regra de CSS, não um atributo style="" em elemento, então o
+// DOM-walk abaixo nunca alcança. Sobrescrever direto via .style vence a
+// regra (inline sempre tem mais especificidade que seletor de tag).
+function temaAplicarBase(tema) {
+  const claro = tema === 'claro';
+  document.documentElement.style.background = claro ? '#f4f5f7' : '';
+  document.documentElement.style.color = claro ? '#10151f' : '';
+  document.body.style.background = claro ? '#f4f5f7' : '';
+  document.body.style.color = claro ? '#10151f' : '';
+}
+
+function temaConverterElemento(el) {
+  // html/body têm a cor controlada direto por temaAplicarBase — nunca
+  // reprocessar aqui. `#10151f` é ao mesmo tempo o texto final do tema
+  // claro E uma cor de fundo escura reconhecida pelo mapa; se a varredura
+  // genérica tocasse o body de novo, veria o `#10151f` que acabou de
+  // virar cor de texto e trocaria de novo pra `#ffffff`, quebrando tudo.
+  if (el === document.body || el === document.documentElement || el.id === 'tema-toggle-btn') return;
+  const style = el.getAttribute('style');
+  if (!style) return;
+  // Cacheia o original (pra restaurar se voltar pro escuro) na primeira vez
+  // que este elemento é visto — inclusive quando ele só apareceu depois,
+  // via o MutationObserver, não só na varredura inicial da página.
+  if (el.dataset.temaOriginal === undefined) el.dataset.temaOriginal = style;
+  const convertido = style.replace(TEMA_REGEX_CLARO, function (match) {
+    return TEMA_MAPA_CLARO[match.toLowerCase()] || match;
+  });
+  if (convertido !== style) el.setAttribute('style', convertido);
+}
+
+function temaConverterArvore(raiz) {
+  if (raiz.nodeType !== 1) return;
+  if (raiz.hasAttribute && raiz.hasAttribute('style')) temaConverterElemento(raiz);
+  if (raiz.querySelectorAll) raiz.querySelectorAll('[style]').forEach(temaConverterElemento);
+}
+
+// O runtime x-dc re-renderiza a página inteira a cada mudança de estado
+// (troca de aba, erro de validação, o "chooser" de tipo de conta etc.),
+// criando ou substituindo elementos com a cor escura original de novo —
+// uma conversão única no carregamento não é suficiente. Um
+// MutationObserver reconverte qualquer coisa nova ou alterada enquanto o
+// tema claro estiver ativo. Desconecta durante a própria escrita pra não
+// entrar num loop reagindo à própria mudança.
+let temaObserver = null;
+
+function temaObservar() {
+  if (temaObserver) return;
+  temaObserver = new MutationObserver(function (mutacoes) {
+    if (temaAtual() !== 'claro') return;
+    temaObserver.disconnect();
+    mutacoes.forEach(function (m) {
+      if (m.type === 'attributes' && m.target) temaConverterElemento(m.target);
+      if (m.type === 'childList') m.addedNodes.forEach(temaConverterArvore);
+    });
+    temaObserver.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true, childList: true });
+  });
+  temaObserver.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true, childList: true });
+}
 
 function temaAplicarNoDom(tema) {
   document.documentElement.setAttribute('data-tema', tema);
+  temaAplicarBase(tema);
   if (tema === 'claro') {
-    document.querySelectorAll('[style]').forEach(function (el) {
-      if (el.dataset.temaOriginal === undefined) {
-        el.dataset.temaOriginal = el.getAttribute('style');
-      }
-      const style = el.dataset.temaOriginal.replace(TEMA_REGEX_CLARO, function (match) {
-        return TEMA_MAPA_CLARO[match.toLowerCase()] || match;
-      });
-      el.setAttribute('style', style);
-    });
+    if (temaObserver) temaObserver.disconnect();
+    temaConverterArvore(document.body);
+    temaObservar();
   } else {
+    if (temaObserver) temaObserver.disconnect();
     document.querySelectorAll('[data-tema-original]').forEach(function (el) {
       el.setAttribute('style', el.dataset.temaOriginal);
+      delete el.dataset.temaOriginal;
     });
   }
 }
