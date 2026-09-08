@@ -1,11 +1,14 @@
 // POST /functions/v1/ativar-plano-gratis
 // Auto-service: um trainer cujo trial (14 dias + 3 de aviso) já venceu, e
 // que ainda não escolheu nenhum plano pago, é movido pro plano permanente
-// "Grátis (até 5 alunos)" em vez de ficar bloqueado — quem tem mais de 5
-// alunos continua bloqueado normalmente (o limite já é reforçado em
-// adicionar-aluno.html via planos_assinatura.limite_alunos). Só age na
-// própria conta de quem chama (sem trainer_id no body) — diferente de
-// admin-atualizar-trainer, que é admin mexendo em outro trainer.
+// "Grátis (até 5 alunos)" em vez de ficar bloqueado — MAS só se já não tiver
+// mais alunos que o limite do plano grátis. Durante o trial não tem limite
+// de quantos alunos pode cadastrar (só depois de ter um plano é que
+// adicionar-aluno.html passa a bloquear novas adições), então alguém com 10
+// alunos no fim do trial não pode simplesmente cair no grátis-até-5 — nesse
+// caso o auth-guard.js cai no bloqueio normal (cobrança) igual quem não é
+// elegível. Só age na própria conta de quem chama (sem trainer_id no body)
+// — diferente de admin-atualizar-trainer, que é admin mexendo em outro trainer.
 //
 // Toda a checagem de elegibilidade é refeita aqui do lado do servidor
 // (não confia no auth-guard.js do browser) pra ninguém conseguir chamar
@@ -49,10 +52,21 @@ Deno.serve(async (req) => {
 
     const { data: planoGratis, error: planoError } = await svc
       .from("planos_assinatura")
-      .select("id")
+      .select("id, limite_alunos")
       .eq("nome", NOME_PLANO_GRATIS)
       .maybeSingle();
     if (planoError || !planoGratis) return jsonResponse({ error: "Plano grátis não configurado." }, 500);
+
+    if (planoGratis.limite_alunos != null) {
+      const { count, error: countError } = await svc
+        .from("clientes")
+        .select("id", { count: "exact", head: true })
+        .eq("trainer_id", user.id);
+      if (countError) return jsonResponse({ error: countError.message }, 500);
+      if ((count || 0) > planoGratis.limite_alunos) {
+        return jsonResponse({ error: "Você tem mais alunos do que o limite do plano grátis — escolha um plano pago." }, 400);
+      }
+    }
 
     const { error: updateError } = await svc
       .from("trainers")
