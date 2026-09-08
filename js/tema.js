@@ -180,22 +180,63 @@ function temaAtualizarBotao(tema) {
   btn.style.borderColor = claro ? '#d5dae2' : '#2a3444';
 }
 
-function temaInserirBotao() {
+function temaCriarBotao() {
   const btn = document.createElement('button');
   btn.id = 'tema-toggle-btn';
   btn.type = 'button';
   btn.title = 'Alternar tema claro/escuro';
-  // top:64px (não 16px) de propósito — várias telas já têm ícones/botões
-  // fixos no canto superior direito (sininho de notificação, principalmente),
-  // e um valor pequeno ficava exatamente em cima. Descer alguns pixels
-  // funciona em qualquer página sem precisar saber a posição exata de cada
-  // uma.
-  btn.style.cssText = 'position:fixed;top:64px;right:16px;z-index:99998;width:38px;height:38px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);';
   btn.addEventListener('click', function () {
     temaSalvar(temaAtual() === 'claro' ? 'escuro' : 'claro');
   });
-  document.body.appendChild(btn);
-  temaAtualizarBotao(temaAtual());
+  return btn;
+}
+
+// Páginas que têm um sino de notificação marcam onde o botão deve
+// entrar (id="tema-toggle-anchor"), logo ao lado do sino, no mesmo
+// fluxo do documento — assim ele rola junto com o resto do cabeçalho
+// e nunca "flutua" separado do sino ao dar scroll. Páginas sem esse
+// marcador (sem sino) usam um botão fixo no canto.
+//
+// O x-dc re-renderiza (recria) esses nós estáticos quando o estado da
+// página muda (abrir notificações, trocar de aba, digitar numa busca
+// etc.), o que apaga qualquer coisa inserida manualmente ali dentro —
+// inclusive na primeira renderização, que acontece um instante DEPOIS
+// do DOMContentLoaded. Por isso o botão precisa ser reinserido sempre
+// que sumir, e não só uma vez no carregamento.
+function temaGarantirBotaoNoLugar() {
+  let btn = document.getElementById('tema-toggle-btn');
+  const anchor = document.getElementById('tema-toggle-anchor');
+  let mudou = false;
+  if (anchor) {
+    if (!btn) {
+      btn = temaCriarBotao();
+      btn.style.cssText = 'position:relative;width:38px;height:38px;border-radius:10px;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;';
+      mudou = true;
+    }
+    if (btn.parentElement !== anchor) { anchor.appendChild(btn); mudou = true; }
+  } else if (!btn) {
+    btn = temaCriarBotao();
+    // top:64px (não 16px) de propósito — páginas sem sino de
+    // notificação ainda podem ter outros links/botões no canto
+    // superior direito (ex: "Voltar" em montar-treino.html), e 16px
+    // ficava em cima deles. Descer alguns pixels funciona em qualquer
+    // página sem precisar saber a posição exata de cada uma.
+    btn.style.cssText = 'position:fixed;top:64px;right:16px;z-index:99998;width:38px;height:38px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15);';
+    document.body.appendChild(btn);
+    mudou = true;
+  }
+  // Só mexe no botão (innerHTML/estilo) quando ele acabou de ser
+  // criado ou reencaixado — chamar temaAtualizarBotao em toda
+  // invocação reescreveria o innerHTML a cada tick do
+  // MutationObserver, o que por sua vez dispara uma nova mutação e
+  // gera um loop infinito.
+  if (mudou) temaAtualizarBotao(temaAtual());
+}
+
+function temaInserirBotao() {
+  temaGarantirBotaoNoLugar();
+  const obs = new MutationObserver(function () { temaGarantirBotaoNoLugar(); });
+  obs.observe(document.body, { childList: true, subtree: true });
 }
 
 (function temaInit() {
