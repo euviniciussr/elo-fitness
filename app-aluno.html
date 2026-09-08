@@ -351,7 +351,7 @@ aside + * table{display:block!important;overflow-x:auto!important}
             <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">{{ dataHoje }}</div>
           </div>
           <div style="display:flex;gap:14px;">
-            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;color:#f97316;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> {{ diasSeguidos }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">dias seguidos</div></div>
+            <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;color:#f97316;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> {{ semanasSeguidas }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">semanas seguidas</div></div>
             <div style="text-align:center;background:#10151f;border:1px solid #1a2130;border-radius:12px;padding:10px 18px;"><div style="font-size:19px;font-weight:800;">{{ treinosSemanaLabel }}</div><div style="font-size:10.5px;color:#66707e;margin-top:2px;">treinos na semana</div></div>
           </div>
         </div>
@@ -1776,18 +1776,25 @@ class Component extends DCLogic {
 
     const scheduledDow = new Set();
     treinosPlano.forEach(tr => (tr.dias_semana || []).forEach(d => scheduledDow.add(d)));
-    let diasSeguidos = 0;
+    // "Semanas seguidas": conta pra trás quantas semanas consecutivas
+    // tiveram TODOS os treinos programados concluídos. A semana atual só
+    // entra na contagem quando já estiver completa — enquanto ainda tem
+    // dia programado pela frente, ela é pulada (sem quebrar a sequência).
+    function semanaCompleta(wStart) {
+      for (const dow of scheduledDow) {
+        const d = new Date(wStart); d.setDate(wStart.getDate() + dow);
+        if (!execDates.has(isoOf(d))) return false;
+      }
+      return true;
+    }
+    let semanasSeguidas = 0;
     if (scheduledDow.size > 0) {
-      let cursor = new Date(hojeMeiaNoite);
-      if (scheduledDow.has(cursor.getDay()) && !execDates.has(isoOf(cursor))) cursor.setDate(cursor.getDate() - 1);
-      for (let guard = 0; guard < 400; guard++) {
-        const dow = cursor.getDay();
-        if (scheduledDow.has(dow)) {
-          if (execDates.has(isoOf(cursor))) { diasSeguidos++; cursor.setDate(cursor.getDate() - 1); }
-          else break;
-        } else {
-          cursor.setDate(cursor.getDate() - 1);
-        }
+      let cursor = new Date(weekStart);
+      if (!semanaCompleta(cursor)) cursor.setDate(cursor.getDate() - 7);
+      for (let guard = 0; guard < 104; guard++) {
+        if (!semanaCompleta(cursor)) break;
+        semanasSeguidas++;
+        cursor.setDate(cursor.getDate() - 7);
       }
     }
 
@@ -1844,7 +1851,7 @@ class Component extends DCLogic {
       pesoLabel: this.state.pesoSalvo ? 'Salvo ✓' : 'Salvar',
       pesoInput: this.state.pesoInput,
       onPesoInputChange: (e) => this.onPesoInputChange(e),
-      diasSeguidos: diasSeguidos,
+      semanasSeguidas: semanasSeguidas,
       semana: semanaReal,
       dataHoje: hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }),
       semanaRange: fmtCurto(weekStart) + ' — ' + fmtCurto(weekEnd),
