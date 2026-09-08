@@ -8,57 +8,68 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <style>
-html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
+:root{
+  --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
+  --borda:#171d29; --borda-forte:#1a2130;
+  --texto:#e5e9f0; --texto-2:#9aa4b2; --texto-3:#66707e; --erro:#f87171;
+}
+html[data-tema="claro"]{
+  --bg:#f4f5f7; --bg-2:#eef0f3; --bg-3:#ffffff; --bg-hover:#e9ebef; --bg-ativo:#d5dae2;
+  --borda:#e4e7ec; --borda-forte:#dfe3e9;
+  --texto:#10151f; --texto-2:#5b6472; --texto-3:#7c8593; --erro:#dc2626;
+}
+
+html,body{margin:0;padding:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--texto);}
 *{box-sizing:border-box;}
 a{color:#f97316;text-decoration:none;}
 button{font-family:inherit;cursor:pointer;}
 textarea{font-family:inherit;}
-::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:var(--bg-ativo);border-radius:4px;}
 
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #171d29;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--borda);}
 .logo{display:flex;align-items:center;gap:10px;}
 .logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
 .logo-text{font-size:17px;font-weight:800;}
 .logo-text span{color:#f97316;}
-.voltar{font-size:13px;font-weight:700;color:#9aa4b2;}
-.voltar:hover{color:#e5e9f0;}
+.voltar{font-size:13px;font-weight:700;color:var(--texto-2);}
+.voltar:hover{color:var(--texto);}
 
 .wrap{max-width:760px;margin:0 auto;padding:32px 20px 80px;}
-.card{background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:28px;}
+.card{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:16px;padding:28px;}
 h1{font-size:20px;font-weight:800;margin:0 0 6px;}
-.sub{font-size:13.5px;color:#9aa4b2;margin:0 0 24px;line-height:1.5;}
+.sub{font-size:13.5px;color:var(--texto-2);margin:0 0 24px;line-height:1.5;}
 
-.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #171d29;padding-bottom:0;}
-.tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:#9aa4b2;border-bottom:2px solid transparent;cursor:pointer;}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--borda);padding-bottom:0;}
+.tab{padding:10px 16px;font-size:13.5px;font-weight:700;color:var(--texto-2);border-bottom:2px solid transparent;cursor:pointer;}
 .tab.active{color:#f97316;border-color:#f97316;}
 
-label{font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;}
-input,select,textarea{width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-size:13.5px;outline:none;}
+label{font-size:12px;font-weight:700;color:var(--texto-2);display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:var(--bg-2);border:1px solid var(--bg-ativo);border-radius:9px;padding:10px 13px;color:var(--texto);font-size:13.5px;outline:none;}
 textarea{resize:vertical;min-height:38px;}
 
-.list-row{background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+.list-row{background:var(--bg-2);border:1px solid var(--borda-forte);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
 
 .btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
 .btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
-.btn-secondary{background:#1e2633;color:#e5e9f0;}
-.btn-outline{background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;}
-.btn-ghost{background:none;border:none;color:#66707e;font-size:12px;font-weight:700;padding:5px 8px;white-space:nowrap;}
-.btn-ghost:hover{color:#f87171;}
+.btn-secondary{background:var(--bg-ativo);color:var(--texto);}
+.btn-outline{background:var(--bg-hover);border:1px solid rgba(249,115,22,.35);color:#f97316;}
+.btn-ghost{background:none;border:none;color:var(--texto-3);font-size:12px;font-weight:700;padding:5px 8px;white-space:nowrap;}
+.btn-ghost:hover{color:var(--erro);}
 .btn:disabled{opacity:.55;cursor:default;}
 .btn-block{width:100%;}
 .actions-row{display:flex;gap:10px;margin-top:10px;}
 .actions-row .btn{flex:1;}
 
 .sexo-row{display:flex;gap:8px;flex-wrap:wrap;}
-.sexo-row .chip{background:#0d1119;border:1px solid #1e2633;color:#9aa4b2;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;}
+.sexo-row .chip{background:var(--bg-2);border:1px solid var(--bg-ativo);color:var(--texto-2);font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;}
 .sexo-row .chip.sel{background:rgba(249,115,22,.1);border-color:rgba(249,115,22,.4);color:#f97316;}
 
-.pergunta-card{background:#131a26;border:1px solid #1e2633;border-radius:10px;padding:14px 16px;margin-top:10px;}
+.pergunta-card{background:var(--bg-hover);border:1px solid var(--bg-ativo);border-radius:10px;padding:14px 16px;margin-top:10px;}
 .pergunta-topo{display:flex;gap:8px;align-items:flex-start;}
 .pergunta-meta{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap;}
 .pergunta-meta select, .pergunta-meta > label { width:auto; }
-.subbox{margin-top:10px;padding:10px;background:#0d1119;border-radius:8px;}
-.subbox-titulo{font-size:11px;color:#66707e;margin-bottom:6px;}
+.subbox{margin-top:10px;padding:10px;background:var(--bg-2);border-radius:8px;}
+.subbox-titulo{font-size:11px;color:var(--texto-3);margin-bottom:6px;}
 .opcao-row{display:flex;gap:6px;margin-bottom:6px;}
 </style>
 </head>
@@ -376,5 +387,7 @@ async function salvar() {
 
 init();
 </script>
+<script>window.TEMA_CONTA = 'trainer';</script>
+<script src="js/tema.js"></script>
 </body>
 </html>

@@ -194,10 +194,13 @@
 }
 </style>
 <style>
-html,body{margin:0;padding:0;background:#0a0d13;font-family:'Plus Jakarta Sans',sans-serif;color:#e5e9f0;}
+:root{ --bg:#0a0d13; --texto:#e5e9f0; --bg-ativo:#1e2633; }
+html[data-tema="claro"]{ --bg:#f4f5f7; --texto:#10151f; --bg-ativo:#d5dae2; }
+
+html,body{margin:0;padding:0;background:var(--bg);font-family:'Plus Jakarta Sans',sans-serif;color:var(--texto);}
 a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 *{box-sizing:border-box;}
-::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
+::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:var(--bg-ativo);border-radius:4px;}
 </style>
 </helmet>
 <div style="display:flex;min-height:100vh;background:#0a0d13;">
@@ -679,6 +682,6 @@ class Component extends DCLogic {
   }
 }
 </script>
-
-
+<script>window.TEMA_CONTA = 'trainer';</script>
+<script src="js/tema.js"></script>
 </body></html>
