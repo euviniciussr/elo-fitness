@@ -929,11 +929,18 @@ async function excluirTreino(treino) {
   renderMontar();
 }
 
-function abrirModalCopiarParaAluno(treino) {
-  const outrosAlunos = clientes.filter(c => c.id !== treino.cliente_id);
+// Copia a PROGRAMAÇÃO COMPLETA atualmente aberta (todas as divisões em
+// `treinos`, não só a aba ativa) pra outro aluno, como uma cópia
+// independente sob um único split_id novo. Nunca apaga uma programação
+// existente do destino sem confirmação explícita.
+function abrirModalCopiarParaAluno() {
+  const clienteOrigemId = treinos[0] && treinos[0].cliente_id;
+  const outrosAlunos = clientes.filter(c => c.id !== clienteOrigemId);
+  const letras = treinos.map(t => t.nome.replace(/^Treino\s*/i, '')).join('/');
   const overlay = el('<div class="modal-overlay"></div>');
   const box = el('<div class="modal-box" style="max-width:420px;"></div>');
-  box.appendChild(el('<h2>Copiar treino para outro aluno</h2>'));
+  box.appendChild(el('<h2>Copiar programação para outro aluno</h2>'));
+  box.appendChild(el('<div class="sub" style="margin:0 0 14px;">Divisão ' + letras + ' — ' + treinos.length + (treinos.length === 1 ? ' treino' : ' treinos') + '. Todos serão copiados juntos, como uma programação nova e independente.</div>'));
 
   if (!outrosAlunos.length) {
     box.appendChild(el('<div class="sub" style="margin:0;">Você não tem outro aluno cadastrado ainda.</div>'));
@@ -946,7 +953,7 @@ function abrirModalCopiarParaAluno(treino) {
     return;
   }
 
-  const label = el('<label>Selecione o aluno para receber este treino</label>');
+  const label = el('<label>Selecione o aluno para receber esta programação</label>');
   const sel = el('<select><option value="">Escolha o aluno…</option></select>');
   outrosAlunos.forEach(c => sel.appendChild(el('<option value="' + c.id + '">' + c.nome + '</option>')));
   const erro = el('<div class="erro" style="display:none;"></div>');
@@ -954,19 +961,32 @@ function abrirModalCopiarParaAluno(treino) {
   const confirmTexto = el('<div class="sub" style="margin:0 0 14px;"></div>');
   const btnRow = el('<div style="display:flex;gap:10px;"></div>');
   const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
-  const copiarConfirmBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Copiar treino</button>');
+  const copiarConfirmBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Copiar programação</button>');
   cancelBtn.addEventListener('click', () => { confirmWrap.style.display = 'none'; });
   btnRow.appendChild(cancelBtn);
   btnRow.appendChild(copiarConfirmBtn);
   confirmWrap.appendChild(confirmTexto);
   confirmWrap.appendChild(btnRow);
 
-  const escolherBtn = el('<button type="button" class="btn btn-primary" style="margin-top:14px;width:100%;" disabled>Copiar treino</button>');
-  sel.addEventListener('change', () => { escolherBtn.disabled = !sel.value; erro.style.display = 'none'; });
-  escolherBtn.addEventListener('click', () => {
+  const escolherBtn = el('<button type="button" class="btn btn-primary" style="margin-top:14px;width:100%;" disabled>Copiar programação</button>');
+  sel.addEventListener('change', async () => {
+    escolherBtn.disabled = !sel.value;
+    erro.style.display = 'none';
+    confirmWrap.style.display = 'none';
+  });
+  escolherBtn.addEventListener('click', async () => {
     const aluno = outrosAlunos.find(c => c.id === sel.value);
     if (!aluno) return;
-    confirmTexto.textContent = 'Copiar este treino para ' + aluno.nome + '?';
+    escolherBtn.disabled = true;
+    const { data: existentes } = await supabaseClient.from('treinos').select('id').eq('cliente_id', aluno.id).limit(1);
+    escolherBtn.disabled = false;
+    if (existentes && existentes.length) {
+      confirmTexto.textContent = aluno.nome + ' já possui uma programação de treinos. Deseja adicionar esta nova programação (' + letras + ') mesmo assim? A programação atual dele não será apagada.';
+      copiarConfirmBtn.textContent = 'Adicionar mesmo assim';
+    } else {
+      confirmTexto.textContent = 'Copiar a programação completa (' + letras + ') para ' + aluno.nome + '?';
+      copiarConfirmBtn.textContent = 'Copiar programação';
+    }
     confirmWrap.style.display = '';
   });
 
@@ -974,23 +994,28 @@ function abrirModalCopiarParaAluno(treino) {
     const aluno = outrosAlunos.find(c => c.id === sel.value);
     if (!aluno) return;
     copiarConfirmBtn.disabled = true;
+    const textoOriginal = copiarConfirmBtn.textContent;
     copiarConfirmBtn.textContent = 'Copiando…';
     const novoSplitId = crypto.randomUUID();
-    const { data: novo, error } = await supabaseClient.from('treinos').insert({
-      trainer_id: userId, cliente_id: aluno.id, nome: treino.nome,
-      dias_semana: treino.dias_semana || [], habilitado: false,
-      split_id: novoSplitId, ordem: 0
-    }).select().single();
+    const novasRows = treinos.map((t, i) => ({
+      trainer_id: userId, cliente_id: aluno.id, nome: t.nome,
+      dias_semana: t.dias_semana || [], habilitado: false,
+      split_id: novoSplitId, ordem: i
+    }));
+    const { data: novos, error } = await supabaseClient.from('treinos').insert(novasRows).select();
     if (error) {
       erro.textContent = error.message;
       erro.style.display = '';
       copiarConfirmBtn.disabled = false;
-      copiarConfirmBtn.textContent = 'Copiar treino';
+      copiarConfirmBtn.textContent = textoOriginal;
       return;
     }
-    await copiarExerciciosParaTreino(treino, novo.id);
+    const novosOrdenados = novos.sort((a, b) => a.ordem - b.ordem);
+    for (let i = 0; i < treinos.length; i++) {
+      await copiarExerciciosParaTreino(treinos[i], novosOrdenados[i].id);
+    }
     overlay.remove();
-    alert('Treino copiado para ' + aluno.nome + '. Ele está oculto pro aluno até você habilitar a visibilidade na divisão dele.');
+    alert('Programação copiada para ' + aluno.nome + ' (' + treinos.length + (treinos.length === 1 ? ' treino' : ' treinos') + '). Ela está oculta pro aluno até você habilitar a visibilidade.');
   });
 
   box.appendChild(label);
@@ -1318,8 +1343,8 @@ function renderTreinoBody(treino) {
   const duplicarBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;">⎘ Duplicar treino</button>');
   duplicarBtn.addEventListener('click', () => duplicarTreino(treino));
   nomeRow.appendChild(duplicarBtn);
-  const copiarAlunoBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;">↷ Copiar para outro aluno</button>');
-  copiarAlunoBtn.addEventListener('click', () => abrirModalCopiarParaAluno(treino));
+  const copiarAlunoBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;">↷ Copiar programação para outro aluno</button>');
+  copiarAlunoBtn.addEventListener('click', () => abrirModalCopiarParaAluno());
   nomeRow.appendChild(copiarAlunoBtn);
   const excluirBtn = el('<button type="button" class="btn btn-secondary" style="white-space:nowrap;color:var(--erro);">🗑 Excluir treino</button>');
   excluirBtn.addEventListener('click', () => excluirTreino(treino));
