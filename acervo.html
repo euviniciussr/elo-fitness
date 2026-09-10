@@ -487,6 +487,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 <option value="Trapézio">Trapézio</option>
                 <option value="Adutor">Adutor</option>
                 <option value="Core">Core</option>
+                <option value="Abdômen">Abdômen</option>
                 <option value="Lombar">Lombar</option>
                 <option value="Pliometria">Pliometria</option>
               </select>
@@ -559,6 +560,20 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <sc-if value="{{ mostrarBotaoAddEx }}" hint-placeholder-val="{{ true }}">
             <button sc-camel-on-click="{{ openAddEx }}" style="width:100%;background:#131a26;border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:9px;cursor:pointer;">+ Adicionar Exercício</button>
           </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ videoModalOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(6,8,12,.8);display:flex;align-items:center;justify-content:center;padding:5vh 16px;z-index:300;">
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:14px;width:100%;max-width:420px;max-height:90vh;display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-shrink:0;">
+            <div style="font-size:13px;font-weight:800;">Vídeo do exercício</div>
+            <button sc-camel-on-click="{{ onFecharVideo }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:16px;font-weight:700;width:30px;height:30px;border-radius:8px;cursor:pointer;line-height:1;flex-shrink:0;">×</button>
+          </div>
+          <div style="position:relative;flex:1;min-height:280px;border-radius:10px;overflow:hidden;background:#000;">
+            <iframe src="{{ videoModalEmbedUrl }}" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+          </div>
         </div>
       </div>
     </sc-if>
@@ -744,7 +759,9 @@ class Component extends DCLogic {
     refeicaoModalOpen: false, refeicaoEditId: '', refeicaoNome: '', refeicaoDescricao: '', refeicaoErro: '', refeicaoSalvarLabel: 'Criar refeição',
 
     tecnicasDb: [],
-    tecnicaModalOpen: false, tecnicaEditId: '', tecnicaNome: '', tecnicaDescricao: '', tecnicaErro: '', tecnicaSalvarLabel: 'Salvar técnica'
+    tecnicaModalOpen: false, tecnicaEditId: '', tecnicaNome: '', tecnicaDescricao: '', tecnicaErro: '', tecnicaSalvarLabel: 'Salvar técnica',
+
+    videoModalUrl: ''
   };
 
   componentDidMount() {
@@ -797,7 +814,17 @@ class Component extends DCLogic {
   }
 
   onVerVideo(url) {
-    window.open(url, '_blank', 'noopener');
+    this.setState({ videoModalUrl: url });
+  }
+
+  embedUrl(url) {
+    if (!url) return '';
+    if (url.includes('iframe.mediadelivery.net')) return url;
+    const yt = url.match(/(?:youtube\.com\/shorts\/|youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+    if (yt) return 'https://www.youtube.com/embed/' + yt[1];
+    const vimeo = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (vimeo) return 'https://player.vimeo.com/video/' + vimeo[1];
+    return url;
   }
 
   // Exclusão exclusiva do admin (gate real é a RLS — isso é só a verificação
@@ -1475,6 +1502,10 @@ class Component extends DCLogic {
       criarExLabel: this.state.criarExLabel,
       closeExModal: () => this.setState({ exModalOpen: false }),
       onCriarExercicio: () => this.onCriarExercicio(),
+
+      videoModalOpen: !!this.state.videoModalUrl,
+      videoModalEmbedUrl: this.embedUrl(this.state.videoModalUrl),
+      onFecharVideo: () => this.setState({ videoModalUrl: '' }),
 
       treinoDetalheOpen: !!this.state.treinoDetalheId,
       treinoDetalheNome: (this.state.treinosDb.find(t => t.id === this.state.treinoDetalheId) || {}).nome || '',
