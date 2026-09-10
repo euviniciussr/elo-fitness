@@ -586,16 +586,6 @@ aside + * table{display:block!important;overflow-x:auto!important}
                       <div style="font-size:11.5px;color:#9aa4b2;">às {{ dv.finalizadoHorario }}</div>
                     </div>
                   </div>
-                  <sc-if value="{{ dv.feedbackTreinoEnviado }}" hint-placeholder-val="{{ false }}">
-                    <div style="margin-top:10px;font-size:12.5px;color:#4ade80;">✓ Feedback do treino enviado</div>
-                  </sc-if>
-                  <sc-if value="{{ dv.feedbackTreinoNaoEnviado }}" hint-placeholder-val="{{ true }}">
-                    <div style="margin-top:12px;background:#0d1119;border:1px solid #1e2633;border-radius:12px;padding:16px 18px;">
-                      <div style="font-size:12.5px;font-weight:800;margin-bottom:8px;">Como foi seu treino hoje?</div>
-                      <textarea value="{{ dv.feedbackTreinoTexto }}" sc-camel-on-change="{{ dv.onFeedbackTreinoChange }}" placeholder="Ex: Senti dificuldade nas últimas séries de perna…" style="width:100%;min-height:60px;background:#131a26;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:12.5px;outline:none;resize:vertical;"></textarea>
-                      <button type="button" sc-camel-on-click="{{ dv.onEnviarFeedbackTreino }}" style="margin-top:10px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:9px 16px;border-radius:9px;cursor:pointer;">{{ dv.feedbackTreinoLabel }}</button>
-                    </div>
-                  </sc-if>
                   <sc-if value="{{ dv.temFotoLocal }}" hint-placeholder-val="{{ false }}">
                     <div style="margin-top:10px;display:flex;align-items:center;gap:10px;">
                       <img src="{{ dv.fotoTreinoPreview }}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:1px solid #1a2130;">
@@ -1113,7 +1103,6 @@ class Component extends DCLogic {
     avaliacoesFisicas: [], medidasCorporais: [], comparacoesFotos: [],
     cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {},
     feedbackGeralTexto: '', feedbackGeralEnviando: false, feedbackGeralEnviado: false,
-    feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {},
     maisAbertoMobile: false,
     fotoTreinoUploading: {}, fotoTreinoPreview: {},
     descansoAtivo: null, descansoConcluido: null,
@@ -1556,29 +1545,6 @@ class Component extends DCLogic {
       titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou uma mensagem') : 'Nova mensagem recebida'
     });
     this.setState(s => ({ mensagens: [...s.mensagens, nova], mensagemTexto: '', enviandoMensagem: false }));
-  }
-
-  onFeedbackTreinoChange(treinoId, valor) {
-    this.setState(s => ({ feedbackTreinoTexto: { ...s.feedbackTreinoTexto, [treinoId]: valor } }));
-  }
-
-  // Feedback vinculado a um treino específico — enviado depois de "Finalizar
-  // treino", fica associado a esse treino (não é o feedback geral acima).
-  async onEnviarFeedbackTreino(treinoId) {
-    const texto = (this.state.feedbackTreinoTexto[treinoId] || '').trim();
-    if (!texto) return;
-    this.setState(s => ({ feedbackTreinoEnviando: { ...s.feedbackTreinoEnviando, [treinoId]: true } }));
-    await supabaseClient.from('feedbacks_treino').insert({
-      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, comentario: texto, treino_id: treinoId
-    });
-    await supabaseClient.from('notificacoes').insert({
-      trainer_id: this.state.trainerId, cliente_id: this.state.clienteId, destino: 'trainer',
-      titulo: this.state.alunoNome ? (this.state.alunoNome + ' enviou um feedback do treino') : 'Novo feedback de treino recebido'
-    });
-    this.setState(s => ({
-      feedbackTreinoEnviando: { ...s.feedbackTreinoEnviando, [treinoId]: false },
-      feedbackTreinoEnviado: { ...s.feedbackTreinoEnviado, [treinoId]: true }
-    }));
   }
 
   async onFotoUpload(e) {
@@ -2041,12 +2007,6 @@ class Component extends DCLogic {
         aindaNaoFinalizadoHoje: !execHoje,
         finalizadoHorario: execHoje ? new Date(execHoje.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
         onFinalizarTreino: () => this.onFinalizarTreinoEspecifico(dv.id),
-        feedbackTreinoEnviado: !!this.state.feedbackTreinoEnviado[dv.id],
-        feedbackTreinoNaoEnviado: !this.state.feedbackTreinoEnviado[dv.id],
-        feedbackTreinoTexto: this.state.feedbackTreinoTexto[dv.id] || '',
-        feedbackTreinoLabel: this.state.feedbackTreinoEnviando[dv.id] ? 'Enviando…' : 'Enviar feedback',
-        onFeedbackTreinoChange: (ev) => this.onFeedbackTreinoChange(dv.id, ev.target.value),
-        onEnviarFeedbackTreino: () => this.onEnviarFeedbackTreino(dv.id),
         temFotoLocal: !!this.state.fotoTreinoPreview[dv.id],
         temFotoSemPreview: !this.state.fotoTreinoPreview[dv.id] && !!(execHoje && execHoje.foto_url),
         semFoto: !this.state.fotoTreinoPreview[dv.id] && !(execHoje && execHoje.foto_url),
