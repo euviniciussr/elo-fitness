@@ -729,6 +729,26 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ativos&quot;,&quot;options&quot;:[&quot;ativos&quot;,&quot;feedbacks&quot;,&quot;diario&quot;,&quot;mensagens&quot;,&quot;todos&quot;,&quot;prescricoes&quot;,&quot;renovacoes&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
+// Primeiro nome do trainer, sem acento/espaço — só pra diferenciar
+// visualmente o link (ex.: "Savera Costa" -> "savera"). Não tem função de
+// segurança nem é validado no aceite do convite, é só estética.
+const DIACRITICOS_SLUG = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+function slugTrainer(nome) {
+  const primeiro = (nome || '').trim().split(/\s+/)[0] || '';
+  const limpo = primeiro.normalize('NFD').replace(DIACRITICOS_SLUG, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return limpo || 'personal';
+}
+// Código curto do convite (5 caracteres) — o que de fato identifica o
+// convite; único no banco (convites_token_key).
+function codigoConvite() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const arr = new Uint8Array(5);
+  crypto.getRandomValues(arr);
+  let s = '';
+  for (let i = 0; i < 5; i++) s += chars[arr[i] % chars.length];
+  return s;
+}
+
 class Component extends DCLogic {
   state = {
     tab: 'ativos', chat: 'ana', filtroTodos: 'todos', notifOpen: false, notificacoes: [], busca: '',
@@ -795,16 +815,22 @@ class Component extends DCLogic {
     }
     this.setState({ convidarCarregando: true, gerarLabel: 'Gerando…', convidarErro: '' });
     const { data: { user } } = await supabaseClient.auth.getUser();
-    const { data, error } = await supabaseClient
-      .from('convites')
-      .insert({ trainer_id: user.id, email })
-      .select()
-      .single();
+    let data, error;
+    for (let tentativa = 0; tentativa < 3; tentativa++) {
+      const resp = await supabaseClient
+        .from('convites')
+        .insert({ trainer_id: user.id, email, token: codigoConvite() })
+        .select()
+        .single();
+      data = resp.data;
+      error = resp.error;
+      if (!error || error.code !== '23505') break;
+    }
     if (error) {
       this.setState({ convidarCarregando: false, gerarLabel: 'Gerar convite', convidarErro: error.message });
       return;
     }
-    const link = window.location.origin + window.location.pathname.replace('alunos.html', '') + 'convite.html?token=' + data.token;
+    const link = window.location.origin + '/c/' + slugTrainer(this.state.trainerNomeCompleto) + '/' + data.token;
     this.setState({ convidarCarregando: false, gerarLabel: 'Gerar convite', convidarLink: link });
     this.loadDados();
   }

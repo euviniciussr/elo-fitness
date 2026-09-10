@@ -271,6 +271,7 @@ let mensagensList = [];
 let mensagemEnviando = false;
 let convite = null;
 let conviteLinkAberto = false;
+let trainerNomeCompleto = '';
 let activeTab = tabParam || 'treino';
 
 let taDetalheId = '';
@@ -294,6 +295,26 @@ function iniciais(nome) {
   return (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 }
 
+// Primeiro nome do trainer, sem acento/espaço — só pra diferenciar
+// visualmente o link (ex.: "Savera Costa" -> "savera"). Não tem função de
+// segurança nem é validado no aceite do convite, é só estética.
+const DIACRITICOS_SLUG = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
+function slugTrainer(nome) {
+  const primeiro = (nome || '').trim().split(/\s+/)[0] || '';
+  const limpo = primeiro.normalize('NFD').replace(DIACRITICOS_SLUG, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return limpo || 'personal';
+}
+// Código curto do convite (5 caracteres) — o que de fato identifica o
+// convite; único no banco (convites_token_key).
+function codigoConvite() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const arr = new Uint8Array(5);
+  crypto.getRandomValues(arr);
+  let s = '';
+  for (let i = 0; i < 5; i++) s += chars[arr[i] % chars.length];
+  return s;
+}
+
 function diasLabel(dias) {
   if (!dias || !dias.length) return 'Sem dias definidos';
   return dias.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', ');
@@ -310,7 +331,7 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes, msgRes] = await Promise.all([
+  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes, msgRes, trainerRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
@@ -327,8 +348,10 @@ async function init() {
     supabaseClient.from('feedbacks_treino').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true }),
     supabaseClient.from('convites').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabaseClient.from('mensagens').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: true })
+    supabaseClient.from('mensagens').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: true }),
+    supabaseClient.from('trainers').select('nome').eq('id', userId).maybeSingle()
   ]);
+  trainerNomeCompleto = (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '';
   exerciciosLib = exsRes.data || [];
   tecnicasLib = tecsRes.data || [];
   treinos = trRes.data || [];
@@ -929,7 +952,7 @@ function renderHeader() {
   header.appendChild(actions);
 
   if (conviteLinkAberto && convite) {
-    const link = window.location.origin + window.location.pathname.replace('aluno-detalhe.html', '') + 'convite.html?token=' + convite.token;
+    const link = window.location.origin + '/c/' + slugTrainer(trainerNomeCompleto) + '/' + convite.token;
     const box = el(
       '<div class="convite-link-box">' +
         '<input readonly value="' + link + '">' +
@@ -946,9 +969,15 @@ function renderHeader() {
 
 async function gerarConviteCliente() {
   if (!cliente.email) { alert('Esse aluno ainda não tem e-mail cadastrado.'); return; }
-  const { data, error } = await supabaseClient.from('convites')
-    .insert({ trainer_id: userId, cliente_id: cliente.id, email: cliente.email })
-    .select().single();
+  let data, error;
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const resp = await supabaseClient.from('convites')
+      .insert({ trainer_id: userId, cliente_id: cliente.id, email: cliente.email, token: codigoConvite() })
+      .select().single();
+    data = resp.data;
+    error = resp.error;
+    if (!error || error.code !== '23505') break;
+  }
   if (error) { alert('Não foi possível gerar o convite: ' + error.message); return; }
   convite = data;
   conviteLinkAberto = true;
