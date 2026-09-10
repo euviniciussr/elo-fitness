@@ -85,6 +85,10 @@ textarea{resize:vertical;min-height:52px;}
 .btn-wa{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);color:var(--ok);font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap;}
 .btn-convite{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3);color:#f97316;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap;}
 .convite-link-box{display:flex;gap:8px;margin-top:10px;width:100%;}
+.btn-excluir-aluno{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:var(--erro);font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;white-space:nowrap;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal-box{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:16px;padding:24px;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;}
+.modal-box h2{font-size:16px;font-weight:800;margin:0 0 12px;}
 .convite-link-box input{flex:1;min-width:0;font-size:12px;}
 .btn:disabled{opacity:.55;cursor:default;}
 .btn-block{width:100%;}
@@ -919,6 +923,9 @@ function renderHeader() {
     cvBtn.addEventListener('click', gerarConviteCliente);
     actions.appendChild(cvBtn);
   }
+  const delBtn = el('<button type="button" class="btn-excluir-aluno"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg> Excluir aluno</button>');
+  delBtn.addEventListener('click', abrirModalExcluirAluno);
+  actions.appendChild(delBtn);
   header.appendChild(actions);
 
   if (conviteLinkAberto && convite) {
@@ -954,6 +961,53 @@ function notificarCliente() {
   if (digits.length <= 11) digits = '55' + digits;
   const msg = encodeURIComponent('Oi ' + cliente.nome + '! Seu treino já está pronto no Elo Fitness <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg>');
   window.open('https://wa.me/' + digits + '?text=' + msg, '_blank');
+}
+
+// Exclui o cliente inteiro (dados apagam em cascata: treinos, dieta,
+// anamnese, avaliações físicas, mensagens, histórico de execuções —
+// tudo que referencia clientes.id com "on delete cascade" no schema).
+// Pagamentos ficam com cliente_id nulo em vez de apagar, pra preservar
+// o relatório de faturamento. Não afeta o banco global (exercícios,
+// técnicas avançadas) nem outros alunos. Exige digitar o nome exato
+// pra habilitar o botão, já que não tem como desfazer.
+function abrirModalExcluirAluno() {
+  const nomeAluno = cliente.nome || clienteNomeParam || '';
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box"></div>');
+  box.appendChild(el('<h2>Excluir aluno</h2>'));
+  box.appendChild(el(
+    '<div class="sub" style="margin:0 0 14px;">Isso apaga <strong>' + nomeAluno + '</strong> e tudo ligado a ele: treinos, dieta, anamnese, avaliações físicas, fotos, mensagens e histórico de execuções. ' +
+    'Não afeta outros alunos nem o banco de exercícios/técnicas. Essa ação não pode ser desfeita.</div>'
+  ));
+  box.appendChild(el('<label>Digite <strong>' + nomeAluno + '</strong> pra confirmar</label>'));
+  const input = el('<input placeholder="' + nomeAluno.replace(/"/g, '&quot;') + '">');
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const excluirBtn = el('<button type="button" class="btn" style="flex:1;background:var(--erro);color:#fff;" disabled>Excluir aluno</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  input.addEventListener('input', () => { excluirBtn.disabled = input.value.trim() !== nomeAluno.trim(); });
+  excluirBtn.addEventListener('click', async () => {
+    excluirBtn.disabled = true;
+    excluirBtn.textContent = 'Excluindo…';
+    const { error } = await supabaseClient.from('clientes').delete().eq('id', cliente.id);
+    if (error) {
+      erro.textContent = error.message;
+      erro.style.display = '';
+      excluirBtn.disabled = false;
+      excluirBtn.textContent = 'Excluir aluno';
+      return;
+    }
+    window.location.href = 'alunos.html';
+  });
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(excluirBtn);
+  box.appendChild(input);
+  box.appendChild(erro);
+  box.appendChild(btnRow);
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function renderTabs() {
