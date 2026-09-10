@@ -279,7 +279,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </nav>
       <div style="display:flex;align-items:center;gap:10px;padding:14px 8px 0;border-top:1px solid #171d29;margin-top:10px;">
         <div style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></div>
-        <div><div style="font-size:13px;font-weight:700;">Seu nome</div><div style="font-size:11px;color:#66707e;">seu@email.com</div></div>
+        <div><div style="font-size:13px;font-weight:700;">{{ meuNome }}</div><div style="font-size:11px;color:#66707e;">{{ meuEmail }}</div></div>
       </div>
     </div>
   </aside>
@@ -732,7 +732,7 @@ const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira',
 class Component extends DCLogic {
   state = {
     tab: 'ativos', chat: 'ana', filtroTodos: 'todos', notifOpen: false, notificacoes: [], busca: '',
-    clientes: [], convites: [], exerciciosDb: [], treinosPorCliente: [], execucoes: [],
+    clientes: [], convites: [], exerciciosDb: [], treinosPorCliente: [], execucoes: [], trainerNomeCompleto: '', trainerEmail: '',
     convidarOpen: false, convidarEmail: '', convidarErro: '', convidarCarregando: false, convidarLink: '', copiarLabel: 'Copiar', gerarLabel: 'Gerar convite'
   };
 
@@ -744,17 +744,20 @@ class Component extends DCLogic {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
     const desde30 = new Date(); desde30.setDate(desde30.getDate() - 30);
-    const [clientesRes, convitesRes, exerciciosRes, notifRes, treinosRes, execucoesRes] = await Promise.all([
+    const [clientesRes, convitesRes, exerciciosRes, notifRes, treinosRes, execucoesRes, trainerRes] = await Promise.all([
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('convites').select('*').eq('trainer_id', user.id).eq('status', 'pendente').order('created_at', { ascending: false }),
       supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
       supabaseClient.from('notificacoes').select('*').eq('trainer_id', user.id).eq('destino', 'trainer').order('created_at', { ascending: false }).limit(20),
       supabaseClient.from('treinos').select('cliente_id, dias_semana').eq('trainer_id', user.id).eq('habilitado', true),
-      supabaseClient.from('treino_execucoes').select('cliente_id, data').eq('trainer_id', user.id).gte('data', desde30.toISOString().slice(0, 10))
+      supabaseClient.from('treino_execucoes').select('cliente_id, data').eq('trainer_id', user.id).gte('data', desde30.toISOString().slice(0, 10)),
+      supabaseClient.from('trainers').select('nome').eq('id', user.id).maybeSingle()
     ]);
     this.setState({
       clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: exerciciosRes.data || [], notificacoes: notifRes.data || [],
-      treinosPorCliente: treinosRes.data || [], execucoes: execucoesRes.data || []
+      treinosPorCliente: treinosRes.data || [], execucoes: execucoesRes.data || [],
+      trainerNomeCompleto: (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '',
+      trainerEmail: user.email || ''
     });
   }
 
@@ -900,6 +903,8 @@ class Component extends DCLogic {
 
     return {
       tituloAba: titulos[tab][0], subtituloAba: titulos[tab][1],
+      meuNome: this.state.trainerNomeCompleto || 'Seu nome',
+      meuEmail: this.state.trainerEmail || 'seu@email.com',
       tabs: TABS.map(([k, label, badge]) => ({
         label, badge, onClick: go(k),
         weight: tab === k ? '800' : '600',
