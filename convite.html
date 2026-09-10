@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Convite — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-client.js"></script>
+<script src="/js/supabase-client.js"></script>
 <style>
 html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e5e9f0;}
 *{box-sizing:border-box;}
@@ -38,7 +38,15 @@ button:disabled{opacity:.6;cursor:default;}
 
 <script>
 const params = new URLSearchParams(window.location.search);
-const token = params.get('token');
+let token = params.get('token');
+if (!token) {
+  // Link curto /c/<slug>/<codigo>: o rewrite do vercel.json serve este
+  // arquivo por baixo dos panos, mas não repassa query string nenhuma pro
+  // navegador (isso só funciona pra rotas server-side) — então o token
+  // precisa ser lido do próprio caminho da URL, não da query string.
+  const m = window.location.pathname.match(/^\/c\/[^/]+\/([^/?#]+)/);
+  if (m) token = m[1];
+}
 const content = document.getElementById('content');
 
 function renderErro(msg) {
@@ -105,7 +113,7 @@ async function finalizarAceite(nome) {
     renderErro('Não foi possível concluir: ' + error.message);
     return;
   }
-  window.location.href = 'app-aluno.html';
+  window.location.href = '/app-aluno.html';
 }
 
 async function init() {
@@ -140,6 +148,6 @@ async function init() {
 init();
 </script>
 <script>window.TEMA_CONTA = 'nenhuma';</script>
-<script src="js/tema.js?v=5"></script>
+<script src="/js/tema.js?v=5"></script>
 </body>
 </html>
