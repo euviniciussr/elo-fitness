@@ -215,6 +215,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 .opcao-alt .opcao-total-label{font-size:11px;}
 .opcao-alt .opcao-total-value{font-size:12.5px;}
 
+/* Pisca 2x quando o descanso entre séries termina — reforça o aviso
+   sonoro/vibração pro caso do aluno estar olhando a tela nesse momento. */
+@keyframes descanso-fim-pisca{0%,100%{background:rgba(74,222,128,.12);}50%{background:rgba(74,222,128,.32);}}
+.descanso-fim-banner{animation:descanso-fim-pisca .5s ease-in-out 2;}
+
 /* Navegação inferior mobile — mesmo padrão usado nas páginas do personal (dashboard.html etc). */
 .pf-bottom-nav{display:none}
 @media (max-width:860px){
@@ -540,6 +545,12 @@ aside + * table{display:block!important;overflow-x:auto!important}
                             <div style="margin-top:7px;height:4px;background:rgba(59,130,246,.15);border-radius:99px;overflow:hidden;">
                               <div style="height:100%;width:{{ e.descansoPct }};background:#3b82f6;border-radius:99px;"></div>
                             </div>
+                          </div>
+                        </sc-if>
+                        <sc-if value="{{ e.descansoConcluido }}" hint-placeholder-val="{{ false }}">
+                          <div class="descanso-fim-banner" style="margin-top:8px;background:rgba(74,222,128,.12);border:1px solid rgba(74,222,128,.4);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:7px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#4ade80;flex-shrink:0;"><path d="M20 6 9 17l-5-5"></path></svg>
+                            <span style="font-size:13px;font-weight:800;color:#4ade80;">Descanso concluído — hora da próxima série!</span>
                           </div>
                         </sc-if>
                         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;font-size:12px;color:#9aa4b2;">
@@ -1105,10 +1116,12 @@ class Component extends DCLogic {
     feedbackTreinoTexto: {}, feedbackTreinoEnviando: {}, feedbackTreinoEnviado: {},
     maisAbertoMobile: false,
     fotoTreinoUploading: {}, fotoTreinoPreview: {},
-    descansoAtivo: null,
+    descansoAtivo: null, descansoConcluido: null,
     mensagens: [], mensagemTexto: '', enviandoMensagem: false
   };
   _descansoInterval = null;
+  _descansoConcluidoTimeout = null;
+  _audioCtx = null;
 
   componentDidMount() {
     this.loadTreino();
@@ -1363,8 +1376,23 @@ class Component extends DCLogic {
   iniciarDescanso(treinoExercicioId, segundos) {
     const descansoAtivo = { treinoExercicioId, fimEm: Date.now() + segundos * 1000, total: segundos };
     try { localStorage.setItem('descansoAtivo', JSON.stringify(descansoAtivo)); } catch (e) {}
-    this.setState({ descansoAtivo });
+    if (this._descansoConcluidoTimeout) { clearTimeout(this._descansoConcluidoTimeout); this._descansoConcluidoTimeout = null; }
+    this.setState({ descansoAtivo, descansoConcluido: null });
+    // Cria/destrava o AudioContext AQUI, dentro do gesto de clique do aluno
+    // (marcar a série) — navegadores bloqueiam áudio criado fora de um gesto
+    // do usuário, e o timer termina de forma assíncrona (setInterval), sem
+    // gesto nenhum. Sem isso o beep de _avisarFimDescanso tocava mudo.
+    this._destravarAudio();
     this._rodarIntervaloDescanso();
+  }
+
+  _destravarAudio() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!this._audioCtx) this._audioCtx = new AudioCtx();
+      if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
+    } catch (e) {}
   }
 
   _rodarIntervaloDescanso() {
@@ -1375,8 +1403,13 @@ class Component extends DCLogic {
         clearInterval(this._descansoInterval);
         this._descansoInterval = null;
         try { localStorage.removeItem('descansoAtivo'); } catch (e) {}
-        this.setState({ descansoAtivo: null });
+        this.setState({ descansoAtivo: null, descansoConcluido: atual ? atual.treinoExercicioId : null });
         this._avisarFimDescanso();
+        if (this._descansoConcluidoTimeout) clearTimeout(this._descansoConcluidoTimeout);
+        this._descansoConcluidoTimeout = setTimeout(() => {
+          this._descansoConcluidoTimeout = null;
+          this.setState({ descansoConcluido: null });
+        }, 6000);
         return;
       }
       this.setState({}); // só força recalcular "restante" (feito em renderVals a partir de fimEm)
@@ -1385,13 +1418,15 @@ class Component extends DCLogic {
 
   // Aviso sonoro + vibração quando o descanso zera — o aluno costuma
   // largar o celular de lado durante o descanso entre séries, então só
-  // o número mudando na tela não é suficiente.
+  // o número mudando na tela não é suficiente. O aviso visual (banner
+  // verde "Descanso concluído") fica por conta de `descansoConcluido` no
+  // template, que soma-se a isso.
   _avisarFimDescanso() {
     try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      this._destravarAudio(); // fallback pro caso de _restaurarDescanso (reload) sem gesto prévio
+      const ctx = this._audioCtx;
+      if (!ctx) return;
       [0, 0.18].forEach((atraso) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -1404,7 +1439,6 @@ class Component extends DCLogic {
         osc.start(ctx.currentTime + atraso);
         osc.stop(ctx.currentTime + atraso + 0.18);
       });
-      setTimeout(() => ctx.close(), 600);
     } catch (e) {}
   }
 
@@ -1983,6 +2017,7 @@ class Component extends DCLogic {
             descansoAtivo: !!descansoAtivo,
             descansoLabel: descansoAtivo ? Math.floor(descansoRestante / 60) + ':' + String(descansoRestante % 60).padStart(2, '0') : '',
             descansoPct: descansoAtivo ? Math.round((1 - descansoRestante / descansoAtivo.total) * 100) + '%' : '0%',
+            descansoConcluido: this.state.descansoConcluido === e.teId,
             onPularDescanso: () => this.pularDescanso(),
             carga: e.carga, descanso: e.descanso, observacoes: e.observacoes,
             tecnica: e.tecnica, tecnicaObs: e.tecnicaObs,
