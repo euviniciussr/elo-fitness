@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/favicon-180.png">
 <title>Convite — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="/js/supabase-client.js"></script>
@@ -11,8 +14,8 @@ html,body{margin:0;padding:0;background:#0a0d13;font-family:-apple-system,BlinkM
 *{box-sizing:border-box;}
 .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
 .card{width:100%;max-width:420px;background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:28px 26px;}
-.logo{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:24px;}
-.logo-badge{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:19px;}
+.logo{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:24px;}
+.logo-badge{width:40px;height:40px;border-radius:11px;object-fit:cover;display:block;}
 .logo-text{font-size:21px;font-weight:800;}
 .logo-text span{color:#f97316;}
 h1{font-size:18px;font-weight:800;margin:0 0 4px;}
@@ -29,7 +32,7 @@ button:disabled{opacity:.6;cursor:default;}
 <div class="wrap">
   <div class="card">
     <div class="logo">
-      <div class="logo-badge">E</div>
+      <img class="logo-badge" src="assets/brand/logo-inline.png" alt="Elo Fitness">
       <div class="logo-text">Elo <span>Fitness</span></div>
     </div>
     <div id="content"><div class="info">Carregando convite…</div></div>

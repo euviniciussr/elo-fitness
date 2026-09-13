@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/favicon-180.png">
 <title>Redefinir senha — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
@@ -20,8 +23,8 @@ html,body{margin:0;padding:0;background:var(--bg);font-family:-apple-system,Blin
 *{box-sizing:border-box;}
 .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px;}
 .box{width:100%;max-width:380px;}
-.brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;}
-.brand-badge{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:19px;}
+.brand{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:28px;}
+.brand-badge{width:40px;height:40px;border-radius:11px;object-fit:cover;display:block;}
 .brand-name{font-size:21px;font-weight:800;}
 .brand-name span{color:#f97316;}
 .card{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:18px;padding:28px 26px;}
@@ -45,7 +48,7 @@ button:disabled{opacity:.6;cursor:default;}
 <div class="wrap">
   <div class="box">
     <div class="brand">
-      <div class="brand-badge">E</div>
+      <img class="brand-badge" src="assets/brand/logo-inline.png" alt="Elo Fitness">
       <div class="brand-name">Elo <span>Fitness</span></div>
     </div>
     <div class="card" id="card-form" style="display:none;">

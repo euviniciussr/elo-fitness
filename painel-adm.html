@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/favicon-180.png">
 <title>Painel Admin — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
@@ -27,8 +30,8 @@ button,select{font-family:inherit;cursor:pointer;}
 .shell{display:flex;min-height:100vh;}
 
 .sidebar{width:240px;flex:none;background:var(--bg-sidebar);border-right:1px solid var(--borda);display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;}
-.logo{display:flex;align-items:center;gap:10px;padding:4px 8px 20px;}
-.logo-badge{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;flex:none;}
+.logo{display:flex;align-items:center;gap:6px;padding:4px 8px 20px;}
+.logo-badge{width:32px;height:32px;border-radius:9px;object-fit:cover;display:block;flex:none;}
 .logo-text{font-size:16px;font-weight:800;}
 .logo-text span{color:#f97316;}
 .nav-group-label{font-size:10.5px;font-weight:800;color:var(--texto-4);text-transform:uppercase;letter-spacing:.06em;padding:14px 10px 6px;}
@@ -102,7 +105,7 @@ tr:last-child td{border-bottom:none;}
 <div class="shell">
   <div class="sidebar">
     <div class="logo">
-      <div class="logo-badge">E</div>
+      <img class="logo-badge" src="assets/brand/logo-inline.png" alt="Elo Fitness">
       <div class="logo-text">Elo <span>Fitness</span></div>
     </div>
     <div class="nav-group-label">Visão geral</div>

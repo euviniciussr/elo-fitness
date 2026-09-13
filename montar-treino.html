@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/favicon-180.png">
 <title>Montar treino — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
@@ -29,8 +32,8 @@ textarea{font-family:inherit;}
 ::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:var(--bg-ativo);border-radius:4px;}
 
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--borda);}
-.logo{display:flex;align-items:center;gap:10px;}
-.logo-badge{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#f97316,#ea580c);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;}
+.logo{display:flex;align-items:center;gap:6px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;object-fit:cover;display:block;}
 .logo-text{font-size:17px;font-weight:800;}
 .logo-text span{color:#f97316;}
 .voltar{font-size:13px;font-weight:700;color:var(--texto-2);}
@@ -153,7 +156,7 @@ textarea{resize:vertical;min-height:52px;}
 
 <div class="topbar">
   <div class="logo">
-    <div class="logo-badge">E</div>
+    <img class="logo-badge" src="assets/brand/logo-inline.png" alt="Elo Fitness">
     <div class="logo-text">Elo <span>Fitness</span></div>
   </div>
   <a class="voltar" id="voltar-link" href="acervo.html">← Voltar pro acervo</a>
