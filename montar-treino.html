@@ -639,7 +639,7 @@ function buildVideoEmbedNode(url) {
 async function init() {
   if (clienteIdParam) {
     const link = document.getElementById('voltar-link');
-    link.href = 'alunos.html';
+    link.href = 'aluno-detalhe.html?cliente_id=' + clienteIdParam + (clienteNomeParam ? '&cliente_nome=' + encodeURIComponent(clienteNomeParam) : '');
     link.textContent = '← Voltar pro aluno';
   }
 
