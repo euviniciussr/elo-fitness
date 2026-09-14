@@ -104,6 +104,8 @@ const TIPOS = [
 
 let userId = null;
 let isAdmin = false;
+let anamneseModo = 'padrao';
+let salvandoModo = false;
 let editingTarget = 'meu';
 let defaultTemplateId = null;
 let estruturaPadraoOriginal = { secoes: [], perguntas: [] };
@@ -146,12 +148,13 @@ async function init() {
   userId = user.id;
 
   const [{ data: trainerRow }, { data: ownTpl }, { data: defaultTpl }] = await Promise.all([
-    supabaseClient.from('trainers').select('is_admin').eq('id', userId).maybeSingle(),
+    supabaseClient.from('trainers').select('is_admin, anamnese_modo').eq('id', userId).maybeSingle(),
     supabaseClient.from('anamnese_templates').select('estrutura').eq('trainer_id', userId).maybeSingle(),
     supabaseClient.from('anamnese_templates').select('id, estrutura').is('trainer_id', null).maybeSingle()
   ]);
 
   isAdmin = !!(trainerRow && trainerRow.is_admin);
+  anamneseModo = (trainerRow && trainerRow.anamnese_modo) || 'padrao';
   defaultTemplateId = defaultTpl && defaultTpl.id;
   estruturaPadraoOriginal = JSON.parse(JSON.stringify((defaultTpl && defaultTpl.estrutura) || { secoes: [], perguntas: [] }));
 
@@ -161,10 +164,45 @@ async function init() {
   renderApp();
 }
 
+// Escolha de qual anamnese os alunos desse trainer recebem — independente
+// de qual aba ele está editando aqui. 'padrao' usa a padrão do sistema
+// mesmo que ele já tenha uma personalizada salva; só usa a própria quando
+// ele explicitamente escolhe 'personalizada'.
+function renderModoSelector() {
+  const box = el('<div class="list-row" style="margin-bottom:20px;"></div>');
+  box.appendChild(el('<div style="font-size:13.5px;font-weight:800;margin-bottom:4px;">Qual anamnese seus alunos vão responder?</div>'));
+  box.appendChild(el('<div class="sub" style="margin:0 0 12px;">Essa escolha define o formulário que aparece pro aluno logo depois do cadastro — independente de qual aba você está editando abaixo.</div>'));
+
+  const row = el('<div class="sexo-row"></div>');
+  const opcoes = [
+    { valor: 'padrao', label: 'Anamnese padrão do sistema' },
+    { valor: 'personalizada', label: 'Minha anamnese personalizada' }
+  ];
+  opcoes.forEach(o => {
+    const chip = el('<button type="button" class="chip' + (anamneseModo === o.valor ? ' sel' : '') + '"' + (salvandoModo ? ' disabled' : '') + '>' + o.label + '</button>');
+    chip.addEventListener('click', () => salvarModo(o.valor));
+    row.appendChild(chip);
+  });
+  box.appendChild(row);
+  return box;
+}
+
+async function salvarModo(novoModo) {
+  if (novoModo === anamneseModo || salvandoModo) return;
+  salvandoModo = true;
+  renderApp();
+  const { error } = await supabaseClient.from('trainers').update({ anamnese_modo: novoModo }).eq('id', userId);
+  salvandoModo = false;
+  if (!error) anamneseModo = novoModo;
+  renderApp();
+}
+
 function renderApp() {
   app.innerHTML = '';
   app.appendChild(el('<h1>Personalizar Anamnese</h1>'));
   app.appendChild(el('<div class="sub">Edite as perguntas que seus alunos respondem na anamnese inicial. "Dados pessoais" (sexo, idade, altura, peso, objetivo e tempo de treino) é fixo pra todo mundo, porque alimenta o cálculo de TMB/GET — tudo abaixo disso você pode personalizar do seu jeito.</div>'));
+
+  app.appendChild(renderModoSelector());
 
   if (isAdmin) {
     const tabs = el('<div class="tabs" style="margin-bottom:24px;"></div>');

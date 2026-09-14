@@ -1141,8 +1141,9 @@ class Component extends DCLogic {
   _descansoConcluidoTimeout = null;
   _audioCtx = null;
 
-  componentDidMount() {
-    this.loadTreino();
+  async componentDidMount() {
+    const bloqueado = await this.loadTreino();
+    if (bloqueado) return;
     this.loadConvitesPendentes();
     this.loadNotificacoes();
     this._restaurarDescanso();
@@ -1202,11 +1203,27 @@ class Component extends DCLogic {
     return fotos.map((f, i) => ({ ...f, path: f.url, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
   }
 
+  // Retorna true se o acesso foi bloqueado (redirecionou pra anamnese) —
+  // usado por componentDidMount pra não disparar o resto do carregamento
+  // do app quando isso acontece.
   async loadTreino() {
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
-    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status').eq('auth_user_id', user.id).maybeSingle();
-    if (!cliente) return;
+    if (!user) return false;
+    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status, anamnese_obrigatoria').eq('auth_user_id', user.id).maybeSingle();
+    if (!cliente) return false;
+
+    // Gate de onboarding: aluno que entrou via convite puro (sem cadastro
+    // manual prévio do profissional) precisa concluir a anamnese antes de
+    // ver qualquer treino/dieta/evolução — checagem roda antes de
+    // qualquer setState ou busca de dado protegido, não é só visual.
+    if (cliente.anamnese_obrigatoria) {
+      const { data: resp } = await supabaseClient.from('anamnese_respostas_dinamicas').select('respondido_em').eq('cliente_id', cliente.id).maybeSingle();
+      if (!resp || !resp.respondido_em) {
+        window.location.href = 'anamnese.html';
+        return true;
+      }
+    }
+
     const alunoNome = (cliente.nome || '').trim().split(/\s+/)[0] || '';
     this.setState({
       clienteId: cliente.id, trainerId: cliente.trainer_id, alunoNome,

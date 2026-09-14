@@ -352,7 +352,7 @@ async function init() {
     supabaseClient.from('agendamentos').select('*').eq('cliente_id', clienteIdParam).order('data_lembrete', { ascending: true }),
     supabaseClient.from('convites').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabaseClient.from('mensagens').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: true }),
-    supabaseClient.from('trainers').select('nome').eq('id', userId).maybeSingle()
+    supabaseClient.from('trainers').select('nome, anamnese_modo').eq('id', userId).maybeSingle()
   ]);
   trainerNomeCompleto = (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '';
   exerciciosLib = exsRes.data || [];
@@ -366,7 +366,11 @@ async function init() {
   comparacoesList = comparacoesRes.data || [];
   anamnese = anamneseRes.data || null;
   anamneseDinamica = (anamneseDinRes.data && anamneseDinRes.data.respostas) || {};
-  anamneseEstrutura = tplTrainerRes.data && tplTrainerRes.data.estrutura;
+  // Respeita a escolha explícita do trainer (anamnese_modo): só usa a
+  // template própria se ele optou por "personalizada" — com "padrao" usa
+  // a do sistema mesmo que ele tenha uma personalizada salva.
+  const anamneseModoTrainer = (trainerRes.data && trainerRes.data.anamnese_modo) || 'padrao';
+  anamneseEstrutura = anamneseModoTrainer === 'personalizada' ? (tplTrainerRes.data && tplTrainerRes.data.estrutura) : null;
   if (!anamneseEstrutura) {
     const { data: tplDefault } = await supabaseClient.from('anamnese_templates').select('estrutura').is('trainer_id', null).maybeSingle();
     anamneseEstrutura = (tplDefault && tplDefault.estrutura) || { secoes: [], perguntas: [] };
