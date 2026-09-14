@@ -1395,6 +1395,10 @@ function renderTreinoBody(treino) {
       container.appendChild(renderExItem(treino, m));
       if (formMode.type === 'edit' && formMode.te.id === m.id) {
         container.appendChild(renderAddExForm(treino));
+      } else if (formMode.type === 'combo' && formMode.anchorTe && formMode.anchorTe.id === m.id) {
+        // Bi-Set/Super Set novo: o campo abre logo abaixo do exercício que
+        // acionou "Adicionar Bi-Set / Super Set", nunca no fim do treino.
+        container.appendChild(renderAddExForm(treino));
       }
     };
 
@@ -1412,6 +1416,11 @@ function renderTreinoBody(treino) {
           renderMontar();
         });
         combo.appendChild(combinarBtn);
+        // Combo já existente: adicionar mais um membro também abre o campo
+        // dentro do próprio combo-box, não no fim do treino.
+        if (formMode.type === 'combo' && formMode.grupoId === te.grupo_id) {
+          combo.appendChild(renderAddExForm(treino));
+        }
         body.appendChild(combo);
       } else {
         rendered.add(te.id);
@@ -1422,7 +1431,7 @@ function renderTreinoBody(treino) {
 
   if (exerciciosLib.length === 0) {
     body.appendChild(el('<div class="sub" style="margin-top:10px;">Você ainda não tem exercícios no acervo. <a href="acervo.html">Crie um primeiro</a> e volte aqui.</div>'));
-  } else if (formMode.type !== 'edit') {
+  } else if (formMode.type !== 'edit' && formMode.type !== 'combo') {
     body.appendChild(renderAddExForm(treino));
   }
 
@@ -1504,17 +1513,17 @@ function renderExItem(treino, te) {
       renderMontar();
     });
   });
-  actions.appendChild(upBtn);
-  actions.appendChild(downBtn);
-  actions.appendChild(editBtn);
   if (!te.grupo_id) {
-    const combinarBtn = el('<button type="button" class="ex-icon-btn" title="Combinar com outro exercício (bi-set/super-set)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></button>');
+    const combinarBtn = el('<button type="button" class="combinar-btn" style="white-space:nowrap;margin-right:6px;">Adicionar Bi-Set / Super Set</button>');
     combinarBtn.addEventListener('click', () => {
       formMode = { type: 'combo', grupoId: crypto.randomUUID(), anchorTe: te };
       renderMontar();
     });
     actions.appendChild(combinarBtn);
   }
+  actions.appendChild(upBtn);
+  actions.appendChild(downBtn);
+  actions.appendChild(editBtn);
   actions.appendChild(removeBtn);
   item.appendChild(actions);
 
