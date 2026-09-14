@@ -1,13 +1,38 @@
+// Páginas que são a área do ALUNO — tudo que carrega auth-guard.js e não
+// está nessa lista é área exclusiva do personal.
+const PAGINAS_ALUNO = ['app-aluno.html', 'anamnese.html'];
+
 (async function () {
   const { data: { session } } = await supabaseClient.auth.getSession();
   if (!session) {
     window.location.href = 'login.html';
     return;
   }
+  const bloqueado = await bloquearAcessoForaDoPerfil(session.user.id);
+  if (bloqueado) return;
   if (!location.pathname.endsWith('assinatura.html')) {
     aplicarBloqueioAssinatura(session.user.id);
   }
 })();
+
+// O toggle "Sou Personal / Sou Aluno" no login.html é só de UI — decide pra
+// onde mandar o usuário depois de logar, mas não é verificado em lugar
+// nenhum. Sem essa checagem aqui, um aluno que loga com o toggle errado (ou
+// entra direto pela URL de uma página do personal) fica com a página
+// carregando normalmente, mesmo sem nenhum dado dele ali. `trainers.id =
+// auth.uid()` é a única fonte de verdade de "isso é uma conta de personal"
+// (ver supabase/migrations/0001_init.sql) — nunca o que a pessoa escolheu
+// na tela de login.
+async function bloquearAcessoForaDoPerfil(userId) {
+  const pagina = location.pathname.split('/').pop();
+  const isPaginaAluno = PAGINAS_ALUNO.includes(pagina);
+  const { data: trainer } = await supabaseClient.from('trainers').select('id').eq('id', userId).maybeSingle();
+  if (!trainer && !isPaginaAluno) {
+    window.location.replace('app-aluno.html');
+    return true;
+  }
+  return false;
+}
 
 document.addEventListener('click', function (e) {
   const link = e.target.closest && e.target.closest('a[href="login.html"]');

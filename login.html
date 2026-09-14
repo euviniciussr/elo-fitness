@@ -313,7 +313,7 @@ class Component extends DCLogic {
       return;
     }
 
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+    const { data: signInData, error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
     if (error) {
       const msg = error.message === 'Email not confirmed'
         ? 'Confirme seu e-mail antes de entrar (verifique sua caixa de entrada).'
@@ -321,7 +321,13 @@ class Component extends DCLogic {
       this.setState({ carregando: false, erro: msg });
       return;
     }
-    window.location.href = perfil === 'personal' ? 'dashboard.html' : 'app-aluno.html';
+    // O toggle "Sou Personal / Sou Aluno" é só um atalho de UI — quem manda
+    // de verdade é `trainers.id = auth.uid()` (mesma checagem que
+    // js/auth-guard.js faz em toda página depois disso), pra nunca mandar
+    // uma conta de aluno pro dashboard do personal só porque ela deixou o
+    // toggle errado marcado.
+    const { data: trainer } = await supabaseClient.from('trainers').select('id').eq('id', signInData.user.id).maybeSingle();
+    window.location.href = trainer ? 'dashboard.html' : 'app-aluno.html';
   }
 
   renderVals() {
