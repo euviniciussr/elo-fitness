@@ -10,6 +10,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="js/avaliacao-fisica.js"></script>
+<script src="js/avaliacao-charts.js"></script>
+<script src="js/avaliacao-pdf.js"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -201,15 +206,8 @@ const DOBRAS_CAMPOS = [
   ['coxa', 'Coxa']
 ];
 
-// Jackson & Pollock 7 dobras (densidade corporal, fórmula distinta por sexo) + Siri (% de gordura).
-function calcularComposicaoPollock(sexo, idade, dobras) {
-  const soma = DOBRAS_CAMPOS.reduce((acc, [chave]) => acc + (Number(dobras[chave]) || 0), 0);
-  const densidade = sexo === 'M'
-    ? 1.112 - 0.00043499 * soma + 0.00000055 * soma * soma - 0.00028826 * idade
-    : 1.097 - 0.00046971 * soma + 0.00000056 * soma * soma - 0.00012828 * idade;
-  const percGordura = (495 / densidade) - 450;
-  return { soma, densidade, percGordura };
-}
+// Cálculo (Jackson & Pollock 7 dobras + Siri) e helpers de evolução vêm de
+// js/avaliacao-fisica.js — fonte única compartilhada com app-aluno.html.
 
 function anamnesePerguntaDeveAparecer(q, respostas) {
   if (!q.depende_de) return true;
@@ -254,6 +252,8 @@ let anamneseDinamicaEdit = null;
 let avaliacoesFisicas = [];
 let avaliacaoFisicaFormOpen = false;
 let avaliacaoFisicaEditId = '';
+let avaliacaoFisicaDetalheId = '';
+let avaliacaoFisicaMetrica = 'percGordura';
 let fotosList = [];
 let pesoList = [];
 let medidasList = [];
@@ -714,44 +714,60 @@ function renderEnergeticoTab(container) {
   ));
 }
 
-function avaliacaoDobrasDeRegistro(av) {
-  return {
-    peitoral: av.dobra_peitoral, axilar_media: av.dobra_axilar_media, triceps: av.dobra_triceps,
-    subescapular: av.dobra_subescapular, supra_iliaca: av.dobra_supra_iliaca, abdominal: av.dobra_abdominal, coxa: av.dobra_coxa
-  };
-}
-
-function avaliacaoResultado(av) {
-  const { soma, percGordura } = calcularComposicaoPollock(av.sexo, av.idade, avaliacaoDobrasDeRegistro(av));
-  const massaGorda = av.peso_kg * (percGordura / 100);
-  const massaMagra = av.peso_kg - massaGorda;
-  return { soma, percGordura, massaGorda, massaMagra };
-}
-
 function renderAvaliacaoFisicaTab(container) {
   if (avaliacaoFisicaFormOpen) { renderAvaliacaoFisicaForm(container); return; }
+  if (avaliacaoFisicaDetalheId) {
+    const av = avaliacoesFisicas.find(a => a.id === avaliacaoFisicaDetalheId);
+    if (av) { renderAvaliacaoFisicaDetalhe(container, av); return; }
+    avaliacaoFisicaDetalheId = '';
+  }
 
   if (!avaliacoesFisicas.length) {
     container.appendChild(el('<div class="empty">Nenhuma avaliação física registrada ainda.</div>'));
+    const novoBtn0 = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Nova avaliação</button>');
+    novoBtn0.addEventListener('click', () => { avaliacaoFisicaEditId = ''; avaliacaoFisicaFormOpen = true; render(); });
+    container.appendChild(novoBtn0);
+    return;
   }
-  avaliacoesFisicas.forEach(av => {
+
+  const asc = ordenarAvaliacoesAsc(avaliacoesFisicas);
+
+  if (asc.length >= 2) {
+    container.appendChild(renderComposicaoCard(asc));
+    container.appendChild(renderPesoCard(asc));
+    container.appendChild(renderResumoEvolucaoCard(asc[0], asc[asc.length - 1]));
+    container.appendChild(renderComparacaoCard(asc[0], asc[asc.length - 1]));
+  }
+
+  const evolucaoBtnWrap = el('<div style="display:flex;justify-content:flex-end;margin-bottom:10px;"></div>');
+  const evolucaoBtn = el('<button type="button" class="btn btn-secondary">Gerar relatório de evolução</button>');
+  evolucaoBtn.disabled = asc.length < 1;
+  evolucaoBtn.addEventListener('click', () => gerarEBaixarPdfEvolucao(evolucaoBtn));
+  evolucaoBtnWrap.appendChild(evolucaoBtn);
+  container.appendChild(evolucaoBtnWrap);
+
+  container.appendChild(el('<div class="sub" style="margin:0 0 10px;font-weight:700;color:var(--texto);">Histórico de avaliações</div>'));
+
+  avaliacoesFisicas.slice().sort((a, b) => a.data < b.data ? 1 : a.data > b.data ? -1 : 0).forEach(av => {
     const r = avaliacaoResultado(av);
     const row = el(
-      '<div class="list-row">' +
-        '<div class="list-row-nome">' + new Date(av.data + 'T00:00:00').toLocaleDateString('pt-BR') + '</div>' +
+      '<div class="list-row" style="cursor:pointer;">' +
+        '<div class="list-row-nome">' + fmtDataBr(av.data) + '</div>' +
         '<div class="list-row-meta">' + [
-          'Peso ' + av.peso_kg + ' kg',
-          '% Gordura ' + r.percGordura.toFixed(1) + '%',
-          'Massa de gordura ' + r.massaGorda.toFixed(1) + ' kg',
-          'Massa livre de gordura ' + r.massaMagra.toFixed(1) + ' kg'
+          fmtNum(av.peso_kg, 1) + ' kg',
+          fmtNum(r.percGordura, 1) + '% gordura',
+          fmtNum(r.massaGorda, 1) + ' kg gordura',
+          fmtNum(r.massaMagra, 1) + ' kg MLG'
         ].join(' · ') + '</div>' +
       '</div>'
     );
+    row.addEventListener('click', () => { avaliacaoFisicaDetalheId = av.id; render(); });
     const actions = el('<div class="list-row-actions"></div>');
     const editBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;">Editar</button>');
-    editBtn.addEventListener('click', () => { avaliacaoFisicaEditId = av.id; avaliacaoFisicaFormOpen = true; render(); });
+    editBtn.addEventListener('click', (e) => { e.stopPropagation(); avaliacaoFisicaEditId = av.id; avaliacaoFisicaFormOpen = true; render(); });
     const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
-    delBtn.addEventListener('click', async () => {
+    delBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
       if (!window.confirm('Excluir essa avaliação física?')) return;
       await supabaseClient.from('avaliacoes_fisicas').delete().eq('id', av.id);
       avaliacoesFisicas = avaliacoesFisicas.filter(x => x.id !== av.id);
@@ -765,6 +781,175 @@ function renderAvaliacaoFisicaTab(container) {
   const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Nova avaliação</button>');
   novoBtn.addEventListener('click', () => { avaliacaoFisicaEditId = ''; avaliacaoFisicaFormOpen = true; render(); });
   container.appendChild(novoBtn);
+}
+
+// --- Cards de evolução (gráficos, resumo, comparação) — compartilhados
+// entre a lista e a tela de detalhe. ---
+
+function renderComposicaoCard(asc) {
+  const card = el('<div class="list-row" style="margin-bottom:16px;"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:10px;">Evolução da composição corporal</div>'));
+  const tabs = el('<div class="tabs" style="margin-bottom:12px;border-bottom:none;"></div>');
+  const metricas = [['percGordura', '% Gordura'], ['massaGorda', 'Massa de gordura'], ['massaMagra', 'Massa livre de gordura']];
+  metricas.forEach(([valor, label]) => {
+    const tab = el('<div class="tab' + (avaliacaoFisicaMetrica === valor ? ' active' : '') + '" style="padding:7px 12px;font-size:12.5px;">' + label + '</div>');
+    tab.addEventListener('click', () => { avaliacaoFisicaMetrica = valor; render(); });
+    tabs.appendChild(tab);
+  });
+  card.appendChild(tabs);
+  const canvasWrap = el('<div style="position:relative;height:220px;"></div>');
+  const canvas = el('<canvas></canvas>');
+  canvasWrap.appendChild(canvas);
+  card.appendChild(canvasWrap);
+  requestAnimationFrame(() => renderComposicaoChart(canvas, asc, avaliacaoFisicaMetrica));
+  return card;
+}
+
+function renderPesoCard(asc) {
+  const card = el('<div class="list-row" style="margin-bottom:16px;"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:10px;">Evolução do peso</div>'));
+  const canvasWrap = el('<div style="position:relative;height:200px;"></div>');
+  const canvas = el('<canvas></canvas>');
+  canvasWrap.appendChild(canvas);
+  card.appendChild(canvasWrap);
+  requestAnimationFrame(() => renderPesoChart(canvas, asc));
+  return card;
+}
+
+function renderResumoEvolucaoCard(primeira, atual) {
+  const d = diffAvaliacoes(primeira, atual);
+  const card = el('<div class="list-row" style="margin-bottom:16px;"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:2px;">Desde a primeira avaliação</div>'));
+  card.appendChild(el('<div class="sub" style="margin:0 0 12px;">' + fmtDataBr(primeira.data) + ' → ' + fmtDataBr(atual.data) + '</div>'));
+  const grid = el('<div class="result-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));"></div>');
+  [
+    ['Peso', fmtDiffSeta(d.peso, 1, ' kg')],
+    ['Percentual de gordura', fmtDiffSeta(d.percGordura, 1, ' p.p.')],
+    ['Massa de gordura', fmtDiffSeta(d.massaGorda, 1, ' kg')],
+    ['Massa livre de gordura', fmtDiffSeta(d.massaMagra, 1, ' kg')]
+  ].forEach(([label, val]) => {
+    const box = el('<div class="result-box"></div>');
+    box.appendChild(el('<div class="result-num" style="font-size:17px;">' + val + '</div>'));
+    box.appendChild(el('<div class="result-label">' + label + '</div>'));
+    grid.appendChild(box);
+  });
+  card.appendChild(grid);
+  return card;
+}
+
+function renderComparacaoCard(primeira, atual) {
+  const rp = avaliacaoResultado(primeira), ra = avaliacaoResultado(atual);
+  const d = diffAvaliacoes(primeira, atual);
+  const card = el('<div class="list-row" style="margin-bottom:16px;overflow-x:auto;"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:12px;">Primeira avaliação × Avaliação atual</div>'));
+  const linhas = [
+    ['Peso', fmtNum(primeira.peso_kg, 1) + ' kg', fmtNum(atual.peso_kg, 1) + ' kg', fmtDiffSinal(d.peso, 1, ' kg')],
+    ['% gordura', fmtNum(rp.percGordura, 1) + '%', fmtNum(ra.percGordura, 1) + '%', fmtDiffSinal(d.percGordura, 1, ' p.p.')],
+    ['Massa de gordura', fmtNum(rp.massaGorda, 1) + ' kg', fmtNum(ra.massaGorda, 1) + ' kg', fmtDiffSinal(d.massaGorda, 1, ' kg')],
+    ['Massa livre de gordura', fmtNum(rp.massaMagra, 1) + ' kg', fmtNum(ra.massaMagra, 1) + ' kg', fmtDiffSinal(d.massaMagra, 1, ' kg')]
+  ];
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:12.5px;min-width:420px;">' +
+    '<tr style="color:var(--texto-3);text-align:left;">' +
+    '<th style="padding:6px 8px;font-weight:700;">Métrica</th><th style="padding:6px 8px;font-weight:700;">Primeira</th>' +
+    '<th style="padding:6px 8px;font-weight:700;">Atual</th><th style="padding:6px 8px;font-weight:700;">Diferença</th></tr>';
+  linhas.forEach(([label, p, a, diff]) => {
+    html += '<tr style="border-top:1px solid var(--borda);">' +
+      '<td style="padding:8px;font-weight:700;">' + label + '</td>' +
+      '<td style="padding:8px;color:var(--texto-2);">' + p + '</td>' +
+      '<td style="padding:8px;color:var(--texto-2);">' + a + '</td>' +
+      '<td style="padding:8px;font-weight:700;">' + diff + '</td></tr>';
+  });
+  html += '</table>';
+  card.appendChild(el('<div>' + html + '</div>'));
+  return card;
+}
+
+function renderAvaliacaoFisicaDetalhe(container, av) {
+  const r = avaliacaoResultado(av);
+  const voltarBtn = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;margin-bottom:12px;">← Voltar ao histórico</button>');
+  voltarBtn.addEventListener('click', () => { avaliacaoFisicaDetalheId = ''; render(); });
+  container.appendChild(voltarBtn);
+
+  const card = el('<div class="list-row"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:16px;">Avaliação física</div>'));
+  card.appendChild(el('<div class="sub" style="margin:2px 0 16px;">' + fmtDataBr(av.data) + '</div>'));
+
+  card.appendChild(el('<div class="sub" style="font-weight:700;color:var(--texto);margin-bottom:8px;">Dados antropométricos</div>'));
+  const grid1 = el('<div class="result-grid" style="grid-template-columns:repeat(auto-fit,minmax(100px,1fr));margin-bottom:18px;"></div>');
+  [
+    ['Peso', fmtNum(av.peso_kg, 1) + ' kg'],
+    ['Altura', av.altura_cm ? fmtNum(av.altura_cm, 0) + ' cm' : '—'],
+    ['Sexo', av.sexo === 'M' ? 'Masculino' : 'Feminino'],
+    ['Idade', av.idade + ' anos']
+  ].forEach(([label, val]) => {
+    const box = el('<div class="result-box"></div>');
+    box.appendChild(el('<div class="result-num" style="font-size:16px;">' + val + '</div>'));
+    box.appendChild(el('<div class="result-label">' + label + '</div>'));
+    grid1.appendChild(box);
+  });
+  card.appendChild(grid1);
+
+  card.appendChild(el('<div class="sub" style="font-weight:700;color:var(--texto);margin-bottom:8px;">7 dobras cutâneas (mm)</div>'));
+  const grid2 = el('<div class="result-grid" style="grid-template-columns:repeat(auto-fit,minmax(90px,1fr));margin-bottom:18px;"></div>');
+  const dobras = avaliacaoDobrasDeRegistro(av);
+  DOBRAS_CAMPOS_PADRAO.forEach(([chave, label]) => {
+    const box = el('<div class="result-box"></div>');
+    box.appendChild(el('<div class="result-num" style="font-size:15px;">' + fmtNum(dobras[chave], 1) + '</div>'));
+    box.appendChild(el('<div class="result-label">' + label + '</div>'));
+    grid2.appendChild(box);
+  });
+  card.appendChild(grid2);
+
+  card.appendChild(el('<div class="sub" style="font-weight:700;color:var(--texto);margin-bottom:8px;">Resultados</div>'));
+  const grid3 = el('<div class="result-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr));"></div>');
+  [
+    ['Soma das 7 dobras', fmtNum(r.soma, 1) + ' mm'],
+    ['Densidade corporal', fmtNum(r.densidade, 4) + ' g/cm³'],
+    ['% de gordura', fmtNum(r.percGordura, 1) + '%'],
+    ['Massa de gordura', fmtNum(r.massaGorda, 1) + ' kg'],
+    ['Massa livre de gordura', fmtNum(r.massaMagra, 1) + ' kg']
+  ].forEach(([label, val]) => {
+    const box = el('<div class="result-box"></div>');
+    box.appendChild(el('<div class="result-num" style="font-size:16px;">' + val + '</div>'));
+    box.appendChild(el('<div class="result-label">' + label + '</div>'));
+    grid3.appendChild(box);
+  });
+  card.appendChild(grid3);
+
+  const pdfBtn = el('<button type="button" class="btn btn-primary btn-block" style="margin-top:18px;">Gerar PDF</button>');
+  pdfBtn.addEventListener('click', () => gerarEBaixarPdfAvaliacao(av, pdfBtn));
+  card.appendChild(pdfBtn);
+
+  container.appendChild(card);
+}
+
+async function gerarEBaixarPdfAvaliacao(av, btn) {
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Gerando PDF…';
+  try {
+    const doc = gerarPdfAvaliacao({
+      avaliacao: av, alunoNome: cliente ? cliente.nome : '', trainerNome: trainerNomeCompleto,
+      historico: avaliacoesFisicas
+    });
+    await compartilharOuBaixarPdf(doc, 'avaliacao-fisica-' + av.data + '.pdf');
+  } catch (err) {
+    alert('Não foi possível gerar o PDF: ' + (err.message || err));
+  }
+  btn.disabled = false; btn.textContent = original;
+}
+
+async function gerarEBaixarPdfEvolucao(btn) {
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Gerando PDF…';
+  try {
+    const doc = gerarPdfEvolucao({
+      avaliacoes: avaliacoesFisicas, alunoNome: cliente ? cliente.nome : '', trainerNome: trainerNomeCompleto
+    });
+    await compartilharOuBaixarPdf(doc, 'evolucao-' + (cliente ? cliente.nome : 'aluno').replace(/\s+/g, '-').toLowerCase() + '.pdf');
+  } catch (err) {
+    alert('Não foi possível gerar o PDF: ' + (err.message || err));
+  }
+  btn.disabled = false; btn.textContent = original;
 }
 
 function renderAvaliacaoFisicaForm(container) {
