@@ -11,6 +11,8 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/food-measures.js"></script>
+<script src="js/avaliacao-fisica.js"></script>
+<script src="js/macros.js"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -213,6 +215,13 @@ let refeicoes = {}; // key -> { nome, opcoes: [{ nome, itens: [] }] }
 let salvando = false;
 let erroMsg = '';
 let metaEnergetica = null; // { tmb, get, meta }
+let anamneseAtual = null; // usada pra recalcular macros (js/macros.js)
+let massaLivreGordura = null; // última avaliação física do aluno, se houver
+let dietaProteina = null;
+let dietaGordura = null;
+let dietaCarboidrato = null;
+let macrosSalvosOriginais = null; // { proteina_g, gordura_g, carboidrato_g } como veio do banco, pra detectar divergência
+let macrosBannerAberto = false; // "dados do aluno foram alterados" — some ao decidir
 
 function el(html) {
   const t = document.createElement('template');
@@ -239,13 +248,17 @@ async function init() {
   if (!user) return;
   userId = user.id;
 
-  const [clsRes, anamneseRes] = await Promise.all([
+  const [clsRes, anamneseRes, avaliacoesRes] = await Promise.all([
     supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome'),
-    clienteIdParam ? supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle() : Promise.resolve({ data: null })
+    clienteIdParam ? supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', clienteIdParam).maybeSingle() : Promise.resolve({ data: null }),
+    clienteIdParam ? supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', clienteIdParam).order('data', { ascending: false }).limit(1) : Promise.resolve({ data: null })
   ]);
   clientes = clsRes.data || [];
 
   const anamnese = anamneseRes.data;
+  anamneseAtual = anamnese;
+  const ultimaAv = (avaliacoesRes.data && avaliacoesRes.data[0]) || null;
+  massaLivreGordura = ultimaAv ? avaliacaoResultado(ultimaAv).massaMagra : null;
   if (anamnese && anamnese.sexo && anamnese.peso_kg && anamnese.altura_cm && anamnese.idade) {
     const nivelSel = NIVEL_ATIVIDADE_OPCOES.find(o => o.key === anamnese.nivel_atividade);
     const objSel = OBJETIVO_CALORICO_OPCOES.find(o => o.key === anamnese.objetivo_calorico);
@@ -263,6 +276,12 @@ async function init() {
       dietaObservacao = dieta.observacoes || '';
       dietaClienteId = dieta.cliente_id || '';
       dietaHabilitado = dieta.habilitado !== false;
+      dietaProteina = dieta.proteina_g != null ? dieta.proteina_g : null;
+      dietaGordura = dieta.gordura_g != null ? dieta.gordura_g : null;
+      dietaCarboidrato = dieta.carboidrato_g != null ? dieta.carboidrato_g : null;
+      if (dietaProteina != null || dietaGordura != null || dietaCarboidrato != null) {
+        macrosSalvosOriginais = { proteina_g: dietaProteina, gordura_g: dietaGordura, carboidrato_g: dietaCarboidrato };
+      }
       (dieta.refeicoes || []).forEach(r => {
         const def = MEAL_DEFS.find(m => m.nome === r.nome);
         const key = def ? def.key : r.nome;
@@ -275,7 +294,39 @@ async function init() {
     if (!def.opcional && !refeicoes[def.key]) refeicoes[def.key] = novaRefeicao(def.nome);
   });
 
+  inicializarMacros();
   render();
+}
+
+// Calcula a sugestão atual (mesma função usada em aluno-detalhe.html, nunca
+// diverge entre as duas telas). Se a dieta já tem macros salvos que
+// divergem da sugestão recalculada, não sobrescreve — abre o banner pra o
+// profissional decidir (item 11 do pedido). Dieta nova ou sem macros
+// salvos: preenche direto com a sugestão.
+function macrosSugeridosAtuais() {
+  if (!metaEnergetica || metaEnergetica.meta == null || !anamneseAtual) return null;
+  return calcularMacrosMetaCalorica({
+    sexo: anamneseAtual.sexo, idade: anamneseAtual.idade, peso: anamneseAtual.peso_kg, altura: anamneseAtual.altura_cm,
+    nivelAtividade: anamneseAtual.nivel_atividade, objetivo: anamneseAtual.objetivo_calorico, estadoAtual: anamneseAtual.estado_atual,
+    metaCalorica: metaEnergetica.meta, massaLivreGordura
+  });
+}
+
+function macrosDivergem(a, b) {
+  if (!a || !b) return false;
+  return Math.abs(a.proteina_g - b.proteina_g) >= 1 || Math.abs(a.gordura_g - b.gordura_g) >= 1 || Math.abs(a.carboidrato_g - b.carboidrato_g) >= 1;
+}
+
+function inicializarMacros() {
+  const sugestao = macrosSugeridosAtuais();
+  if (!sugestao) return; // sem meta calculada (sem aluno/anamnese) — mantém o campo de texto livre
+  if (macrosSalvosOriginais) {
+    const salvos = { proteina_g: macrosSalvosOriginais.proteina_g || 0, gordura_g: macrosSalvosOriginais.gordura_g || 0, carboidrato_g: macrosSalvosOriginais.carboidrato_g || 0 };
+    if (macrosDivergem(salvos, sugestao)) { macrosBannerAberto = true; return; }
+  }
+  if (dietaProteina == null && dietaGordura == null && dietaCarboidrato == null) {
+    dietaProteina = sugestao.proteina_g; dietaGordura = sugestao.gordura_g; dietaCarboidrato = sugestao.carboidrato_g;
+  }
 }
 
 // `food` aqui é um NormalizedFood (ver supabase/functions/_shared/food/types.ts)
@@ -371,21 +422,28 @@ function render() {
     app.appendChild(box);
   }
 
+  const temMacrosAutomaticos = !!(metaEnergetica && metaEnergetica.meta != null && anamneseAtual);
+
   const fieldRow = el('<div class="field-row"></div>');
-  const nomeField = el('<div class="field"></div>');
+  const nomeField = el('<div class="field"' + (temMacrosAutomaticos ? ' style="grid-column:1/-1;"' : '') + '></div>');
   nomeField.appendChild(el('<label>Nome da dieta</label>'));
   const nomeInput = el('<input placeholder="Ex: Hipertrofia 2.800 kcal">');
   nomeInput.value = dietaNome;
   nomeInput.addEventListener('input', () => dietaNome = nomeInput.value);
   nomeField.appendChild(nomeInput);
-  const metaField = el('<div class="field"></div>');
-  metaField.appendChild(el('<label>Meta calórica / macros (opcional)</label>'));
-  const metaInput = el('<input placeholder="Ex: 2.800 kcal · 180g PTN">');
-  metaInput.value = dietaMeta;
-  metaInput.addEventListener('input', () => dietaMeta = metaInput.value);
-  metaField.appendChild(metaInput);
-  fieldRow.appendChild(nomeField); fieldRow.appendChild(metaField);
+  fieldRow.appendChild(nomeField);
+  if (!temMacrosAutomaticos) {
+    const metaField = el('<div class="field"></div>');
+    metaField.appendChild(el('<label>Meta calórica / macros (opcional)</label>'));
+    const metaInput = el('<input placeholder="Ex: 2.800 kcal · 180g PTN">');
+    metaInput.value = dietaMeta;
+    metaInput.addEventListener('input', () => dietaMeta = metaInput.value);
+    metaField.appendChild(metaInput);
+    fieldRow.appendChild(metaField);
+  }
   app.appendChild(fieldRow);
+
+  if (temMacrosAutomaticos) renderMacrosBlock(app);
 
   if (!clienteIdParam) {
     const alunoField = el('<div class="field"></div>');
@@ -448,6 +506,84 @@ function render() {
   app.appendChild(salvarBtn);
 }
 
+// Bloco "MACRONUTRIENTES" — só aparece quando dá pra calcular a meta
+// calórica (aluno com anamnese completa). Fecha exatamente a meta: editar
+// proteína/gordura recalcula carboidrato na hora (fecharCarboidratoNaMeta,
+// js/macros.js); editar carboidrato só mostra a diferença calórica
+// resultante, sem forçar os outros dois campos.
+function renderMacrosBlock(container) {
+  const card = el('<div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:16px 18px;margin-bottom:20px;"></div>');
+
+  if (macrosBannerAberto) {
+    const banner = el('<div style="background:#1a1206;border:1px solid #f97316;border-radius:10px;padding:12px 14px;margin-bottom:14px;"></div>');
+    banner.appendChild(el('<div style="font-size:13px;font-weight:700;color:#f97316;">Os dados do aluno foram alterados</div>'));
+    banner.appendChild(el('<div class="sub" style="margin:4px 0 10px;">A meta calórica, o objetivo ou a avaliação física mudaram desde que essa dieta foi salva — os macros atuais podem não bater mais com a sugestão.</div>'));
+    const btnRow = el('<div style="display:flex;gap:8px;"></div>');
+    const manterBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Manter atuais</button>');
+    manterBtn.addEventListener('click', () => { macrosBannerAberto = false; render(); });
+    const atualizarBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Atualizar para sugestão</button>');
+    atualizarBtn.addEventListener('click', () => {
+      const sugestao = macrosSugeridosAtuais();
+      if (sugestao) { dietaProteina = sugestao.proteina_g; dietaGordura = sugestao.gordura_g; dietaCarboidrato = sugestao.carboidrato_g; }
+      macrosBannerAberto = false;
+      render();
+    });
+    btnRow.appendChild(manterBtn); btnRow.appendChild(atualizarBtn);
+    banner.appendChild(btnRow);
+    card.appendChild(banner);
+  }
+
+  card.appendChild(el('<div style="font-size:12px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;">Macronutrientes</div>'));
+  card.appendChild(el('<div class="sub" style="margin:0 0 12px;">Sugeridos automaticamente pela meta calórica — edite se quiser, o carboidrato sempre fecha o resto.</div>'));
+
+  const meta = metaEnergetica.meta;
+  const grid = el('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;"></div>');
+
+  function campoMacro(label, valor, onInput) {
+    const f = el('<div class="field" style="margin-bottom:0;"></div>');
+    f.appendChild(el('<label>' + label + '</label>'));
+    const input = el('<input type="number" min="0" step="any">');
+    input.value = macrosFmt(valor);
+    input.addEventListener('input', () => onInput(input));
+    f.appendChild(input);
+    return { f, input };
+  }
+
+  const ptn = campoMacro('Proteína (g/dia)', dietaProteina, (input) => {
+    dietaProteina = Number(input.value) || 0;
+    dietaCarboidrato = fecharCarboidratoNaMeta(meta, dietaProteina, dietaGordura);
+    cho.input.value = macrosFmt(dietaCarboidrato);
+    atualizarResumo();
+  });
+  const gor = campoMacro('Gordura (g/dia)', dietaGordura, (input) => {
+    dietaGordura = Number(input.value) || 0;
+    dietaCarboidrato = fecharCarboidratoNaMeta(meta, dietaProteina, dietaGordura);
+    cho.input.value = macrosFmt(dietaCarboidrato);
+    atualizarResumo();
+  });
+  const cho = campoMacro('Carboidrato (g/dia)', dietaCarboidrato, (input) => {
+    dietaCarboidrato = Number(input.value) || 0;
+    atualizarResumo();
+  });
+
+  grid.appendChild(ptn.f); grid.appendChild(gor.f); grid.appendChild(cho.f);
+  card.appendChild(grid);
+
+  const resumo = el('<div class="sub" style="margin:10px 0 0;"></div>');
+  card.appendChild(resumo);
+  function atualizarResumo() {
+    const kcalCalculado = (dietaProteina || 0) * 4 + (dietaGordura || 0) * 9 + (dietaCarboidrato || 0) * 4;
+    const diff = Math.round(kcalCalculado - meta);
+    resumo.textContent = Math.round(kcalCalculado) + ' kcal total' +
+      (diff !== 0 ? ' — ' + (diff > 0 ? diff + ' kcal acima' : Math.abs(diff) + ' kcal abaixo') + ' da meta (' + Math.round(meta) + ' kcal)' : ' — bate exatamente com a meta calórica.');
+  }
+  atualizarResumo();
+
+  card.appendChild(el('<div class="sub" style="margin:10px 0 0;font-size:11.5px;">Valores sugeridos com base nos dados cadastrados do aluno, objetivo e meta calórica — ajuste conforme sua avaliação profissional.</div>'));
+
+  container.appendChild(card);
+}
+
 function renderMeal(def) {
   const r = refeicoes[def.key];
   if (!r) return;
@@ -501,6 +637,9 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
     const subBtn = el('<button type="button" class="item-sub-btn" title="Alimentos substitutos equivalentes">Substituíveis' + (subCount ? ' (' + subCount + ')' : '') + '</button>');
     subBtn.addEventListener('click', () => abrirGerenciarSubstituiveis(it, render));
     actions.appendChild(subBtn);
+    const presetBtn = el('<button type="button" class="item-sub-btn" title="Salvar esse alimento e seus substituíveis como preset reutilizável">Salvar como preset</button>');
+    presetBtn.addEventListener('click', () => abrirSalvarPreset(it));
+    actions.appendChild(presetBtn);
     const editBtn = el('<button type="button" class="item-edit" title="Editar quantidade">✎</button>');
     editBtn.addEventListener('click', () => abrirEditarItem(opcao, ii, render));
     actions.appendChild(editBtn);
@@ -532,6 +671,10 @@ function renderOpcao(mealKey, refeicao, opcao, oi) {
   addBtn2.addEventListener('click', () => abrirFoodPicker(opcao, render));
   box.appendChild(addBtn2);
 
+  const presetLibBtn = el('<button type="button" class="add-item-btn2" style="margin-top:6px;">📂 Usar preset</button>');
+  presetLibBtn.addEventListener('click', () => abrirBibliotecaPresets(opcao, render));
+  box.appendChild(presetLibBtn);
+
   if (opcao.itens.length) {
     const s = somaItens(opcao.itens);
     const totRow = el('<div class="totais-row"></div>');
@@ -556,10 +699,14 @@ async function salvarDieta() {
       opcoes: refeicoes[def.key].opcoes.map(o => ({ nome: o.nome, itens: o.itens }))
     }));
 
+  const temMacrosAutomaticos = !!(metaEnergetica && metaEnergetica.meta != null && anamneseAtual);
   const payload = {
     nome: dietaNome.trim(),
     cliente_id: dietaClienteId || null,
-    meta_calorica: dietaMeta.trim() || null,
+    meta_calorica: temMacrosAutomaticos ? (Math.round(metaEnergetica.meta) + ' kcal') : (dietaMeta.trim() || null),
+    proteina_g: temMacrosAutomaticos ? macrosFmt(dietaProteina) : null,
+    gordura_g: temMacrosAutomaticos ? macrosFmt(dietaGordura) : null,
+    carboidrato_g: temMacrosAutomaticos ? macrosFmt(dietaCarboidrato) : null,
     observacoes: dietaObservacao.trim() || null,
     refeicoes: refeicoesArr,
     habilitado: dietaHabilitado
@@ -580,6 +727,185 @@ async function salvarDieta() {
   } else {
     window.location.href = 'acervo.html?categoria=nutricao&tipo=minhasDietas';
   }
+}
+
+// ------------------------------------------------------------------------
+// Presets de refeição: biblioteca global (dieta_presets) de "alimento
+// principal + substituíveis" reutilizável entre profissionais. Guarda só a
+// referência (food_source/food_source_id/quantidade/unidade) — nunca
+// kcal/macros prontos — e recalcula tudo via food-get + buildItemFromFood
+// (mesmas funções do fluxo normal) quando aplicado, então nunca diverge da
+// base nutricional atual. Aplicar sempre COPIA pra dieta corrente: editar
+// depois não afeta o preset original, e vice-versa.
+// ------------------------------------------------------------------------
+
+function estruturaRefDeItem(it) {
+  return {
+    food_source: it.food_source, food_source_id: it.food_source_id, nome: it.nome,
+    quantidade: it.quantidade != null ? it.quantidade : it.quantidade_g,
+    unidade: it.unidade || 'g'
+  };
+}
+
+function abrirSalvarPreset(item) {
+  if (!item.food_source || !item.food_source_id) {
+    alert('Esse alimento não tem referência ao banco nutricional (item antigo) — não dá pra salvar como preset.');
+    return;
+  }
+
+  const overlay = el('<div class="fp-overlay"></div>');
+  const modal = el('<div class="fp-modal"></div>');
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  const state = { nome: item.nome, categoria: '', erro: '', salvando: false };
+
+  function renderForm() {
+    modal.innerHTML = '';
+    const head = el('<div class="fp-head"></div>');
+    head.appendChild(el('<div class="fp-title">Salvar como preset</div>'));
+    const closeBtn = el('<button type="button" class="fp-close">×</button>');
+    closeBtn.addEventListener('click', () => overlay.remove());
+    head.appendChild(closeBtn);
+    modal.appendChild(head);
+
+    const subCount = (item.substituiveis || []).length;
+    modal.appendChild(el('<div class="sub" style="margin:0 0 12px;">Guarda a referência de ' + item.nome + (subCount ? ' e ' + subCount + ' substituível(is)' : '') + ' no banco nutricional — as quantidades são recalculadas com os dados mais atuais sempre que o preset for aplicado.</div>'));
+
+    const nomeField = el('<div class="field"></div>');
+    nomeField.appendChild(el('<label>Nome do preset</label>'));
+    const nomeInput = el('<input placeholder="Ex: Café da manhã proteico">');
+    nomeInput.value = state.nome;
+    nomeInput.addEventListener('input', () => state.nome = nomeInput.value);
+    nomeField.appendChild(nomeInput);
+    modal.appendChild(nomeField);
+
+    const catField = el('<div class="field"></div>');
+    catField.appendChild(el('<label>Categoria (opcional)</label>'));
+    const catSelect = el('<select></select>');
+    catSelect.appendChild(el('<option value="">Sem categoria</option>'));
+    MEAL_DEFS.forEach(def => catSelect.appendChild(el('<option value="' + def.key + '">' + def.nome + '</option>')));
+    catSelect.value = state.categoria;
+    catSelect.addEventListener('change', () => state.categoria = catSelect.value);
+    catField.appendChild(catSelect);
+    modal.appendChild(catField);
+
+    if (state.erro) modal.appendChild(el('<div class="erro">' + state.erro + '</div>'));
+
+    const saveBtn = el('<button type="button" class="btn btn-primary btn-block" style="margin-top:8px;">' + (state.salvando ? 'Salvando…' : 'Salvar preset') + '</button>');
+    saveBtn.disabled = state.salvando;
+    saveBtn.addEventListener('click', async () => {
+      if (!state.nome.trim()) { state.erro = 'Dê um nome pro preset.'; renderForm(); return; }
+      state.salvando = true; state.erro = ''; renderForm();
+      const estrutura = { principal: estruturaRefDeItem(item), substituiveis: (item.substituiveis || []).map(estruturaRefDeItem) };
+      const { error } = await supabaseClient.from('dieta_presets').insert({
+        trainer_id: userId, nome: state.nome.trim(), categoria: state.categoria || null, estrutura
+      });
+      if (error) { state.salvando = false; state.erro = error.message; renderForm(); return; }
+      overlay.remove();
+    });
+    modal.appendChild(saveBtn);
+  }
+
+  renderForm();
+}
+
+async function aplicarPreset(preset, opcao, onDone) {
+  const estrutura = preset.estrutura || {};
+  const refs = [estrutura.principal].concat(estrutura.substituiveis || []).filter(Boolean);
+  const falharam = [];
+  let principalItem = null;
+  for (let i = 0; i < refs.length; i++) {
+    const ref = refs[i];
+    let food = null;
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('food-get', { body: { source: ref.food_source, source_id: ref.food_source_id } });
+      if (!error && data && data.food) food = data.food;
+    } catch (err) { /* falha tratada abaixo */ }
+    const novoItem = food ? buildItemFromFood(food, ref.quantidade, ref.unidade) : null;
+    if (!novoItem) { falharam.push(ref.nome); continue; }
+    if (i === 0) { novoItem.substituiveis = []; principalItem = novoItem; opcao.itens.push(novoItem); }
+    else if (principalItem) { principalItem.substituiveis.push(novoItem); }
+  }
+  onDone(falharam);
+}
+
+function abrirBibliotecaPresets(opcao, onChange) {
+  const overlay = el('<div class="fp-overlay"></div>');
+  const modal = el('<div class="fp-modal"></div>');
+  overlay.appendChild(modal);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  const state = { query: '', presets: [], loading: true, aplicando: false, msg: '', bodyEl: null };
+
+  function renderLista() {
+    const body = state.bodyEl;
+    body.innerHTML = '';
+    if (state.loading) { body.appendChild(el('<div class="fp-empty">Carregando…</div>')); return; }
+    if (state.msg) body.appendChild(el('<div class="fp-warning">' + state.msg + '</div>'));
+    if (!state.presets.length) { body.appendChild(el('<div class="fp-empty">Nenhum preset criado ainda. Salve um alimento como preset numa dieta pra ele aparecer aqui.</div>')); return; }
+    const q = normalizarSemAcento(state.query);
+    const filtrados = state.presets.filter(p => !q || normalizarSemAcento(p.nome).includes(q));
+    if (!filtrados.length) { body.appendChild(el('<div class="fp-empty">Nenhum preset encontrado pra "' + state.query + '".</div>')); return; }
+    const porCategoria = {};
+    filtrados.forEach(p => {
+      const key = p.categoria || 'outro';
+      if (!porCategoria[key]) porCategoria[key] = [];
+      porCategoria[key].push(p);
+    });
+    MEAL_DEFS.map(d => d.key).concat(['outro']).filter(k => porCategoria[k]).forEach(key => {
+      const def = MEAL_DEFS.find(d => d.key === key);
+      body.appendChild(el('<div class="fp-section-label">' + (def ? def.nome : 'Sem categoria') + '</div>'));
+      porCategoria[key].forEach(p => {
+        const row = el('<div class="fp-result"></div>');
+        const left = el('<div style="min-width:0;"></div>');
+        left.appendChild(el('<div class="fp-result-nome">' + p.nome + '</div>'));
+        const principalNome = (p.estrutura && p.estrutura.principal) ? p.estrutura.principal.nome : '';
+        const subCount = (p.estrutura && p.estrutura.substituiveis) ? p.estrutura.substituiveis.length : 0;
+        left.appendChild(el('<div class="fp-result-sub">' + principalNome + (subCount ? ' + ' + subCount + ' substituível(is)' : '') + '</div>'));
+        row.appendChild(left);
+        row.addEventListener('click', () => aplicar(p));
+        body.appendChild(row);
+      });
+    });
+  }
+
+  async function aplicar(preset) {
+    if (state.aplicando) return;
+    state.aplicando = true; state.msg = 'Aplicando…'; renderLista();
+    await aplicarPreset(preset, opcao, (falharam) => {
+      state.aplicando = false;
+      if (falharam.length) { state.msg = 'Não deu pra aplicar: ' + falharam.join(', ') + ' (alimento pode ter sido removido do banco). O restante foi aplicado.'; renderLista(); }
+      else { overlay.remove(); onChange(); }
+    });
+  }
+
+  async function carregar() {
+    const { data, error } = await supabaseClient.from('dieta_presets').select('*').order('categoria').order('nome');
+    state.presets = data || [];
+    state.loading = false;
+    if (error) state.msg = 'Não deu pra carregar a biblioteca de presets.';
+    renderLista();
+  }
+
+  const head = el('<div class="fp-head"></div>');
+  head.appendChild(el('<div class="fp-title">Presets de refeição</div>'));
+  const closeBtn = el('<button type="button" class="fp-close">×</button>');
+  closeBtn.addEventListener('click', () => overlay.remove());
+  head.appendChild(closeBtn);
+  modal.appendChild(head);
+
+  const searchInput = el('<input class="fp-search" placeholder="Buscar preset…" autocomplete="off">');
+  searchInput.addEventListener('input', () => { state.query = searchInput.value; renderLista(); });
+  modal.appendChild(searchInput);
+
+  const body = el('<div class="fp-body"></div>');
+  modal.appendChild(body);
+  state.bodyEl = body;
+  renderLista();
+  carregar();
 }
 
 // ------------------------------------------------------------------------

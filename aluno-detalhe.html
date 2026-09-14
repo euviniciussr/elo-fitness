@@ -15,6 +15,7 @@
 <script src="js/avaliacao-fisica.js"></script>
 <script src="js/avaliacao-charts.js"></script>
 <script src="js/avaliacao-pdf.js"></script>
+<script src="js/macros.js"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -712,6 +713,34 @@ function renderEnergeticoTab(container) {
     'Estado Atual: <b>' + (estadoSel ? estadoSel.nome : 'não selecionado') + '</b>' +
     '</div>'
   ));
+
+  if (meta != null) {
+    const ultimaAv = (avaliacoesFisicas && avaliacoesFisicas.length) ? avaliacoesFisicas[0] : null;
+    const massaLivreGordura = ultimaAv ? avaliacaoResultado(ultimaAv).massaMagra : null;
+    const macros = calcularMacrosMetaCalorica({
+      sexo: anamnese.sexo, idade: anamnese.idade, peso: anamnese.peso_kg, altura: anamnese.altura_cm,
+      nivelAtividade: anamnese.nivel_atividade, objetivo: anamnese.objetivo_calorico, estadoAtual: anamnese.estado_atual,
+      metaCalorica: meta, massaLivreGordura
+    });
+    container.appendChild(el('<div class="sub" style="margin:18px 0 4px;">Macronutrientes Sugeridos</div>'));
+    const gridMacros = el('<div class="result-grid"></div>');
+    [
+      ['Proteína', macrosFmt(macros.proteina_g) + ' g/dia'],
+      ['Gordura', macrosFmt(macros.gordura_g) + ' g/dia'],
+      ['Carboidrato', macrosFmt(macros.carboidrato_g) + ' g/dia']
+    ].forEach(([label, val]) => {
+      const box = el('<div class="result-box"></div>');
+      box.appendChild(el('<div class="result-num">' + val + '</div>'));
+      box.appendChild(el('<div class="result-label">' + label + '</div>'));
+      gridMacros.appendChild(box);
+    });
+    container.appendChild(gridMacros);
+    container.appendChild(el(
+      '<div class="result-summary">Proteína ' + Math.round(macros.calorias_proteina / meta * 100) + '% · Gordura ' +
+      Math.round(macros.calorias_gordura / meta * 100) + '% · Carboidrato ' + Math.round(macros.calorias_carboidrato / meta * 100) + '%</div>'
+    ));
+    container.appendChild(el('<div class="sub" style="margin-top:4px;">Valores sugeridos com base nos dados cadastrados, objetivo e meta calórica.</div>'));
+  }
 }
 
 function renderAvaliacaoFisicaTab(container) {
