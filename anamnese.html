@@ -214,7 +214,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div style="background:#10151f;border:1px solid rgba(74,222,128,.3);border-radius:18px;padding:44px 28px;text-align:center;">
         <div style="width:56px;height:56px;border-radius:50%;background:rgba(74,222,128,.12);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:26px;color:#4ade80;">✓</div>
         <div style="font-size:19px;font-weight:800;margin-bottom:8px;">Anamnese enviada!</div>
-        <div style="font-size:13.5px;color:#9aa4b2;line-height:1.6;max-width:360px;margin:0 auto;">Suas respostas e fotos já estão no perfil de <strong style="color:#e5e9f0;">{{ trainerNome }}</strong>. Assim que ele montar seu treino, você recebe o acesso liberado no app.</div>
+        <div style="font-size:13.5px;color:#9aa4b2;line-height:1.6;max-width:360px;margin:0 auto;">Suas respostas já estão no perfil de <strong style="color:#e5e9f0;">{{ trainerNome }}</strong>. Assim que ele montar seu treino, você recebe o acesso liberado no app.</div>
         <a href="app-aluno.html" style="display:inline-block;margin-top:22px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;font-size:13.5px;font-weight:700;padding:12px 22px;border-radius:10px;text-decoration:none;">Ir para o aplicativo →</a>
       </div>
     </sc-if>
@@ -252,98 +252,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           </div>
         </div>
 
-        <div style="margin-bottom:20px;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">TEMPO DE TREINO</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <sc-for list="{{ temposTreino }}" as="n" hint-placeholder-count="4">
-              <button sc-camel-on-click="{{ n.onClick }}" style="background:{{ n.bg }};border:1px solid {{ n.border }};color:{{ n.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ n.label }}</button>
-            </sc-for>
-          </div>
-        </div>
-
-        <sc-for list="{{ secoesView }}" as="sec" hint-placeholder-count="0">
-          <div style="margin-bottom:20px;">
-            <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">{{ sec.tituloUpper }}</div>
-            <div style="display:flex;flex-direction:column;gap:16px;">
-              <sc-for list="{{ sec.perguntas }}" as="q" hint-placeholder-count="0">
-                <div>
-                  <div style="font-size:13px;font-weight:700;margin-bottom:8px;">{{ q.label }}</div>
-                  <sc-if value="{{ q.isTexto }}" hint-placeholder-val="{{ false }}">
-                    <input value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
-                  </sc-if>
-                  <sc-if value="{{ q.isTextoLongo }}" hint-placeholder-val="{{ false }}">
-                    <textarea value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" rows="2" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;resize:vertical;"></textarea>
-                  </sc-if>
-                  <sc-if value="{{ q.isHorario }}" hint-placeholder-val="{{ false }}">
-                    <input type="time" value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
-                  </sc-if>
-                  <sc-if value="{{ q.isEscolhaUnica }}" hint-placeholder-val="{{ false }}">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      <sc-for list="{{ q.opcoesView }}" as="o" hint-placeholder-count="0">
-                        <button type="button" sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ o.label }}</button>
-                      </sc-for>
-                    </div>
-                  </sc-if>
-                  <sc-if value="{{ q.isEscolhaMultipla }}" hint-placeholder-val="{{ false }}">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                      <sc-for list="{{ q.opcoesView }}" as="o" hint-placeholder-count="0">
-                        <button type="button" sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ o.label }}</button>
-                      </sc-for>
-                    </div>
-                  </sc-if>
-                  <sc-if value="{{ q.isListaPares }}" hint-placeholder-val="{{ false }}">
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                      <sc-for list="{{ q.rows }}" as="row" hint-placeholder-count="0">
-                        <div style="display:flex;gap:8px;align-items:center;">
-                          <sc-for list="{{ row.campos }}" as="c" hint-placeholder-count="0">
-                            <input value="{{ c.value }}" sc-camel-on-change="{{ c.onChange }}" placeholder="{{ c.label }}" style="flex:1;min-width:0;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
-                          </sc-for>
-                          <sc-if value="{{ row.canRemove }}" hint-placeholder-val="{{ false }}">
-                            <button type="button" sc-camel-on-click="{{ row.onRemove }}" style="background:none;border:none;color:#66707e;font-size:18px;cursor:pointer;padding:4px 8px;">×</button>
-                          </sc-if>
-                        </div>
-                      </sc-for>
-                      <button type="button" sc-camel-on-click="{{ q.onAddRow }}" style="align-self:flex-start;background:none;border:1px dashed #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;">+ adicionar</button>
-                    </div>
-                  </sc-if>
-                </div>
-              </sc-for>
-            </div>
-          </div>
-        </sc-for>
-
-        <div style="margin-bottom:20px;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">SAÚDE · OBRIGATÓRIO</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <textarea value="{{ lesoes }}" sc-camel-on-change="{{ onLesoesChange }}" placeholder="Lesões, dores ou condições médicas relevantes (ou &quot;nenhuma&quot;)" rows="2" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;resize:vertical;"></textarea>
-            <textarea value="{{ medicamentos }}" sc-camel-on-change="{{ onMedicamentosChange }}" placeholder="Medicamentos em uso (ou &quot;nenhum&quot;)" rows="2" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;resize:vertical;"></textarea>
-            <textarea value="{{ restricoes }}" sc-camel-on-change="{{ onRestricoesChange }}" placeholder="Restrições alimentares (opcional)" rows="2" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;resize:vertical;"></textarea>
-          </div>
-        </div>
-
-        <div style="margin-bottom:24px;">
-          <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:4px;">FOTOS DE AVALIAÇÃO · OBRIGATÓRIO</div>
-          <div style="font-size:12px;color:#66707e;margin-bottom:10px;">Frente, lado e costas — só {{ trainerNome }} tem acesso a elas.</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-            <sc-for list="{{ fotoSlots }}" as="s" hint-placeholder-count="3">
-              <label style="aspect-ratio:3/4;background:#0d1119;border:1.5px dashed {{ s.border }};border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;text-align:center;padding:6px;">
-                <sc-if value="{{ s.preview }}" hint-placeholder-val="{{ true }}">
-                  <img src="{{ s.preview }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">
-                  <span style="position:absolute;top:6px;right:6px;background:rgba(74,222,128,.9);color:#0a0d13;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;">✓</span>
-                </sc-if>
-                <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ true }}">
-                  <div style="font-size:20px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
-                  <div style="font-size:10.5px;color:#66707e;margin-top:6px;font-weight:600;">{{ s.label }}</div>
-                </sc-if>
-                <input type="file" accept="image/*" sc-camel-on-change="{{ s.onChange }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
-              </label>
-            </sc-for>
-          </div>
-        </div>
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:14px 16px;margin-bottom:24px;font-size:12.5px;color:#9aa4b2;line-height:1.5;">O restante da sua avaliação (rotina de treino, saúde, hábitos alimentares e fotos) é preenchido por <strong style="color:#e5e9f0;">{{ trainerNome }}</strong> com você — não precisa se preocupar com isso aqui.</div>
 
         <button sc-camel-on-click="{{ enviar }}" style="width:100%;background:{{ btnBg }};border:none;color:{{ btnColor }};font-family:inherit;font-size:14px;font-weight:700;padding:13px;border-radius:10px;cursor:pointer;">{{ btnLabel }}</button>
         <sc-if value="{{ mostrarAviso }}" hint-placeholder-val="{{ true }}">
-          <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Preencha seu nome, dados pessoais, as 3 fotos e todas as perguntas marcadas com * pra conseguir enviar.</div>
+          <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Preencha seu nome e os dados pessoais pra conseguir enviar.</div>
         </sc-if>
         <div style="{{ erroDisplay }}font-size:12px;color:#f87171;margin-top:10px;text-align:center;">{{ erro }}</div>
       </div>
@@ -433,25 +346,23 @@ class Component extends DCLogic {
     this._autosaveTimer = setTimeout(() => this.autosave(), 800);
   }
 
+  // Só salva os campos que o ALUNO preenche aqui (nome/sexo/idade/altura/
+  // peso/objetivo). tempo_treino/lesões/medicamentos/restrições e as
+  // respostas dinâmicas agora são preenchidos pelo profissional em
+  // aluno-detalhe.html — nunca incluir essas chaves no payload, senão o
+  // autosave do aluno sobrescreveria com os valores em branco/default do
+  // estado local o que o profissional já tiver preenchido.
   async autosave() {
     const s = this.state;
     if (!s.clienteId) return;
-    await Promise.all([
-      supabaseClient.from('anamnese_respostas').upsert({
-        cliente_id: s.clienteId, trainer_id: s.trainerId,
-        objetivo: s.objetivo, tempo_treino: s.tempoTreino,
-        sexo: s.sexo || null,
-        idade: s.idade ? Number(s.idade) : null,
-        altura_cm: s.altura ? Number(s.altura) : null,
-        peso_kg: s.peso ? Number(s.peso) : null,
-        lesoes: s.lesoes.trim() || null,
-        medicamentos: s.medicamentos.trim() || null,
-        restricoes: s.restricoes.trim() || null
-      }, { onConflict: 'cliente_id' }),
-      supabaseClient.from('anamnese_respostas_dinamicas').upsert({
-        cliente_id: s.clienteId, trainer_id: s.trainerId, respostas: s.respostasDinamicas
-      }, { onConflict: 'cliente_id' })
-    ]);
+    await supabaseClient.from('anamnese_respostas').upsert({
+      cliente_id: s.clienteId, trainer_id: s.trainerId,
+      objetivo: s.objetivo,
+      sexo: s.sexo || null,
+      idade: s.idade ? Number(s.idade) : null,
+      altura_cm: s.altura ? Number(s.altura) : null,
+      peso_kg: s.peso ? Number(s.peso) : null
+    }, { onConflict: 'cliente_id' });
   }
 
   // depende_de: pergunta condicional só conta como visível (e, se
@@ -469,21 +380,12 @@ class Component extends DCLogic {
   // bloquear o envio em onEnviar (o botão em si nunca fica com atributo
   // disabled, só muda de estilo — sem essa checagem aqui o clique passaria
   // mesmo com pergunta obrigatória em branco).
+  // Só nome + dados pessoais são exigidos do aluno agora — o resto
+  // (rotina, saúde, hábitos, fotos, perguntas dinâmicas) é preenchido pelo
+  // profissional em aluno-detalhe.html.
   isCompleto() {
     const s = this.state;
-    const respDin = s.respostasDinamicas;
-    const respondeuObrigatoria = (q) => {
-      const val = respDin[q.id];
-      if (Array.isArray(val)) return val.length > 0;
-      return val != null && String(val).trim() !== '';
-    };
-    const obrigatoriasPendentes = (s.estrutura.perguntas || [])
-      .some(q => q.obrigatoria && this.shouldShowPergunta(q) && !respondeuObrigatoria(q));
-    return !!(
-      s.nome.trim() && s.fotoFrente && s.fotoLado && s.fotoCostas &&
-      s.sexo && s.idade && s.altura && s.peso &&
-      !obrigatoriasPendentes
-    );
+    return !!(s.nome.trim() && s.sexo && s.idade && s.altura && s.peso);
   }
 
   async onEnviar() {
@@ -491,46 +393,17 @@ class Component extends DCLogic {
     if (!completo) { this.setState({ tentouEnviar: true }); return; }
     this.setState({ enviando: true, erro: '' });
 
-    const upload = async (file, tipo) => {
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-      const path = this.state.clienteId + '/' + tipo + '-' + Date.now() + '.' + ext;
-      const { error: upErr } = await supabaseClient.storage.from('fotos-evolucao').upload(path, file);
-      if (upErr) throw upErr;
-      return path;
-    };
-
     try {
-      const [pathFrente, pathLado, pathCostas] = await Promise.all([
-        upload(this.state.fotoFrenteFile, 'inicial-frente'),
-        upload(this.state.fotoLadoFile, 'inicial-lado'),
-        upload(this.state.fotoCostasFile, 'inicial-costas')
-      ]);
-
-      await supabaseClient.from('fotos_evolucao').insert([
-        { cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: pathFrente, tipo: 'inicial', enviado_por_aluno: true },
-        { cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: pathLado, tipo: 'inicial', enviado_por_aluno: true },
-        { cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: pathCostas, tipo: 'inicial', enviado_por_aluno: true }
-      ]);
-
       const { error: anamneseErr } = await supabaseClient.from('anamnese_respostas').upsert({
         cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
-        objetivo: this.state.objetivo, tempo_treino: this.state.tempoTreino,
+        objetivo: this.state.objetivo,
         sexo: this.state.sexo || null,
         idade: this.state.idade ? Number(this.state.idade) : null,
         altura_cm: this.state.altura ? Number(this.state.altura) : null,
         peso_kg: this.state.peso ? Number(this.state.peso) : null,
-        lesoes: this.state.lesoes.trim() || null,
-        medicamentos: this.state.medicamentos.trim() || null,
-        restricoes: this.state.restricoes.trim() || null,
         respondido_em: new Date().toISOString()
       }, { onConflict: 'cliente_id' });
       if (anamneseErr) throw anamneseErr;
-
-      const { error: dinamicaErr } = await supabaseClient.from('anamnese_respostas_dinamicas').upsert({
-        cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
-        respostas: this.state.respostasDinamicas, respondido_em: new Date().toISOString()
-      }, { onConflict: 'cliente_id' });
-      if (dinamicaErr) throw dinamicaErr;
 
       this.setState({ enviando: false, enviado: true });
     } catch (err) {
@@ -548,98 +421,22 @@ class Component extends DCLogic {
       color: this.state[stateKey] === key ? '#f97316' : '#9aa4b2'
     });
 
-    const fotoField = (key, label) => ({
-      label,
-      preview: this.state[key],
-      empty: !this.state[key],
-      border: this.state[key] ? 'rgba(74,222,128,.4)' : (this.state.tentouEnviar && !this.state[key] ? 'rgba(248,113,113,.5)' : '#1e2633'),
-      onChange: (e) => {
-        const file = e.target.files && e.target.files[0];
-        if (file) this.setState({ [key]: URL.createObjectURL(file), [key + 'File']: file });
-      }
-    });
-
-    const respDin = this.state.respostasDinamicas;
-    const setResp = (id, val) => { this.setState(s => ({ respostasDinamicas: { ...s.respostasDinamicas, [id]: val } })); this.scheduleAutosave(); };
-
-    const shouldShow = (q) => this.shouldShowPergunta(q);
-
     // "Obrigatória de verdade": não considera concluída só por ter aberto
-    // a tela — a validação completa (nome, fotos, dados pessoais e todas
-    // as perguntas dinâmicas obrigatórias visíveis) vive em isCompleto(),
-    // reaproveitada aqui e no próprio onEnviar().
+    // a tela — a validação completa (nome + dados pessoais) vive em
+    // isCompleto(), reaproveitada aqui e no próprio onEnviar(). O resto da
+    // avaliação (rotina, saúde, hábitos, fotos, perguntas dinâmicas) é
+    // preenchido pelo profissional em aluno-detalhe.html, não aparece aqui.
     const completo = this.isCompleto();
-
-    const buildPergunta = (q) => {
-      const base = {
-        id: q.id, label: q.label + (q.obrigatoria ? ' *' : ''),
-        isTexto: q.tipo === 'texto', isTextoLongo: q.tipo === 'texto_longo', isHorario: q.tipo === 'horario',
-        isEscolhaUnica: q.tipo === 'escolha_unica', isEscolhaMultipla: q.tipo === 'escolha_multipla', isListaPares: q.tipo === 'lista_pares'
-      };
-      if (q.tipo === 'texto' || q.tipo === 'texto_longo' || q.tipo === 'horario') {
-        base.value = respDin[q.id] || '';
-        base.onChange = (e) => setResp(q.id, e.target.value);
-      } else if (q.tipo === 'escolha_unica') {
-        base.opcoesView = (q.opcoes || []).map(o => ({
-          label: o.label,
-          bg: respDin[q.id] === o.valor ? 'rgba(249,115,22,.12)' : '#10151f',
-          border: respDin[q.id] === o.valor ? 'rgba(249,115,22,.35)' : '#1a2130',
-          color: respDin[q.id] === o.valor ? '#f97316' : '#9aa4b2',
-          onClick: () => setResp(q.id, o.valor)
-        }));
-      } else if (q.tipo === 'escolha_multipla') {
-        const atual = Array.isArray(respDin[q.id]) ? respDin[q.id] : [];
-        base.opcoesView = (q.opcoes || []).map(o => {
-          const sel = atual.includes(o.valor);
-          return {
-            label: o.label,
-            bg: sel ? 'rgba(249,115,22,.12)' : '#10151f',
-            border: sel ? 'rgba(249,115,22,.35)' : '#1a2130',
-            color: sel ? '#f97316' : '#9aa4b2',
-            onClick: () => setResp(q.id, sel ? atual.filter(v => v !== o.valor) : [...atual, o.valor])
-          };
-        });
-      } else if (q.tipo === 'lista_pares') {
-        const linhas = Array.isArray(respDin[q.id]) && respDin[q.id].length ? respDin[q.id] : [{}];
-        base.rows = linhas.map((linha, idx) => ({
-          idx,
-          campos: (q.subcampos || []).map(sc => ({
-            label: sc.label,
-            value: linha[sc.key] || '',
-            onChange: (e) => setResp(q.id, linhas.map((l, i) => i === idx ? { ...l, [sc.key]: e.target.value } : l))
-          })),
-          canRemove: linhas.length > 1,
-          onRemove: () => setResp(q.id, linhas.filter((_, i) => i !== idx))
-        }));
-        base.onAddRow = () => setResp(q.id, [...linhas, {}]);
-      }
-      return base;
-    };
-
-    const secoesView = (this.state.estrutura.secoes || [])
-      .slice().sort((a, b) => a.ordem - b.ordem)
-      .map(sec => ({
-        id: sec.id, tituloUpper: (sec.titulo || '').toUpperCase(),
-        perguntas: (this.state.estrutura.perguntas || [])
-          .filter(q => q.secao_id === sec.id && shouldShow(q))
-          .sort((a, b) => a.ordem - b.ordem)
-          .map(buildPergunta)
-      }))
-      .filter(sec => sec.perguntas.length > 0);
 
     return {
       trainerNome,
       isEnviado: this.state.enviado,
       isForm: !this.state.enviado,
       nome: this.state.nome, idade: this.state.idade, altura: this.state.altura, peso: this.state.peso,
-      lesoes: this.state.lesoes, medicamentos: this.state.medicamentos, restricoes: this.state.restricoes,
       onNomeChange: (e) => this.setState({ nome: e.target.value }),
       onIdadeChange: (e) => { this.setState({ idade: e.target.value }); this.scheduleAutosave(); },
       onAlturaChange: (e) => { this.setState({ altura: e.target.value }); this.scheduleAutosave(); },
       onPesoChange: (e) => { this.setState({ peso: e.target.value }); this.scheduleAutosave(); },
-      onLesoesChange: (e) => { this.setState({ lesoes: e.target.value }); this.scheduleAutosave(); },
-      onMedicamentosChange: (e) => { this.setState({ medicamentos: e.target.value }); this.scheduleAutosave(); },
-      onRestricoesChange: (e) => { this.setState({ restricoes: e.target.value }); this.scheduleAutosave(); },
       sexos: [
         chip('sexo', 'M', 'Masculino'),
         chip('sexo', 'F', 'Feminino')
@@ -650,21 +447,9 @@ class Component extends DCLogic {
         chip('objetivo', 'condicionamento', 'Condicionamento'),
         chip('objetivo', 'saude', 'Saúde geral')
       ],
-      temposTreino: [
-        chip('tempoTreino', '1_a_6_meses', '1 a 6 meses'),
-        chip('tempoTreino', '6_meses_a_1_ano', '6 meses a 1 ano'),
-        chip('tempoTreino', '1_a_3_anos', '1 a 3 anos'),
-        chip('tempoTreino', 'acima_3_anos', 'Acima de 3 anos')
-      ],
-      secoesView,
-      fotoSlots: [
-        fotoField('fotoFrente', 'Frente'),
-        fotoField('fotoLado', 'Lado'),
-        fotoField('fotoCostas', 'Costas')
-      ],
       btnBg: completo ? 'linear-gradient(135deg,#f97316,#ea580c)' : '#131a26',
       btnColor: completo ? '#fff' : '#66707e',
-      btnLabel: this.state.enviando ? 'Enviando…' : 'Enviar anamnese e fotos',
+      btnLabel: this.state.enviando ? 'Enviando…' : 'Enviar',
       mostrarAviso: this.state.tentouEnviar && !completo,
       erro: this.state.erro, erroDisplay: this.state.erro ? '' : 'display:none;',
       enviar: () => this.onEnviar()

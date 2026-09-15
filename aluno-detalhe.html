@@ -428,7 +428,7 @@ function renderAnamneseTab(container) {
 
   if (!anamnese) {
     container.appendChild(el('<div class="empty">Aguardando resposta do aluno. Assim que ele preencher a anamnese, as respostas aparecem aqui.</div>'));
-    const preencherBtn = el('<button type="button" class="btn btn-outline btn-block">Preencher sexo, idade, altura e peso</button>');
+    const preencherBtn = el('<button type="button" class="btn btn-outline btn-block">Preencher dados da anamnese</button>');
     preencherBtn.addEventListener('click', () => { anamneseFormOpen = true; render(); });
     container.appendChild(preencherBtn);
     return;
@@ -450,7 +450,7 @@ function renderAnamneseTab(container) {
   container.appendChild(linha('Restrições alimentares', anamnese.restricoes));
   container.appendChild(el('<div class="sub" style="margin-top:6px;">Respondido em ' + new Date(anamnese.respondido_em).toLocaleDateString('pt-BR') + '</div>'));
 
-  const editBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:14px;">Editar sexo, idade, altura e peso</button>');
+  const editBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:14px;">Editar dados da anamnese</button>');
   editBtn.addEventListener('click', () => { anamneseFormOpen = true; render(); });
   container.appendChild(editBtn);
 
@@ -484,9 +484,13 @@ function renderAnamneseTab(container) {
   container.appendChild(editDinBtn);
 }
 
+// O aluno só preenche nome/sexo/idade/altura/peso/objetivo (anamnese.html).
+// Tempo de treino, lesões/medicamentos/restrições e as perguntas dinâmicas
+// (renderAnamneseDinamicaForm) ficam por conta do profissional — esse
+// formulário cobre tudo que ainda não tem editor próprio.
 function renderAnamneseForm(container) {
   const box = el('<div class="form-box"></div>');
-  box.appendChild(el('<div class="sub" style="margin:0 0 16px;">Esses 4 dados alimentam automaticamente a calculadora de TMB/GET na aba Energético.</div>'));
+  box.appendChild(el('<div class="sub" style="margin:0 0 16px;">Sexo/idade/altura/peso alimentam a calculadora de TMB/GET na aba Energético. O resto é preenchido por você com o aluno.</div>'));
 
   let sexoVal = anamnese ? (anamnese.sexo || '') : '';
   const sexoWrap = el('<div style="margin-bottom:14px;"></div>');
@@ -514,6 +518,42 @@ function renderAnamneseForm(container) {
   peso.value = anamnese && anamnese.peso_kg != null ? anamnese.peso_kg : '';
   box.appendChild(el('<label>Peso (kg)</label>')); box.appendChild(peso);
 
+  let objetivoVal = anamnese ? (anamnese.objetivo || '') : '';
+  const objWrap = el('<div style="margin:14px 0;"></div>');
+  objWrap.appendChild(el('<label>Objetivo</label>'));
+  const objRow = el('<div class="sexo-row" style="flex-wrap:wrap;"></div>');
+  Object.keys(OBJETIVO_LABEL).forEach(key => {
+    const chip = el('<div class="chip' + (objetivoVal === key ? ' sel' : '') + '">' + esc(OBJETIVO_LABEL[key]) + '</div>');
+    chip.addEventListener('click', () => { objetivoVal = key; objRow.querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); chip.classList.add('sel'); });
+    objRow.appendChild(chip);
+  });
+  objWrap.appendChild(objRow);
+  box.appendChild(objWrap);
+
+  let tempoTreinoVal = anamnese ? (anamnese.tempo_treino || '') : '';
+  const tempoWrap = el('<div style="margin-bottom:14px;"></div>');
+  tempoWrap.appendChild(el('<label>Tempo de treino</label>'));
+  const tempoRow = el('<div class="sexo-row" style="flex-wrap:wrap;"></div>');
+  Object.keys(TEMPO_TREINO_LABEL).forEach(key => {
+    const chip = el('<div class="chip' + (tempoTreinoVal === key ? ' sel' : '') + '">' + esc(TEMPO_TREINO_LABEL[key]) + '</div>');
+    chip.addEventListener('click', () => { tempoTreinoVal = key; tempoRow.querySelectorAll('.chip').forEach(c => c.classList.remove('sel')); chip.classList.add('sel'); });
+    tempoRow.appendChild(chip);
+  });
+  tempoWrap.appendChild(tempoRow);
+  box.appendChild(tempoWrap);
+
+  const lesoes = el('<textarea rows="2" placeholder="Lesões, dores ou condições médicas relevantes"></textarea>');
+  lesoes.value = anamnese ? (anamnese.lesoes || '') : '';
+  box.appendChild(el('<label>Lesões / condições médicas</label>')); box.appendChild(lesoes);
+
+  const medicamentos = el('<textarea rows="2" placeholder="Medicamentos em uso" style="margin-top:10px;"></textarea>');
+  medicamentos.value = anamnese ? (anamnese.medicamentos || '') : '';
+  box.appendChild(el('<label style="margin-top:10px;">Medicamentos em uso</label>')); box.appendChild(medicamentos);
+
+  const restricoes = el('<textarea rows="2" placeholder="Restrições alimentares" style="margin-top:10px;"></textarea>');
+  restricoes.value = anamnese ? (anamnese.restricoes || '') : '';
+  box.appendChild(el('<label style="margin-top:10px;">Restrições alimentares</label>')); box.appendChild(restricoes);
+
   const erro = el('<div class="erro" style="display:none;"></div>');
   box.appendChild(erro);
 
@@ -527,7 +567,9 @@ function renderAnamneseForm(container) {
     salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
     const payload = {
       cliente_id: clienteIdParam, trainer_id: userId,
-      sexo: sexoVal, idade: Number(idade.value), altura_cm: Number(altura.value), peso_kg: Number(peso.value)
+      sexo: sexoVal, idade: Number(idade.value), altura_cm: Number(altura.value), peso_kg: Number(peso.value),
+      objetivo: objetivoVal || null, tempo_treino: tempoTreinoVal || null,
+      lesoes: lesoes.value.trim() || null, medicamentos: medicamentos.value.trim() || null, restricoes: restricoes.value.trim() || null
     };
     const { error } = await supabaseClient.from('anamnese_respostas').upsert(payload, { onConflict: 'cliente_id' });
     if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = 'Salvar'; return; }
