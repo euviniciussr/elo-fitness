@@ -251,6 +251,8 @@ let anamneseDinamica = {};
 let anamneseDinamicaFormOpen = false;
 let anamneseDinamicaEdit = null;
 let avaliacoesFisicas = [];
+let calorimetrias = [];
+let calorimetriaFormOpen = false;
 let avaliacaoFisicaFormOpen = false;
 let avaliacaoFisicaEditId = '';
 let avaliacaoFisicaDetalheId = '';
@@ -335,13 +337,14 @@ async function init() {
   if (!cl) { window.location.href = 'alunos.html'; return; }
   cliente = cl;
 
-  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes, msgRes, trainerRes] = await Promise.all([
+  const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, calorimetriasRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes, msgRes, trainerRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').eq('trainer_id', userId).order('nome'),
     supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', clienteIdParam).order('data', { ascending: false }),
+    supabaseClient.from('calorimetrias').select('*').eq('cliente_id', clienteIdParam).order('data_exame', { ascending: false }),
     supabaseClient.from('registros_peso').select('*').eq('cliente_id', clienteIdParam).order('data', { ascending: false }),
     supabaseClient.from('medidas_corporais').select('*').eq('cliente_id', clienteIdParam).order('data', { ascending: false }),
     supabaseClient.from('comparacoes_fotos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
@@ -362,6 +365,7 @@ async function init() {
   dietaList = dietaRes.data || [];
   cardioList = cardioRes.data || [];
   avaliacoesFisicas = avFisicaRes.data || [];
+  calorimetrias = calorimetriasRes.data || [];
   pesoList = pesoRes.data || [];
   medidasList = medidasRes.data || [];
   comparacoesList = comparacoesRes.data || [];
@@ -679,7 +683,21 @@ function renderEnergeticoTab(container) {
     container.appendChild(grupo);
   };
 
-  container.appendChild(el('<div class="sub" style="margin:0 0 4px;">Atividade e Objetivos</div>'));
+  container.appendChild(el('<div class="sub" style="margin:0 0 4px;">Fonte do Gasto Energético</div>'));
+  const fonte = anamnese.fonte_gasto_energetico || 'formula';
+  const fonteGrupo = el('<div class="opt-group"></div>');
+  [['formula', 'Cálculo por fórmula'], ['calorimetria', 'Calorimetria indireta']].forEach(([key, nome]) => {
+    const sel = fonte === key;
+    const card = el('<div class="opt-card' + (sel ? ' sel' : '') + '"></div>');
+    card.appendChild(el('<div class="opt-nome">' + nome + '</div>'));
+    card.addEventListener('click', () => salvarCampo('fonte_gasto_energetico', key));
+    fonteGrupo.appendChild(card);
+  });
+  container.appendChild(fonteGrupo);
+
+  if (fonte === 'calorimetria') renderCalorimetriaSecao(container, salvarCampo);
+
+  container.appendChild(el('<div class="sub" style="margin:18px 0 4px;">Atividade e Objetivos</div>'));
   renderGrupo('Nível de Atividade', NIVEL_ATIVIDADE_OPCOES, 'nivel_atividade', true);
   renderGrupo('Objetivo', OBJETIVO_CALORICO_OPCOES, 'objetivo_calorico', false);
   renderGrupo('Estado Atual', ESTADO_ATUAL_OPCOES, 'estado_atual', false);
@@ -688,23 +706,36 @@ function renderEnergeticoTab(container) {
   const objSel = OBJETIVO_CALORICO_OPCOES.find(o => o.key === anamnese.objetivo_calorico);
   const estadoSel = ESTADO_ATUAL_OPCOES.find(o => o.key === anamnese.estado_atual);
 
-  const tmb = calcularTMB(anamnese.sexo, anamnese.peso_kg, anamnese.altura_cm, anamnese.idade);
-  const get = nivelSel ? tmb * nivelSel.fator : null;
+  // Fonte do gasto de repouso: fórmula (TMB, como sempre) ou o GER medido no
+  // exame de calorimetria selecionado — dali em diante (nível de atividade →
+  // TDEE → objetivo → meta → macros) a conta é EXATAMENTE a mesma, só troca
+  // o número de entrada. Nunca "recalcula TMB" quando é calorimetria.
+  const calorimetriaSelecionada = fonte === 'calorimetria'
+    ? (calorimetrias.find(c => c.id === anamnese.calorimetria_id) || null) : null;
+  const baseLabel = fonte === 'calorimetria' ? 'Gasto Energético de Repouso (GER medido)' : 'Taxa Metabólica Basal (TMB)';
+  const baseRepouso = fonte === 'calorimetria'
+    ? (calorimetriaSelecionada ? Number(calorimetriaSelecionada.ger_kcal) : null)
+    : calcularTMB(anamnese.sexo, anamnese.peso_kg, anamnese.altura_cm, anamnese.idade);
+  const get = (baseRepouso != null && nivelSel) ? baseRepouso * nivelSel.fator : null;
   const meta = get != null && objSel ? get * objSel.percentual : null;
 
   container.appendChild(el('<div class="sub" style="margin:18px 0 4px;">Resultados da Sua Dieta</div>'));
-  const grid = el('<div class="result-grid"></div>');
-  [
-    ['Taxa Metabólica Basal (TMB)', Math.round(tmb) + ' kcal'],
-    ['Gasto Energético Total (TDEE)', get != null ? Math.round(get) + ' kcal' : '—'],
-    ['Meta Calórica', meta != null ? Math.round(meta) + ' kcal' : '—']
-  ].forEach(([label, val]) => {
-    const box = el('<div class="result-box"></div>');
-    box.appendChild(el('<div class="result-num">' + val + '</div>'));
-    box.appendChild(el('<div class="result-label">' + label + '</div>'));
-    grid.appendChild(box);
-  });
-  container.appendChild(grid);
+  if (fonte === 'calorimetria' && !calorimetriaSelecionada) {
+    container.appendChild(el('<div class="warn-box">Selecione ou registre um exame de calorimetria acima pra calcular o TDEE e a meta calórica.</div>'));
+  } else {
+    const grid = el('<div class="result-grid"></div>');
+    [
+      [baseLabel, Math.round(baseRepouso) + ' kcal'],
+      ['Gasto Energético Total (TDEE)' + (fonte === 'calorimetria' ? ' estimado' : ''), get != null ? Math.round(get) + ' kcal' : '—'],
+      ['Meta Calórica', meta != null ? Math.round(meta) + ' kcal' : '—']
+    ].forEach(([label, val]) => {
+      const box = el('<div class="result-box"></div>');
+      box.appendChild(el('<div class="result-num">' + val + '</div>'));
+      box.appendChild(el('<div class="result-label">' + label + '</div>'));
+      grid.appendChild(box);
+    });
+    container.appendChild(grid);
+  }
 
   container.appendChild(el(
     '<div class="result-summary">' +
@@ -741,6 +772,102 @@ function renderEnergeticoTab(container) {
     ));
     container.appendChild(el('<div class="sub" style="margin-top:4px;">Valores sugeridos com base nos dados cadastrados, objetivo e meta calórica.</div>'));
   }
+}
+
+// Histórico de exames + seletor de qual exame é a referência atual
+// (anamnese.calorimetria_id). Trocar de calorimetria pra fórmula e voltar
+// não apaga nada disso — só troca qual base o cálculo usa.
+function renderCalorimetriaSecao(container, salvarCampo) {
+  if (calorimetriaFormOpen) { renderCalorimetriaForm(container, salvarCampo); return; }
+
+  container.appendChild(el('<div class="sub" style="margin:18px 0 2px;">Calorimetria Indireta</div>'));
+  container.appendChild(el('<div class="sub" style="margin:0 0 10px;font-size:12px;">Informe os dados obtidos no exame de calorimetria para utilizar o gasto energético medido no planejamento.</div>'));
+
+  if (calorimetrias.length) {
+    const lista = el('<div class="opt-group"></div>');
+    calorimetrias.forEach(c => {
+      const sel = anamnese.calorimetria_id === c.id;
+      const card = el('<div class="opt-card' + (sel ? ' sel' : '') + '"></div>');
+      card.appendChild(el('<div class="opt-nome">' + fmtDataBr(c.data_exame) + ' — GER ' + Math.round(c.ger_kcal) + ' kcal/dia</div>'));
+      const extras = [];
+      if (c.vo2 != null) extras.push('VO₂ ' + c.vo2);
+      if (c.vco2 != null) extras.push('VCO₂ ' + c.vco2);
+      if (c.rq != null) extras.push('RQ ' + c.rq);
+      if (extras.length) card.appendChild(el('<div class="opt-desc">' + extras.join(' · ') + '</div>'));
+      if (c.observacoes) card.appendChild(el('<div class="opt-desc">' + c.observacoes + '</div>'));
+      card.addEventListener('click', () => salvarCampo('calorimetria_id', c.id));
+      lista.appendChild(card);
+    });
+    container.appendChild(lista);
+  } else {
+    container.appendChild(el('<div class="warn-box">Nenhum exame de calorimetria registrado ainda pra esse aluno.</div>'));
+  }
+
+  const novoBtn = el('<button type="button" class="btn btn-outline btn-block">+ Registrar novo exame</button>');
+  novoBtn.addEventListener('click', () => { calorimetriaFormOpen = true; render(); });
+  container.appendChild(novoBtn);
+}
+
+function renderCalorimetriaForm(container, salvarCampo) {
+  const box = el('<div class="form-box"></div>');
+  box.appendChild(el('<div class="sub" style="margin:0 0 16px;">Informe os dados obtidos no exame de calorimetria indireta.</div>'));
+
+  const row1 = el('<div class="field-row"></div>');
+  const dataInput = el('<input type="date">');
+  dataInput.value = new Date().toISOString().slice(0, 10);
+  const colData = el('<div></div>'); colData.appendChild(el('<label>Data do exame</label>')); colData.appendChild(dataInput);
+  const gerInput = el('<input type="number" min="0" step="1" placeholder="Ex: 2050">');
+  const colGer = el('<div></div>'); colGer.appendChild(el('<label>Gasto energético de repouso (kcal/dia)</label>')); colGer.appendChild(gerInput);
+  row1.appendChild(colData); row1.appendChild(colGer);
+  box.appendChild(row1);
+
+  box.appendChild(el('<div class="sub" style="margin:14px 0 10px;font-weight:700;color:#e5e9f0;">Complementares (opcional)</div>'));
+  const row2 = el('<div class="field-row"></div>');
+  const vo2Input = el('<input type="number" min="0" step="0.01" placeholder="ml/kg/min">');
+  const colVo2 = el('<div></div>'); colVo2.appendChild(el('<label>VO₂</label>')); colVo2.appendChild(vo2Input);
+  const vco2Input = el('<input type="number" min="0" step="0.01" placeholder="ml/kg/min">');
+  const colVco2 = el('<div></div>'); colVco2.appendChild(el('<label>VCO₂</label>')); colVco2.appendChild(vco2Input);
+  row2.appendChild(colVo2); row2.appendChild(colVco2);
+  box.appendChild(row2);
+
+  const rqWrap = el('<div style="margin-top:12px;"></div>');
+  rqWrap.appendChild(el('<label>Quociente respiratório (RQ/QR)</label>'));
+  const rqInput = el('<input type="number" min="0" step="0.01" placeholder="Ex: 0.85">');
+  rqWrap.appendChild(rqInput);
+  box.appendChild(rqWrap);
+
+  const obs = el('<textarea rows="3" placeholder="Observações (opcional)" style="margin-top:14px;"></textarea>');
+  box.appendChild(el('<label style="margin-top:14px;">Observações</label>')); box.appendChild(obs);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const actions = el('<div class="actions-row"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary">Cancelar</button>');
+  cancelBtn.addEventListener('click', () => { calorimetriaFormOpen = false; render(); });
+  const salvarBtn = el('<button type="button" class="btn btn-primary">Salvar exame</button>');
+  salvarBtn.addEventListener('click', async () => {
+    const ger = Number(gerInput.value);
+    if (!dataInput.value) { erro.textContent = 'Informe a data do exame.'; erro.style.display = ''; return; }
+    if (!(ger > 0)) { erro.textContent = 'Informe o gasto energético de repouso medido.'; erro.style.display = ''; return; }
+    salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
+    const payload = {
+      trainer_id: userId, cliente_id: clienteIdParam, data_exame: dataInput.value, ger_kcal: ger,
+      vo2: vo2Input.value ? Number(vo2Input.value) : null,
+      vco2: vco2Input.value ? Number(vco2Input.value) : null,
+      rq: rqInput.value ? Number(rqInput.value) : null,
+      observacoes: obs.value.trim() || null
+    };
+    const { data, error } = await supabaseClient.from('calorimetrias').insert(payload).select().single();
+    if (error) { erro.textContent = error.message; erro.style.display = ''; salvarBtn.disabled = false; salvarBtn.textContent = 'Salvar exame'; return; }
+    const { data: lista } = await supabaseClient.from('calorimetrias').select('*').eq('cliente_id', clienteIdParam).order('data_exame', { ascending: false });
+    calorimetrias = lista || [];
+    calorimetriaFormOpen = false;
+    await salvarCampo('calorimetria_id', data.id);
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  box.appendChild(actions);
+  container.appendChild(box);
 }
 
 function renderAvaliacaoFisicaTab(container) {

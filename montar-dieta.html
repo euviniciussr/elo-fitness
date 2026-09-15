@@ -259,13 +259,27 @@ async function init() {
   anamneseAtual = anamnese;
   const ultimaAv = (avaliacoesRes.data && avaliacoesRes.data[0]) || null;
   massaLivreGordura = ultimaAv ? avaliacaoResultado(ultimaAv).massaMagra : null;
+
+  // Fonte do gasto de repouso escolhida em aluno-detalhe.html: fórmula (TMB,
+  // como sempre) ou o GER medido no exame de calorimetria selecionado. O
+  // profissional nunca redigita nada aqui — só troca o número de entrada,
+  // nível de atividade → TDEE → objetivo → meta continua idêntico.
+  const usaCalorimetria = anamnese && anamnese.fonte_gasto_energetico === 'calorimetria';
+  let calorimetriaSelecionada = null;
+  if (usaCalorimetria && anamnese.calorimetria_id) {
+    const { data: calo } = await supabaseClient.from('calorimetrias').select('*').eq('id', anamnese.calorimetria_id).maybeSingle();
+    calorimetriaSelecionada = calo || null;
+  }
+
   if (anamnese && anamnese.sexo && anamnese.peso_kg && anamnese.altura_cm && anamnese.idade) {
     const nivelSel = NIVEL_ATIVIDADE_OPCOES.find(o => o.key === anamnese.nivel_atividade);
     const objSel = OBJETIVO_CALORICO_OPCOES.find(o => o.key === anamnese.objetivo_calorico);
-    const tmb = calcularTMB(anamnese.sexo, anamnese.peso_kg, anamnese.altura_cm, anamnese.idade);
-    const get = nivelSel ? tmb * nivelSel.fator : null;
+    const tmb = usaCalorimetria
+      ? (calorimetriaSelecionada ? Number(calorimetriaSelecionada.ger_kcal) : null)
+      : calcularTMB(anamnese.sexo, anamnese.peso_kg, anamnese.altura_cm, anamnese.idade);
+    const get = (tmb != null && nivelSel) ? tmb * nivelSel.fator : null;
     const meta = get != null && objSel ? get * objSel.percentual : null;
-    metaEnergetica = { tmb, get, meta };
+    metaEnergetica = { tmb, get, meta, fonte: usaCalorimetria ? 'calorimetria' : 'formula' };
   }
 
   if (dietaId) {
@@ -384,10 +398,11 @@ function render() {
   const h = el('<div></div>');
   const hTop = el('<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;"></div>');
   hTop.appendChild(el('<h1>' + (dietaId ? 'Editar dieta' : 'Criar nova dieta') + '</h1>'));
-  if (metaEnergetica) {
+  if (metaEnergetica && metaEnergetica.tmb != null) {
+    const rotuloBase = metaEnergetica.fonte === 'calorimetria' ? 'GER (calorimetria)' : 'TMB';
     const box = el('<div style="text-align:right;flex-shrink:0;"></div>');
     box.appendChild(el(
-      '<div style="font-size:11px;font-weight:700;color:#66707e;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;">TMB · GET · Meta calórica</div>'
+      '<div style="font-size:11px;font-weight:700;color:#66707e;text-transform:uppercase;letter-spacing:.03em;margin-bottom:2px;">' + rotuloBase + ' · GET · Meta calórica</div>'
     ));
     box.appendChild(el(
       '<div style="font-size:13.5px;font-weight:700;color:#f97316;white-space:nowrap;">' +
@@ -396,6 +411,10 @@ function render() {
       (metaEnergetica.meta != null ? ' · ' + Math.round(metaEnergetica.meta) + ' kcal' : '') +
       '</div>'
     ));
+    hTop.appendChild(box);
+  } else if (metaEnergetica && metaEnergetica.fonte === 'calorimetria') {
+    const box = el('<div style="text-align:right;flex-shrink:0;max-width:220px;"></div>');
+    box.appendChild(el('<div style="font-size:11.5px;color:#66707e;">Esse aluno usa calorimetria indireta, mas nenhum exame está selecionado. Escolha um exame na aba TMB/TDEE do aluno.</div>'));
     hTop.appendChild(box);
   }
   h.appendChild(hTop);
