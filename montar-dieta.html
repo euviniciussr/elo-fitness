@@ -811,6 +811,21 @@ function abrirSalvarPreset(item) {
   renderForm();
 }
 
+// `presetBase` guarda, pra cada item aplicado (principal e cada
+// substituível), a quantidade/nutrientes de referência NO MOMENTO da
+// aplicação — nunca o preset em si (que fica intocado no banco). É contra
+// essa base que a proporção é recalculada quando o profissional edita a
+// quantidade do alimento principal (recalcularSubstituiveisPorProporcao) —
+// mesmo que o item seja editado várias vezes depois, o fator sempre volta
+// a ser "quantidade atual / quantidade que veio do preset", igual pedido.
+function snapshotPresetBase(item) {
+  return {
+    quantidade: item.quantidade != null ? item.quantidade : item.quantidade_g,
+    quantidade_g: item.quantidade_g, kcal: item.kcal, proteina_g: item.proteina_g,
+    carboidrato_g: item.carboidrato_g, gordura_g: item.gordura_g, fibra_g: item.fibra_g, sodio_mg: item.sodio_mg
+  };
+}
+
 async function aplicarPreset(preset, opcao, onDone) {
   const estrutura = preset.estrutura || {};
   const refs = [estrutura.principal].concat(estrutura.substituiveis || []).filter(Boolean);
@@ -825,10 +840,37 @@ async function aplicarPreset(preset, opcao, onDone) {
     } catch (err) { /* falha tratada abaixo */ }
     const novoItem = food ? buildItemFromFood(food, ref.quantidade, ref.unidade) : null;
     if (!novoItem) { falharam.push(ref.nome); continue; }
+    novoItem.presetBase = snapshotPresetBase(novoItem);
     if (i === 0) { novoItem.substituiveis = []; principalItem = novoItem; opcao.itens.push(novoItem); }
     else if (principalItem) { principalItem.substituiveis.push(novoItem); }
   }
   onDone(falharam);
+}
+
+// Alterar a quantidade do alimento principal de um item que veio de um
+// preset recalcula os substituíveis mantendo a MESMA proporção que tinham
+// no preset (fator = nova quantidade / quantidade base do preset) — nunca
+// independente. Só mexe em substituíveis que também têm presetBase (vieram
+// do mesmo preset); um substituível adicionado manualmente depois continua
+// livre de recálculo automático, editável normalmente.
+function recalcularSubstituiveisPorProporcao(item) {
+  if (!item.presetBase || !item.substituiveis || !item.substituiveis.length) return;
+  const base = Number(item.presetBase.quantidade);
+  if (!base) return;
+  const qtdAtual = item.quantidade != null ? item.quantidade : item.quantidade_g;
+  const fator = Number(qtdAtual) / base;
+  item.substituiveis.forEach((sub) => {
+    if (!sub.presetBase) return;
+    const b = sub.presetBase;
+    sub.quantidade = Math.round(b.quantidade * fator);
+    sub.quantidade_g = round1(b.quantidade_g * fator);
+    sub.kcal = round1(b.kcal * fator);
+    sub.proteina_g = round1(b.proteina_g * fator);
+    sub.carboidrato_g = round1(b.carboidrato_g * fator);
+    sub.gordura_g = round1(b.gordura_g * fator);
+    sub.fibra_g = round1(b.fibra_g * fator);
+    sub.sodio_mg = round1(b.sodio_mg * fator);
+  });
 }
 
 function abrirBibliotecaPresets(opcao, onChange) {
@@ -1127,7 +1169,12 @@ function abrirEditarItem(opcao, index, onSaved) {
       const novoItem = buildItemFromFood(state.food, qtd, state.unidade);
       if (!novoItem) { state.erro = 'Sem conversão disponível pra essa unidade.'; renderForm(); return; }
       novoItem.substituiveis = it.substituiveis || [];
+      // Item veio de um preset (tem presetBase) — a nova quantidade recalcula
+      // os substituíveis do preset pela mesma proporção, sem tocar no preset
+      // original (só objetos em memória desta dieta).
+      if (it.presetBase) novoItem.presetBase = it.presetBase;
       opcao.itens[index] = novoItem;
+      recalcularSubstituiveisPorProporcao(novoItem);
       overlay.remove();
       if (onSaved) onSaved();
     });
