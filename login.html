@@ -326,8 +326,14 @@ class Component extends DCLogic {
     // js/auth-guard.js faz em toda página depois disso), pra nunca mandar
     // uma conta de aluno pro dashboard do personal só porque ela deixou o
     // toggle errado marcado.
-    const { data: trainer } = await supabaseClient.from('trainers').select('id').eq('id', signInData.user.id).maybeSingle();
-    window.location.href = trainer ? 'dashboard.html' : 'app-aluno.html';
+    const { data: trainer, error: trainerError } = await supabaseClient.from('trainers').select('id').eq('id', signInData.user.id).maybeSingle();
+    // Se a checagem falhar (rede instável logo após o login), não force
+    // 'app-aluno.html' pra uma conta que pode ser de personal de verdade —
+    // cai pro toggle como melhor palpite; auth-guard.js confere de novo com
+    // a mesma regra assim que a página carregar, então isso nunca vira uma
+    // brecha, só evita mandar um personal pro lugar errado por instabilidade.
+    const destino = trainerError ? (perfil === 'personal' ? 'dashboard.html' : 'app-aluno.html') : (trainer ? 'dashboard.html' : 'app-aluno.html');
+    window.location.href = destino;
   }
 
   renderVals() {

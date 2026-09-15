@@ -26,7 +26,12 @@ const PAGINAS_ALUNO = ['app-aluno.html', 'anamnese.html'];
 async function bloquearAcessoForaDoPerfil(userId) {
   const pagina = location.pathname.split('/').pop();
   const isPaginaAluno = PAGINAS_ALUNO.includes(pagina);
-  const { data: trainer } = await supabaseClient.from('trainers').select('id').eq('id', userId).maybeSingle();
+  const { data: trainer, error } = await supabaseClient.from('trainers').select('id').eq('id', userId).maybeSingle();
+  // Uma falha de rede/API aqui não pode ser lida como "não é trainer" — isso
+  // chutaria um profissional de verdade pra fora do próprio dashboard numa
+  // instabilidade momentânea. Só bloqueia numa resposta definitiva (sem
+  // erro) confirmando que não existe linha em trainers pra essa conta.
+  if (error) return false;
   if (!trainer && !isPaginaAluno) {
     window.location.replace('app-aluno.html');
     return true;

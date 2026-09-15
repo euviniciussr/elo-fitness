@@ -839,7 +839,7 @@ function abrirSalvarPreset(item) {
 // a ser "quantidade atual / quantidade que veio do preset", igual pedido.
 function snapshotPresetBase(item) {
   return {
-    quantidade: item.quantidade != null ? item.quantidade : item.quantidade_g,
+    quantidade: item.quantidade != null ? item.quantidade : item.quantidade_g, unidade: item.unidade,
     quantidade_g: item.quantidade_g, kcal: item.kcal, proteina_g: item.proteina_g,
     carboidrato_g: item.carboidrato_g, gordura_g: item.gordura_g, fibra_g: item.fibra_g, sodio_mg: item.sodio_mg
   };
@@ -874,6 +874,12 @@ async function aplicarPreset(preset, opcao, onDone) {
 // livre de recálculo automático, editável normalmente.
 function recalcularSubstituiveisPorProporcao(item) {
   if (!item.presetBase || !item.substituiveis || !item.substituiveis.length) return;
+  // Fator só faz sentido comparando a mesma unidade (g com g, unidade com
+  // unidade...). Se o profissional trocou a unidade do principal ao editar
+  // (ex.: g → fatia), não dá pra saber a proporção certa — melhor deixar os
+  // substituíveis como estavam do que aplicar um fator dimensionalmente
+  // errado.
+  if (item.unidade !== item.presetBase.unidade) return;
   const base = Number(item.presetBase.quantidade);
   if (!base) return;
   const qtdAtual = item.quantidade != null ? item.quantidade : item.quantidade_g;
