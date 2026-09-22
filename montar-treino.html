@@ -843,7 +843,7 @@ async function init() {
   if (!user) return;
   userId = user.id;
 
-  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url').eq('trainer_id', userId).order('nome');
+  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url, categoria').eq('trainer_id', userId).order('nome');
   exerciciosLib = exs || [];
 
   const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at');
@@ -1771,7 +1771,16 @@ function renderAddExForm(treino) {
   if (isCombo) form.appendChild(el('<div class="sub" style="margin:0;color:#a855f7;">Adicionando exercício combinado…</div>'));
   if (editTe) form.appendChild(el('<div class="sub" style="margin:0;color:#f97316;">Editando exercício…</div>'));
 
-  const selWrap = el('<div><label>Exercício</label></div>');
+  const selLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;"></div>');
+  selLabelRow.appendChild(el('<label style="margin-bottom:0;">Exercício</label>'));
+  const categoriasDisponiveis = Array.from(new Set(exerciciosLib.map(e => e.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const catSel = el('<select style="flex:0 0 auto;width:auto;min-width:130px;"><option value="">Todos</option></select>');
+  categoriasDisponiveis.forEach(c => catSel.appendChild(el('<option value="' + c.replace(/"/g, '&quot;') + '">' + c + '</option>')));
+  const categoriaAtual = editTe ? (editTe.exercicios || {}).categoria : null;
+  if (categoriaAtual && categoriasDisponiveis.includes(categoriaAtual)) catSel.value = categoriaAtual;
+  selLabelRow.appendChild(catSel);
+  const selWrap = el('<div></div>');
+  selWrap.appendChild(selLabelRow);
   const nomeAtual = editTe ? (editTe.exercicios || {}).nome || '' : '';
   const searchWrap = el('<div class="ex-search-wrap"></div>');
   const sel = el('<input placeholder="Digite pra buscar…" autocomplete="off" value="' + nomeAtual.replace(/"/g, '&quot;') + '">');
@@ -1782,12 +1791,19 @@ function renderAddExForm(treino) {
 
   const fecharDropdown = () => { dropdown.style.display = 'none'; dropdown.innerHTML = ''; };
 
+  catSel.addEventListener('change', () => {
+    exercicioEscolhido = null;
+    renderVideoPreview();
+    if (dropdown.style.display !== 'none') abrirDropdown();
+  });
+
   const abrirDropdown = () => {
     const q = norm(sel.value.trim());
-    const matches = (q ? exerciciosLib.filter(e => norm(e.nome).includes(q)) : exerciciosLib).slice(0, 40);
+    const base = catSel.value ? exerciciosLib.filter(e => e.categoria === catSel.value) : exerciciosLib;
+    const matches = (q ? base.filter(e => norm(e.nome).includes(q)) : base).slice(0, 40);
     dropdown.innerHTML = '';
     if (!matches.length) {
-      dropdown.appendChild(el('<div class="ex-search-empty">Nenhum exercício encontrado.</div>'));
+      dropdown.appendChild(el('<div class="ex-search-empty">Não encontramos exercícios para essa busca.</div>'));
     } else {
       matches.forEach(e => {
         const item = el('<div class="ex-search-item">' + e.nome + '</div>');
@@ -1831,7 +1847,7 @@ function renderAddExForm(treino) {
   const exercicioSelecionado = () => {
     if (exercicioEscolhido) return exercicioEscolhido;
     const nome = sel.value.trim().toLowerCase();
-    return exerciciosLib.find(e => e.nome.toLowerCase() === nome);
+    return exerciciosLib.find(e => e.nome.toLowerCase() === nome && (!catSel.value || e.categoria === catSel.value));
   };
 
   const seriesAquecWrap = el('<div><label>Séries de aquecimento (opcional)</label></div>');
