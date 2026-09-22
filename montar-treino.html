@@ -150,6 +150,17 @@ textarea{resize:vertical;min-height:52px;}
 .add-serie-btn:hover{border-color:rgba(249,115,22,.45);color:#f97316;}
 .serie-tmpl-link{background:none;border:none;color:#f97316;font-size:12px;font-weight:700;padding:2px 0;}
 .serie-tmpl-link:hover{text-decoration:underline;}
+
+@media (max-width:640px){
+  .wrap{padding:16px 12px 60px;}
+  .card{padding:16px;}
+  .topbar{padding:14px 16px;}
+  .nome-row{flex-wrap:wrap;}
+  .nome-row-field{flex:1 1 100%;}
+  .nome-row .btn{flex:1 1 auto;}
+  .quick-ex-fields{grid-template-columns:1fr 1fr;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+}
 </style>
 </head>
 <body>
@@ -1333,7 +1344,7 @@ function renderTreinoBody(treino) {
   const statusTreino = renderStatusTreino(treino);
   if (statusTreino) body.appendChild(statusTreino);
 
-  const nomeRow = el('<div style="display:flex;gap:10px;align-items:flex-end;"><div style="flex:1;"></div></div>');
+  const nomeRow = el('<div class="nome-row" style="display:flex;gap:10px;align-items:flex-end;"><div class="nome-row-field" style="flex:1;min-width:160px;"></div></div>');
   const nomeLabel = el('<label>Nome do treino</label>');
   const nomeInput = el('<input value="' + treino.nome.replace(/"/g, '&quot;') + '">');
   nomeInput.addEventListener('change', async (e) => {
