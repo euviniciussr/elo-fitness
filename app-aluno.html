@@ -13,6 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="js/avaliacao-fisica.js"></script>
 <script src="js/avaliacao-charts.js"></script>
+<script src="js/evolucao-treino.js"></script>
 <script src="js/avaliacao-pdf.js"></script>
 <script src="assets/app-aluno/64d5e401-7786-420f-9671-63290da489fe.js"></script>
 </head>
@@ -778,6 +779,54 @@ aside + * table{display:block!important;overflow-x:auto!important}
         </div>
 
         <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:800;margin-bottom:4px;">Evolução do peso corporal</div>
+          <div style="font-size:11.5px;color:#66707e;margin-bottom:14px;">Cada registro de peso que você lança no "Registro de hoje"</div>
+          <sc-if value="{{ semGraficoPeso }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12.5px;color:#66707e;padding:14px 0;text-align:center;">Registre seu peso em pelo menos 2 dias pra ver o gráfico.</div>
+          </sc-if>
+          <sc-if value="{{ temGraficoPeso }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;">
+                <sc-for list="{{ pesoCorporalCards }}" as="c" hint-placeholder-count="4">
+                  <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:12px;text-align:center;">
+                    <div style="font-size:16px;font-weight:800;color:{{ c.cor }};">{{ c.valor }}</div>
+                    <div style="font-size:10.5px;color:#66707e;margin-top:4px;">{{ c.label }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="position:relative;height:220px;"><canvas id="ev-chart-peso-corporal"></canvas></div>
+            </div>
+          </sc-if>
+        </section>
+
+        <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:800;margin-bottom:4px;">Progressão de carga</div>
+          <div style="font-size:11.5px;color:#66707e;margin-bottom:14px;">Maior carga que você registrou em cada treino, por exercício</div>
+          <sc-if value="{{ semProgressaoCarga }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12.5px;color:#66707e;padding:14px 0;text-align:center;">Registre a carga das séries nos seus treinos pra ver a evolução aqui.</div>
+          </sc-if>
+          <sc-if value="{{ temProgressaoCarga }}" hint-placeholder-val="{{ true }}">
+            <div>
+              <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;">
+                <sc-for list="{{ exerciciosCargaTabs }}" as="e" hint-placeholder-count="4">
+                  <button type="button" sc-camel-on-click="{{ e.onClick }}" style="flex-shrink:0;background:{{ e.bg }};border:1px solid {{ e.border }};color:{{ e.color }};font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;">{{ e.label }} <span style="color:{{ e.deltaCor }};">{{ e.deltaLabel }}</span></button>
+                </sc-for>
+              </div>
+              <div style="font-size:12.5px;color:#e5e9f0;background:#0d1119;border:1px solid #1a2130;border-radius:10px;padding:10px 12px;margin-bottom:12px;">{{ cargaInsight }}</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:14px;">
+                <sc-for list="{{ cargaCards }}" as="c" hint-placeholder-count="4">
+                  <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:12px;text-align:center;">
+                    <div style="font-size:16px;font-weight:800;color:{{ c.cor }};">{{ c.valor }}</div>
+                    <div style="font-size:10.5px;color:#66707e;margin-top:4px;">{{ c.label }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="position:relative;height:220px;"><canvas id="ev-chart-carga"></canvas></div>
+            </div>
+          </sc-if>
+        </section>
+
+        <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-bottom:16px;">
           <div style="font-size:14px;font-weight:800;margin-bottom:14px;">Fotos de evolução</div>
           <sc-if value="{{ semFotosEvolucao }}" hint-placeholder-val="{{ true }}">
             <div style="font-size:12.5px;color:#66707e;">Nenhuma foto enviada ainda.</div>
@@ -1219,6 +1268,7 @@ class Component extends DCLogic {
     pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: '',
     avaliacoesFisicas: [], medidasCorporais: [], comparacoesFotos: [],
     avaliacaoFisicaDetalheId: '', avaliacaoFisicaMetrica: 'percGordura',
+    pesoCorporalTodos: [], cargasHistorico: [], exercicioCargaId: '',
     pdfDetalheGerando: false, pdfEvolucaoGerando: false,
     cargasSalvas: {}, cargasEditando: {}, cargasInputTemp: {}, cargasSalvando: {},
     feedbackGeralTexto: '', feedbackGeralEnviando: false, feedbackGeralEnviado: false,
@@ -1381,6 +1431,7 @@ class Component extends DCLogic {
       medidasCorporais: medidas || [], comparacoesFotos: comparacoes || [],
       mensagens: mensagens || []
     });
+    this.loadEvolucaoTreino(cliente.id);
     if (!treinos || !treinos.length) return;
     const { data: itens } = await supabaseClient
       .from('treino_exercicios')
@@ -1412,6 +1463,16 @@ class Component extends DCLogic {
     this.setState({ exerciciosDoTreino: itens || [], tecnicasPorId, cargasSalvas, exerciciosFeitos, seriesFeitas });
   }
 
+  // Histórico completo (sem o corte de 90 dias do resto da tela) pros
+  // gráficos de peso corporal e progressão de carga da aba Evolução.
+  async loadEvolucaoTreino(clienteId) {
+    const [{ data: pesos }, { data: cargas }] = await Promise.all([
+      supabaseClient.from('registros_peso').select('data, peso').eq('cliente_id', clienteId).order('data', { ascending: true }),
+      supabaseClient.from('serie_cargas').select('carga, data, treino_exercicios(exercicio_id, exercicios(nome))').eq('cliente_id', clienteId)
+    ]);
+    this.setState({ pesoCorporalTodos: pesos || [], cargasHistorico: cargas || [] });
+  }
+
   // Carga é sempre salva com a data de hoje: se o aluno já registrou hoje,
   // "salvar" de novo faz upsert (edita), sem nunca tocar em dias anteriores
   // — é assim que o histórico de progressão se forma sozinho.
@@ -1434,6 +1495,7 @@ class Component extends DCLogic {
         cargasEditando: { ...s.cargasEditando, [key]: false }
       };
     });
+    if (!error) this.loadEvolucaoTreino(this.state.clienteId);
   }
 
   onEditarCarga(key, valorAtual) {
@@ -1460,6 +1522,7 @@ class Component extends DCLogic {
     if (error) { alert('Não foi possível salvar o peso: ' + error.message); return; }
     const { data: pesos } = await supabaseClient.from('registros_peso').select('*').eq('cliente_id', this.state.clienteId).order('data', { ascending: false }).limit(90);
     this.setState({ pesoHistorico: pesos || [], pesoSalvo: true });
+    this.loadEvolucaoTreino(this.state.clienteId);
   }
 
   async onFinalizarTreino() {
@@ -1906,6 +1969,31 @@ class Component extends DCLogic {
       };
     }
 
+    // Gráficos de peso corporal + progressão de carga (js/evolucao-treino.js).
+    const pesosAsc = this.state.pesoCorporalTodos;
+    const temGraficoPeso = pesosAsc.length >= 2;
+    const pesoCorporalCards = temGraficoPeso ? resumoPesoCards(resumoPesoCorporal(pesosAsc)) : [];
+    const progressoes = progressaoPorExercicio(this.state.cargasHistorico);
+    const progSel = progressoes.find(p => p.exercicioId === this.state.exercicioCargaId) || progressoes[0] || null;
+    const exerciciosCargaTabs = progressoes.map(p => {
+      const ativo = progSel && p.exercicioId === progSel.exercicioId;
+      return {
+        label: p.nome,
+        deltaLabel: p.pontos.length < 2 ? '' : (p.delta > 0 ? '↑' : p.delta < 0 ? '↓' : '→') + fmtNum(Math.abs(p.deltaPct), 0) + '%',
+        deltaCor: p.delta > 0 ? '#4ade80' : p.delta < 0 ? '#f87171' : '#66707e',
+        onClick: () => this.setState({ exercicioCargaId: p.exercicioId }),
+        bg: ativo ? 'rgba(249,115,22,.12)' : '#131a26',
+        border: ativo ? 'rgba(249,115,22,.35)' : '#1e2633',
+        color: ativo ? '#f97316' : '#9aa4b2'
+      };
+    });
+    requestAnimationFrame(() => {
+      const cPeso = document.getElementById('ev-chart-peso-corporal');
+      const cCarga = document.getElementById('ev-chart-carga');
+      if (cPeso && temGraficoPeso) renderPesoCorporalChart(cPeso, pesosAsc);
+      if (cCarga && progSel) renderCargaChart(cCarga, progSel);
+    });
+
     const metricasTabs = [
       ['percGordura', '% Gordura'], ['massaGorda', 'Massa de gordura'], ['massaMagra', 'Massa livre de gordura']
     ].map(([valor, label]) => ({
@@ -2329,6 +2417,9 @@ class Component extends DCLogic {
       avaliacoesFisicasList: avaliacoesFisicasData,
       isAvaliacaoFisicaDetalhe, isAvaliacaoFisicaLista, avaliacaoDetalhe, temHistoricoSuficiente,
       metricasTabs, resumoEvolucao, comparacaoLinhas, evolucaoPeriodo,
+      temGraficoPeso, semGraficoPeso: !temGraficoPeso, pesoCorporalCards,
+      temProgressaoCarga: !!progSel, semProgressaoCarga: !progSel, exerciciosCargaTabs,
+      cargaCards: progSel ? resumoCargaCards(progSel) : [], cargaInsight: progSel ? insightCarga(progSel) : '',
       onFecharDetalheAvaliacao: () => this.setState({ avaliacaoFisicaDetalheId: '' }),
       onGerarPdfDetalhe: () => this.gerarPdfAvaliacaoDetalhe(avaliacaoDetalheRow),
       onGerarPdfEvolucao: () => this.gerarPdfAvaliacaoEvolucao(),

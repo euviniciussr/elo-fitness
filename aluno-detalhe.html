@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="js/avaliacao-fisica.js"></script>
 <script src="js/avaliacao-charts.js"></script>
+<script src="js/evolucao-treino.js"></script>
 <script src="js/avaliacao-pdf.js"></script>
 <script src="js/macros.js"></script>
 <style>
@@ -262,6 +263,8 @@ let pesoList = [];
 let medidasList = [];
 let comparacoesList = [];
 let evolucaoSubTab = 'linha_tempo';
+let cargasEvolucao = null; // serie_cargas do aluno, carregado ao abrir a sub-aba Cargas
+let cargasExercicioSelId = '';
 let pesoFormOpen = false;
 let medidaFormOpen = false;
 let medidaEditId = '';
@@ -1868,6 +1871,7 @@ function renderCardioForm(container) {
 const EVOLUCAO_SUBTABS = [
   ['linha_tempo', 'Linha do tempo'],
   ['peso', 'Peso'],
+  ['cargas', 'Cargas'],
   ['medidas', 'Medidas'],
   ['fotos', 'Fotos'],
   ['comparacoes', 'Comparações']
@@ -1893,6 +1897,7 @@ function renderEvolucaoTab(container) {
   container.appendChild(bar);
 
   if (evolucaoSubTab === 'peso') renderEvolucaoPeso(container);
+  else if (evolucaoSubTab === 'cargas') renderEvolucaoCargas(container);
   else if (evolucaoSubTab === 'medidas') renderEvolucaoMedidas(container);
   else if (evolucaoSubTab === 'fotos') renderEvolucaoFotos(container);
   else if (evolucaoSubTab === 'comparacoes') renderEvolucaoComparacoes(container);
@@ -1928,6 +1933,77 @@ function renderEvolucaoLinhaTempo(container) {
   });
 }
 
+// ---- Gráficos de peso corporal e carga (js/evolucao-treino.js) ----
+
+function cardsResumoEl(cards) {
+  const grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px;"></div>');
+  cards.forEach(c => grid.appendChild(el(
+    '<div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:12px;text-align:center;">' +
+      '<div style="font-size:16px;font-weight:800;color:' + c.cor + ';">' + c.valor + '</div>' +
+      '<div style="font-size:10.5px;color:#66707e;margin-top:4px;">' + c.label + '</div>' +
+    '</div>'
+  )));
+  return grid;
+}
+
+function renderPesoCorporalCard(pesosAsc) {
+  const card = el('<div class="list-row" style="display:block;margin-bottom:16px;"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:12px;">Evolução do peso corporal</div>'));
+  card.appendChild(cardsResumoEl(resumoPesoCards(resumoPesoCorporal(pesosAsc))));
+  const wrap = el('<div style="position:relative;height:220px;"></div>');
+  const canvas = el('<canvas></canvas>');
+  wrap.appendChild(canvas);
+  card.appendChild(wrap);
+  requestAnimationFrame(() => renderPesoCorporalChart(canvas, pesosAsc));
+  return card;
+}
+
+function renderEvolucaoCargas(container) {
+  if (cargasEvolucao === null) {
+    container.appendChild(el('<div class="empty">Carregando cargas…</div>'));
+    supabaseClient.from('serie_cargas').select('carga, data, treino_exercicios(exercicio_id, exercicios(nome))')
+      .eq('cliente_id', clienteIdParam)
+      .then(({ data }) => { cargasEvolucao = data || []; render(); });
+    return;
+  }
+  const progressoes = progressaoPorExercicio(cargasEvolucao);
+  if (!progressoes.length) {
+    container.appendChild(el('<div class="empty">O aluno ainda não registrou carga nas séries dos treinos.</div>'));
+    return;
+  }
+  const sel = progressoes.find(p => p.exercicioId === cargasExercicioSelId) || progressoes[0];
+
+  const chips = el('<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;"></div>');
+  progressoes.forEach(p => {
+    const ativo = p.exercicioId === sel.exercicioId;
+    const delta = p.pontos.length < 2 ? '' :
+      ' <span style="color:' + (p.delta > 0 ? '#4ade80' : p.delta < 0 ? '#f87171' : '#66707e') + ';">' +
+      (p.delta > 0 ? '↑' : p.delta < 0 ? '↓' : '→') + fmtNum(Math.abs(p.deltaPct), 0) + '%</span>';
+    const b = el('<button type="button" style="flex-shrink:0;white-space:nowrap;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;' +
+      (ativo ? 'background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);color:#f97316;' : 'background:#131a26;border:1px solid #1e2633;color:#9aa4b2;') +
+      '">' + esc(p.nome) + delta + '</button>');
+    b.addEventListener('click', () => { cargasExercicioSelId = p.exercicioId; render(); });
+    chips.appendChild(b);
+  });
+  container.appendChild(chips);
+
+  const card = el('<div class="list-row" style="display:block;margin-bottom:16px;"></div>');
+  card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:4px;">' + esc(sel.nome) + '</div>'));
+  card.appendChild(el('<div style="font-size:12.5px;color:#9aa4b2;margin-bottom:12px;">' + insightCarga(sel).replace('conversar com seu personal sobre progredir', 'ajustar a progressão') + '</div>'));
+  card.appendChild(cardsResumoEl(resumoCargaCards(sel)));
+  const wrap = el('<div style="position:relative;height:220px;"></div>');
+  const canvas = el('<canvas></canvas>');
+  wrap.appendChild(canvas);
+  card.appendChild(wrap);
+  container.appendChild(card);
+  requestAnimationFrame(() => renderCargaChart(canvas, sel));
+
+  const estagnados = progressoes.filter(p => p.estagnado);
+  if (estagnados.length) {
+    container.appendChild(el('<div style="font-size:12.5px;color:#facc15;">Carga parada nos últimos 4 treinos: ' + estagnados.map(p => esc(p.nome)).join(', ') + '</div>'));
+  }
+}
+
 // ---- Peso ----
 
 function renderEvolucaoPeso(container) {
@@ -1935,6 +2011,7 @@ function renderEvolucaoPeso(container) {
   if (!pesoList.length) {
     container.appendChild(el('<div class="empty">Nenhum peso registrado ainda.</div>'));
   }
+  if (pesoList.length >= 2) container.appendChild(renderPesoCorporalCard(pesoList.slice().reverse()));
   pesoList.forEach(p => {
     const row = el(
       '<div class="list-row">' +
