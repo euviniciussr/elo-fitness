@@ -198,6 +198,7 @@ let treinos = [];
 let exerciciosLib = [];
 let tecnicasLib = [];
 let seriesTemplatesLib = [];
+let descansosLib = [];
 let clientes = [];
 let activeIndex = 0;
 let formMode = { type: 'add' };
@@ -619,6 +620,186 @@ function abrirEscolherSerieTemplate({ onAplicar }) {
   document.body.appendChild(overlay);
 }
 
+function abrirModalSalvarDescansoRapido({ segundos, onSaved }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:380px;"></div>');
+  box.appendChild(el('<h2>Salvar como intervalo pré-definido</h2>'));
+  box.appendChild(el('<div class="sub" style="margin:0 0 14px;">' + formatarSegundosHumano(segundos) + '</div>'));
+
+  const nomeWrap = el('<div><label>Nome (opcional)</label></div>');
+  const nomeInput = el('<input maxlength="40" placeholder="Ex: Descanso padrão">');
+  nomeWrap.appendChild(nomeInput);
+  box.appendChild(nomeWrap);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Salvar</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  saveBtn.addEventListener('click', async () => {
+    if (!segundos || segundos <= 0) { erro.textContent = 'Preencha o timer de descanso (em segundos) antes de salvar.'; erro.style.display = ''; return; }
+    erro.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando…';
+
+    const result = await supabaseClient.from('descansos_predefinidos')
+      .insert({ nome: nomeInput.value.trim() || null, segundos, trainer_id: userId }).select().single();
+
+    if (result.error) {
+      erro.textContent = result.error.message;
+      erro.style.display = '';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar';
+      return;
+    }
+
+    descansosLib.push(result.data);
+    overlay.remove();
+    onSaved && onSaved(result.data);
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  box.appendChild(btnRow);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  nomeInput.focus();
+}
+
+function abrirModalDescansoTemplate({ template, onSaved }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:380px;"></div>');
+  box.appendChild(el('<h2>' + (template ? 'Editar intervalo pré-definido' : 'Criar novo intervalo pré-definido') + '</h2>'));
+
+  const nomeWrap = el('<div><label>Nome (opcional)</label></div>');
+  const nomeInput = el('<input maxlength="40" placeholder="Ex: Descanso padrão, Descanso pesado…">');
+  nomeInput.value = template ? (template.nome || '') : '';
+  nomeWrap.appendChild(nomeInput);
+  box.appendChild(nomeWrap);
+
+  const tempoWrap = el('<div style="margin-top:14px;display:flex;gap:10px;"><div style="flex:1;"><label>Minutos</label></div><div style="flex:1;"><label>Segundos</label></div></div>');
+  const minInput = el('<input type="number" min="0" step="1" value="0">');
+  const segInput = el('<input type="number" min="0" max="59" step="1" value="0">');
+  if (template) {
+    minInput.value = Math.floor(template.segundos / 60);
+    segInput.value = template.segundos % 60;
+  }
+  tempoWrap.children[0].appendChild(minInput);
+  tempoWrap.children[1].appendChild(segInput);
+  box.appendChild(tempoWrap);
+
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const saveBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Salvar intervalo pré-definido</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+
+  saveBtn.addEventListener('click', async () => {
+    const min = Math.max(0, parseInt(minInput.value, 10) || 0);
+    const seg = Math.max(0, parseInt(segInput.value, 10) || 0);
+    const segundos = min * 60 + seg;
+    if (segundos <= 0) { erro.textContent = 'Defina um tempo maior que zero.'; erro.style.display = ''; return; }
+    erro.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando…';
+
+    const payload = { nome: nomeInput.value.trim() || null, segundos };
+    const result = template
+      ? await supabaseClient.from('descansos_predefinidos').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', template.id).select().single()
+      : await supabaseClient.from('descansos_predefinidos').insert({ ...payload, trainer_id: userId }).select().single();
+
+    if (result.error) {
+      erro.textContent = result.error.message;
+      erro.style.display = '';
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar intervalo pré-definido';
+      return;
+    }
+
+    if (template) Object.assign(template, result.data);
+    else descansosLib.push(result.data);
+
+    overlay.remove();
+    onSaved && onSaved(result.data);
+  });
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  box.appendChild(btnRow);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  nomeInput.focus();
+}
+
+function abrirEscolherDescansoTemplate({ onAplicar }) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:480px;"></div>');
+  box.appendChild(el('<h2>Intervalos de descanso pré-definidos</h2>'));
+
+  const list = el('<div></div>');
+
+  const renderList = () => {
+    list.innerHTML = '';
+    if (!descansosLib.length) {
+      list.appendChild(el('<div class="sub" style="margin:0 0 12px;">Nenhum intervalo pré-definido cadastrado ainda.</div>'));
+    }
+    descansosLib.forEach(tmpl => {
+      const row = el('<div class="serie-tmpl-row"></div>');
+      const info = el('<div style="min-width:0;"></div>');
+      info.appendChild(el('<div class="serie-tmpl-nome"></div>')).textContent = tmpl.nome || formatarSegundosHumano(tmpl.segundos);
+      if (tmpl.nome) info.appendChild(el('<div class="serie-tmpl-sub"></div>')).textContent = formatarSegundosHumano(tmpl.segundos);
+      row.appendChild(info);
+
+      const actions = el('<div class="serie-tmpl-actions"></div>');
+      const editBtn = el('<button type="button" class="ex-icon-btn" title="Editar">✎</button>');
+      editBtn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        abrirModalDescansoTemplate({ template: tmpl, onSaved: () => renderList() });
+      });
+      const delBtn = el('<button type="button" class="ex-remove">remover</button>');
+      delBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        if (!window.confirm('Excluir este intervalo pré-definido?')) return;
+        await supabaseClient.from('descansos_predefinidos').delete().eq('id', tmpl.id);
+        descansosLib = descansosLib.filter(x => x.id !== tmpl.id);
+        renderList();
+      });
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+      row.appendChild(actions);
+
+      row.addEventListener('click', () => { onAplicar(tmpl); overlay.remove(); });
+      list.appendChild(row);
+    });
+  };
+  renderList();
+  box.appendChild(list);
+
+  const novaBtn = el('<button type="button" class="btn btn-secondary" style="width:100%;margin-top:6px;">+ Criar novo intervalo pré-definido</button>');
+  novaBtn.addEventListener('click', () => abrirModalDescansoTemplate({
+    template: null,
+    onSaved: (novo) => { onAplicar(novo); overlay.remove(); }
+  }));
+  box.appendChild(novaBtn);
+
+  const fecharBtn = el('<button type="button" class="btn btn-primary" style="width:100%;margin-top:10px;">Fechar</button>');
+  fecharBtn.addEventListener('click', () => overlay.remove());
+  box.appendChild(fecharBtn);
+
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
 function extractYoutubeId(url) {
   if (!url) return null;
   try {
@@ -670,6 +851,9 @@ async function init() {
 
   const { data: sTmpls } = await supabaseClient.from('series_predefinidas').select('id, nome, linhas').eq('trainer_id', userId).order('created_at');
   seriesTemplatesLib = sTmpls || [];
+
+  const { data: dTmpls } = await supabaseClient.from('descansos_predefinidos').select('id, nome, segundos').eq('trainer_id', userId).order('segundos');
+  descansosLib = dTmpls || [];
 
   const { data: cls } = await supabaseClient.from('clientes').select('id, nome').eq('trainer_id', userId).order('nome');
   clientes = cls || [];
@@ -864,6 +1048,17 @@ function resumoSeries(te) {
   if (aquecimento) partes.push(aquecimento + (aquecimento === 1 ? ' série de aquecimento' : ' séries de aquecimento'));
   partes.push(validas ? (validas + (validas === 1 ? ' série válida' : ' séries válidas')) : 'sem séries válidas');
   return partes;
+}
+
+// Conversão única pro intervalo de descanso pré-definido: o texto amigável
+// exibido no treino e o timer automático (sempre em segundos) precisam ser
+// a mesma informação, nunca dois valores independentes.
+function formatarSegundosHumano(seg) {
+  if (seg < 60) return seg + (seg === 1 ? ' segundo' : ' segundos');
+  const min = Math.floor(seg / 60), resto = seg % 60;
+  const minTxt = min + (min === 1 ? ' minuto' : ' minutos');
+  if (!resto) return minTxt;
+  return minTxt + ' e ' + resto + (resto === 1 ? ' segundo' : ' segundos');
 }
 
 // Volume de treinamento = soma das séries VÁLIDAS por grupamento muscular.
@@ -1317,7 +1512,12 @@ function renderQuickEditItem(treino, te) {
   });
   seriesWrap.appendChild(seriesInput);
 
-  const descansoWrap = el('<div><label>Descanso</label></div>');
+  const descansoWrap = el('<div></div>');
+  const descansoLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;"></div>');
+  descansoLabelRow.appendChild(el('<label style="margin-bottom:0;">Descanso</label>'));
+  const escolherDescansoQuickBtn = el('<button type="button" class="ex-icon-btn" title="Selecionar intervalo pré-definido" style="padding:0;font-size:12px;">🕐</button>');
+  descansoLabelRow.appendChild(escolherDescansoQuickBtn);
+  descansoWrap.appendChild(descansoLabelRow);
   const descansoInput = el('<input value="' + (te.intervalo_descanso || '').replace(/"/g, '&quot;') + '" placeholder="Ex: 60s">');
   descansoInput.addEventListener('change', async () => {
     te.intervalo_descanso = descansoInput.value.trim() || null;
@@ -1333,6 +1533,16 @@ function renderQuickEditItem(treino, te) {
     await supabaseClient.from('treino_exercicios').update({ descanso_segundos: te.descanso_segundos }).eq('id', te.id);
   });
   descansoSegWrap.appendChild(descansoSegInput);
+
+  escolherDescansoQuickBtn.addEventListener('click', () => abrirEscolherDescansoTemplate({
+    onAplicar: async (tmpl) => {
+      te.intervalo_descanso = tmpl.nome || formatarSegundosHumano(tmpl.segundos);
+      te.descanso_segundos = tmpl.segundos;
+      descansoInput.value = te.intervalo_descanso;
+      descansoSegInput.value = te.descanso_segundos;
+      await supabaseClient.from('treino_exercicios').update({ intervalo_descanso: te.intervalo_descanso, descanso_segundos: te.descanso_segundos }).eq('id', te.id);
+    }
+  }));
 
   fields.appendChild(seriesAquecWrap);
   fields.appendChild(seriesWrap);
@@ -1670,7 +1880,12 @@ function renderAddExForm(treino) {
   cargaWrap.appendChild(cargaInput);
   form.appendChild(cargaWrap);
 
-  const descansoWrap = el('<div><label>Intervalo de descanso</label></div>');
+  const descansoWrap = el('<div></div>');
+  const descansoLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;"></div>');
+  descansoLabelRow.appendChild(el('<label style="margin-bottom:0;">Intervalo de descanso</label>'));
+  const escolherDescansoBtn = el('<button type="button" class="serie-tmpl-link">+ Adicionar intervalo pré-definido</button>');
+  descansoLabelRow.appendChild(escolherDescansoBtn);
+  descansoWrap.appendChild(descansoLabelRow);
   const descansoTa = el('<textarea maxlength="50" placeholder="Ex: 60s, 1-2min, 90 segundos"></textarea>');
   descansoTa.value = editTe ? (editTe.intervalo_descanso || '') : '';
   const descansoCount = el('<div class="counter">' + descansoTa.value.length + '/50</div>');
@@ -1684,6 +1899,21 @@ function renderAddExForm(treino) {
   descansoSegInput.value = editTe && editTe.descanso_segundos != null ? editTe.descanso_segundos : '';
   descansoSegWrap.appendChild(descansoSegInput);
   form.appendChild(descansoSegWrap);
+
+  escolherDescansoBtn.addEventListener('click', () => abrirEscolherDescansoTemplate({
+    onAplicar: (tmpl) => {
+      descansoTa.value = (tmpl.nome || formatarSegundosHumano(tmpl.segundos)).slice(0, 50);
+      descansoCount.textContent = descansoTa.value.length + '/50';
+      descansoSegInput.value = tmpl.segundos;
+    }
+  }));
+  const salvarComoDescansoBtn = el('<button type="button" class="serie-tmpl-link" style="margin-top:4px;">Salvar como intervalo pré-definido</button>');
+  salvarComoDescansoBtn.addEventListener('click', () => {
+    const segundos = Math.max(0, parseInt(descansoSegInput.value, 10) || 0);
+    if (!segundos) { erro.textContent = 'Preencha o timer de descanso (em segundos) antes de salvar como pré-definido.'; erro.style.display = ''; return; }
+    abrirModalSalvarDescansoRapido({ segundos });
+  });
+  descansoSegWrap.appendChild(salvarComoDescansoBtn);
 
   const tecWrap = el('<div><label>Técnica avançada</label></div>');
   const tecSel = el('<select></select>');
