@@ -66,7 +66,7 @@ function resumoCargaCards(p) {
     { label: 'Primeira', valor: fmtKg(p.inicial), cor: '#e5e9f0' },
     { label: 'Atual', valor: fmtKg(p.atual), cor: '#e5e9f0' },
     { label: 'Recorde', valor: fmtKg(p.recorde), cor: '#facc15' },
-    { label: 'Evolução', valor: fmtKgSinal(p.delta) + (p.inicial ? ' (' + fmtDiffSinal(p.deltaPct, 0, '%') + ')' : ''), cor }
+    { label: 'Evolução', valor: p.pontos.length < 2 ? '—' : fmtKgSinal(p.delta) + (p.inicial ? ' (' + fmtDiffSinal(p.deltaPct, 0, '%') + ')' : ''), cor }
   ];
 }
 
