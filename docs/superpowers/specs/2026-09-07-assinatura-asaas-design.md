@@ -47,7 +47,7 @@ Elo Fitness → profissional.
   mesmo depois do gateway estar ativo. Qualquer profissional novo que se
   cadastrar a partir de agora entra no fluxo normal (trial → cobrança).
 - **Preço:** dois planos por faixa de alunos, já decididos:
-  - **Até 30 alunos** — R$ 59,90/mês.
+  - **Até 30 alunos** — R$ 49,90/mês.
   - **Ilimitado** — R$ 99,90/mês.
 
   Guardados como linhas na tabela `planos_assinatura` (não hardcoded) —
