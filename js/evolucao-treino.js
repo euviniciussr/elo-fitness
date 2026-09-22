@@ -157,7 +157,7 @@ function renderPesoCorporalChart(canvas, pesosAsc, corFundo) {
   });
   const datasets = [{
     label: 'Peso', data: valores, borderColor: '#60a5fa', backgroundColor: '#60a5fa20',
-    tension: .25, fill: true, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: '#60a5fa'
+    cubicInterpolationMode: 'monotone', fill: true, pointRadius: 3, pointHoverRadius: 6, pointBackgroundColor: '#60a5fa'
   }];
   if (valores.length >= 5) {
     datasets.push({
@@ -184,7 +184,10 @@ function renderPesoCorporalChart(canvas, pesosAsc, corFundo) {
           }
         } }
       },
-      scales: { y: { beginAtZero: false, ticks: { callback: (v) => fmtNum(v, 1) + ' kg' } } }
+      // Folga de 1 kg pra cima/baixo — sem isso 0,5 kg de variação ocupa o
+      // gráfico inteiro e parece uma mudança enorme.
+      scales: { y: { beginAtZero: false, suggestedMin: Math.min(...valores) - 1, suggestedMax: Math.max(...valores) + 1,
+        ticks: { callback: (v) => fmtNum(v, 1) + ' kg' } } }
     }
   });
   return canvas._chartInstance;
