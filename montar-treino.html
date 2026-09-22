@@ -63,7 +63,9 @@ textarea{resize:vertical;min-height:52px;}
 
 .ex-item{background:var(--bg-2);border:1px solid var(--borda-forte);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
 .ex-nome{font-size:14px;font-weight:700;}
-.ex-meta{font-size:12px;color:var(--texto-3);margin-top:3px;white-space:pre-line;}
+.ex-meta{font-size:12px;color:var(--texto-3);margin-top:3px;}
+.ex-meta-line{margin-top:2px;}
+.ex-meta-line:first-child{margin-top:0;}
 .ex-obs{font-size:11.5px;color:var(--texto-4);margin-top:5px;font-style:italic;}
 .ex-actions{display:flex;gap:2px;flex-shrink:0;}
 .ex-icon-btn{background:none;border:none;color:var(--texto-3);font-size:13px;padding:4px 6px;line-height:1;border-radius:6px;}
@@ -160,6 +162,8 @@ textarea{resize:vertical;min-height:52px;}
   .nome-row .btn{width:100%;white-space:normal !important;}
   .quick-ex-fields{grid-template-columns:1fr 1fr;}
   .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .ex-item{flex-direction:column;align-items:stretch;}
+  .ex-actions{flex-wrap:wrap;justify-content:flex-end;margin-top:8px;}
 }
 </style>
 </head>
@@ -855,11 +859,11 @@ function contarLinhasSerie(texto) {
 function resumoSeries(te) {
   const validas = contarLinhasSerie(te.series);
   const aquecimento = contarLinhasSerie(te.series_aquecimento);
-  if (!validas && !aquecimento) return 'sem séries definidas';
+  if (!validas && !aquecimento) return ['sem séries definidas'];
   const partes = [];
   if (aquecimento) partes.push(aquecimento + (aquecimento === 1 ? ' série de aquecimento' : ' séries de aquecimento'));
   partes.push(validas ? (validas + (validas === 1 ? ' série válida' : ' séries válidas')) : 'sem séries válidas');
-  return partes.join(' + ');
+  return partes;
 }
 
 // Volume de treinamento = soma das séries VÁLIDAS por grupamento muscular.
@@ -1474,7 +1478,13 @@ function renderExItem(treino, te) {
     '<div class="ex-nome">' + (feitoHoje ? '<span style="color:#4ade80;">☑</span> ' : '<span style="color:#4a5364;">☐</span> ') +
     (te.exercicios || {}).nome + '</div>'
   ));
-  info.appendChild(el('<div class="ex-meta">' + resumoSeries(te) + (te.carga ? ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg> ' + te.carga : '') + ' · <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg> descanso ' + (te.intervalo_descanso || '—') + '</div>'));
+  const metaWrap = el('<div class="ex-meta"></div>');
+  resumoSeries(te).forEach(parte => metaWrap.appendChild(el('<div class="ex-meta-line">' + parte + '</div>')));
+  if (te.carga) {
+    metaWrap.appendChild(el('<div class="ex-meta-line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M6.5 6.5 17.5 17.5"></path><rect x="2" y="9" width="4" height="6" rx="1"></rect><rect x="18" y="9" width="4" height="6" rx="1"></rect></svg> ' + te.carga + '</div>'));
+  }
+  metaWrap.appendChild(el('<div class="ex-meta-line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg> descanso ' + (te.intervalo_descanso || '—') + '</div>'));
+  info.appendChild(metaWrap);
   if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
   const teVideoUrl = (te.exercicios || {}).video_url;
   if (teVideoUrl) {
