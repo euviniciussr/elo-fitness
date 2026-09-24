@@ -13,13 +13,13 @@
 
 const TEMA_MAPA_HEX = {
   // fundos
-  '#0a0d13': '#f4f5f7', '#0d1119': '#eef0f3', '#10151f': '#ffffff',
-  '#131a26': '#e9ebef', '#141a26': '#e9ebef', '#141018': '#ffffff', '#151b28': '#ffffff',
+  '#0a0d13': '#ffffff', '#0d1119': '#fafafa', '#10151f': '#ffffff',
+  '#131a26': '#f4f4f5', '#141a26': '#f4f4f5', '#141018': '#ffffff', '#151b28': '#ffffff',
   // bordas
-  '#171d29': '#e4e7ec', '#1a2130': '#dfe3e9', '#1e2633': '#d5dae2', '#2a3444': '#cbd2dc',
+  '#171d29': '#ececee', '#1a2130': '#e7e7ea', '#1e2633': '#e4e4e7', '#2a3444': '#d4d4d8',
   // texto
-  '#e5e9f0': '#10151f', '#9aa4b2': '#5b6472', '#66707e': '#7c8593', '#4a5364': '#98a1ae',
-  '#c4cad4': '#3a4452', '#c7ccd6': '#3a4452', '#c3cad6': '#3a4452', '#3a4352': '#8b94a3',
+  '#e5e9f0': '#0a0a0a', '#9aa4b2': '#71717a', '#66707e': '#8a8a93', '#4a5364': '#a1a1aa',
+  '#c4cad4': '#3f3f46', '#c7ccd6': '#3f3f46', '#c3cad6': '#3f3f46', '#3a4352': '#9a9aa2',
   // status
   '#4ade80': '#16a34a', '#f87171': '#dc2626', '#60a5fa': '#2563eb', '#3b82f6': '#2563eb',
   '#a855f7': '#9333ea', '#facc15': '#b45309', '#f59e0b': '#b45309', '#f5b942': '#b45309',
@@ -42,6 +42,19 @@ Object.keys(TEMA_MAPA_HEX).forEach(function (hex) {
   TEMA_MAPA_CLARO[temaHexParaRgb(hex)] = TEMA_MAPA_HEX[hex];
 });
 
+// Destaque "selecionado" no modo claro, estilo Glaz: o laranja clarinho
+// (rgba .12) vira preto. Quando vem colado com texto laranja (item ativo
+// do menu lateral), o texto vira branco — pílula preta igual ao Glaz OS.
+// Chips/abas selecionados ficam pretos com o texto laranja da marca.
+// Só roda no modo claro; o noturno restaura o style original intacto.
+const TEMA_ATIVO_PAR = /background:\s*rgba\(249,\s*115,\s*22,\s*0?\.12\);\s*color:\s*(?:#f97316|rgb\(249,\s*115,\s*22\))/gi;
+const TEMA_ATIVO_FUNDO = /rgba\(249,\s*115,\s*22,\s*0?\.12\)/gi;
+function temaDestaqueClaro(css) {
+  return css
+    .replace(TEMA_ATIVO_PAR, 'background: #111111; color: #ffffff')
+    .replace(TEMA_ATIVO_FUNDO, '#111111');
+}
+
 const TEMA_CHAVE_LOCAL = 'elofitness_tema';
 
 function temaAtual() {
@@ -50,11 +63,10 @@ function temaAtual() {
 
 // Uma regex só, combinando todas as cores escuras, aplicada numa passada
 // única sobre o style ORIGINAL. Substituir cor por cor em passadas
-// separadas (.split(a).join(b) repetido) tem um bug real aqui: `#10151f`
-// é ao mesmo tempo destino da troca do texto (`#e5e9f0` → `#10151f`) e
-// origem da troca do fundo de card (`#10151f` → `#ffffff`) — numa segunda
-// passada, o texto que acabou de virar `#10151f` seria trocado de novo por
-// engano. Uma regex com callback de lookup evita isso: cada match no
+// separadas (.split(a).join(b) repetido) reprocessaria a saída: uma cor
+// clara de destino que coincidisse com uma cor escura de origem seria
+// trocada de novo por engano (já aconteceu com `#10151f`, que foi texto
+// claro e fundo escuro ao mesmo tempo). Uma regex com callback de lookup evita isso: cada match no
 // string original vira o destino certo de uma vez, sem reprocessar saída.
 function temaEscaparRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 const TEMA_REGEX_CLARO = new RegExp(Object.keys(TEMA_MAPA_CLARO).map(temaEscaparRegex).join('|'), 'gi');
@@ -66,10 +78,10 @@ const TEMA_REGEX_CLARO = new RegExp(Object.keys(TEMA_MAPA_CLARO).map(temaEscapar
 // regra (inline sempre tem mais especificidade que seletor de tag).
 function temaAplicarBase(tema) {
   const claro = tema === 'claro';
-  document.documentElement.style.background = claro ? '#f4f5f7' : '';
-  document.documentElement.style.color = claro ? '#10151f' : '';
-  document.body.style.background = claro ? '#f4f5f7' : '';
-  document.body.style.color = claro ? '#10151f' : '';
+  document.documentElement.style.background = claro ? '#ffffff' : '';
+  document.documentElement.style.color = claro ? '#0a0a0a' : '';
+  document.body.style.background = claro ? '#ffffff' : '';
+  document.body.style.color = claro ? '#0a0a0a' : '';
 }
 
 function temaConverterElemento(el) {
@@ -85,7 +97,7 @@ function temaConverterElemento(el) {
   // que este elemento é visto — inclusive quando ele só apareceu depois,
   // via o MutationObserver, não só na varredura inicial da página.
   if (el.dataset.temaOriginal === undefined) el.dataset.temaOriginal = style;
-  const convertido = style.replace(TEMA_REGEX_CLARO, function (match) {
+  const convertido = temaDestaqueClaro(style).replace(TEMA_REGEX_CLARO, function (match) {
     return TEMA_MAPA_CLARO[match.toLowerCase()] || match;
   });
   if (convertido !== style) el.setAttribute('style', convertido);
@@ -118,7 +130,7 @@ function temaConverterHoverRules() {
       if (!temaHoverCache.has(rule)) temaHoverCache.set(rule, rule.style.cssText);
       const original = temaHoverCache.get(rule);
       const alvo = claro
-        ? original.replace(TEMA_REGEX_CLARO, function (m) { return TEMA_MAPA_CLARO[m.toLowerCase()] || m; })
+        ? temaDestaqueClaro(original).replace(TEMA_REGEX_CLARO, function (m) { return TEMA_MAPA_CLARO[m.toLowerCase()] || m; })
         : original;
       if (rule.style.cssText !== alvo) rule.style.cssText = alvo;
     }
@@ -221,8 +233,8 @@ function temaAtualizarBotao(tema) {
     ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
     : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>';
   btn.style.background = claro ? '#ffffff' : '#1e2633';
-  btn.style.color = claro ? '#10151f' : '#e5e9f0';
-  btn.style.borderColor = claro ? '#d5dae2' : '#2a3444';
+  btn.style.color = claro ? '#0a0a0a' : '#e5e9f0';
+  btn.style.borderColor = claro ? '#e4e4e7' : '#2a3444';
 }
 
 function temaCriarBotao() {
