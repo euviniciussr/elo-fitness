@@ -323,6 +323,42 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </div>
     </header>
 
+    <sc-if value="{{ lancOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:24px 26px;width:100%;max-width:440px;max-height:88vh;overflow-y:auto;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:17px;font-weight:800;">Lançar pagamento</div>
+            <button sc-camel-on-click="{{ fecharLancamento }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
+          </div>
+          <div style="font-size:12px;color:#66707e;margin-bottom:18px;">Registre um pagamento recebido por fora do app (Pix, dinheiro, transferência…). Ele entra no faturamento e na meta.</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Aluno</label>
+              {{ lancAlunoSelect }}
+            </div>
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;min-width:0;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Valor (R$)</label>
+                <input value="{{ lancValor }}" sc-camel-on-change="{{ onLancValor }}" inputmode="decimal" placeholder="0,00" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              </div>
+              <div style="flex:1;min-width:0;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Data</label>
+                <input type="date" value="{{ lancData }}" sc-camel-on-change="{{ onLancData }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:9px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Descrição (opcional)</label>
+              <input value="{{ lancDescricao }}" sc-camel-on-change="{{ onLancDescricao }}" placeholder="Ex: Mensalidade setembro · Pix" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+            </div>
+            <sc-if value="{{ lancTemErro }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:12px;color:#f87171;">{{ lancErro }}</div>
+            </sc-if>
+          </div>
+          <button sc-camel-on-click="{{ salvarLancamento }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ lancBotao }}</button>
+        </div>
+      </div>
+    </sc-if>
+
     <!-- LINHA 1: hero faturamento + gráfico integrado | coluna direita meta + períodos -->
     <section style="display:grid;grid-template-columns:1.9fr 1fr;gap:16px;margin-bottom:16px;">
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:24px;">
@@ -332,9 +368,15 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             <div style="font-size:38px;font-weight:800;margin:6px 0 4px;">{{ fatMes }}</div>
             <div style="font-size:12px;color:#66707e;">Deve fechar em <strong style="color:#e5e9f0;">{{ projecao }}</strong> · média 3 meses <strong style="color:#e5e9f0;">{{ media3m }}</strong></div>
           </div>
-          <div style="display:flex;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:3px;">
-            <button sc-camel-on-click="{{ tabReceita }}" style="border:none;font-family:inherit;font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer;background:{{ tabRecBg }};color:{{ tabRecColor }};">Receita</button>
-            <button sc-camel-on-click="{{ tabAlunos }}" style="border:none;font-family:inherit;font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer;background:{{ tabAluBg }};color:{{ tabAluColor }};">Alunos</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button sc-camel-on-click="{{ abrirLancamento }}" style="display:flex;align-items:center;gap:6px;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);color:#f97316;font-family:inherit;font-size:12px;font-weight:700;padding:8px 14px;border-radius:10px;cursor:pointer;" style-hover="filter:brightness(1.1);">
+              <svg width="13" height="13" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Lançar pagamento
+            </button>
+            <div style="display:flex;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:3px;">
+              <button sc-camel-on-click="{{ tabReceita }}" style="border:none;font-family:inherit;font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer;background:{{ tabRecBg }};color:{{ tabRecColor }};">Receita</button>
+              <button sc-camel-on-click="{{ tabAlunos }}" style="border:none;font-family:inherit;font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer;background:{{ tabAluBg }};color:{{ tabAluColor }};">Alunos</button>
+            </div>
           </div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:18px;font-size:11px;color:#9aa4b2;margin:10px 0 4px;">
@@ -431,7 +473,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </div>
       <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px;">
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Receita Total</div><div style="font-size:18px;font-weight:800;margin-top:5px;">{{ vMensal }}</div></div>
-        <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Transações</div><div style="font-size:18px;font-weight:800;margin-top:5px;">0</div></div>
+        <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Transações</div><div style="font-size:18px;font-weight:800;margin-top:5px;">{{ transacoesMes }}</div></div>
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Ticket Médio</div><div style="font-size:18px;font-weight:800;margin-top:5px;color:#3b82f6;">{{ ticketMes }}</div></div>
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Hoje</div><div style="font-size:18px;font-weight:800;margin-top:5px;">{{ vDiario }}</div></div>
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Esta semana</div><div style="font-size:18px;font-weight:800;margin-top:5px;">{{ vSemana }}</div></div>
@@ -504,32 +546,57 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;metaMensal&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10000,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1000,&quot;max&quot;:100000,&quot;step&quot;:500,&quot;unit&quot;:&quot;R$&quot;,&quot;section&quot;:&quot;Metas&quot;},&quot;ocultarValores&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Exibição&quot;}}">
 class Component extends DCLogic {
-  state = { ocultar: false, tab: 'receita', clientes: [], faturamentoMes: 0, trainerNome: '', trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '', notifOpen: false, notificacoes: [] };
+  state = { ocultar: false, tab: 'receita', clientes: [], pagamentos: [], trainerId: null, trainerNome: '', trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '', notifOpen: false, notificacoes: [],
+    lancOpen: false, lancAluno: '', lancValor: '', lancData: '', lancDescricao: '', lancErro: '', lancSalvando: false };
 
   componentDidMount() {
     this.loadDashboard();
   }
 
+  // 'YYYY-MM-DD' no fuso local (toISOString usaria UTC e viraria o dia à noite)
+  dataLocal(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
   async loadDashboard() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const inicioMes = new Date();
-    inicioMes.setDate(1);
-    const inicioMesStr = inicioMes.toISOString().slice(0, 10);
+    const inicioAnoStr = new Date().getFullYear() + '-01-01';
     const [trainerRes, clientesRes, pagamentosRes, notifRes] = await Promise.all([
       supabaseClient.from('trainers').select('nome, foto_url').eq('id', user.id).maybeSingle(),
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('pagamentos').select('valor').eq('trainer_id', user.id).gte('data', inicioMesStr),
+      supabaseClient.from('pagamentos').select('valor, data').eq('trainer_id', user.id).gte('data', inicioAnoStr),
       supabaseClient.from('notificacoes').select('*').eq('trainer_id', user.id).eq('destino', 'trainer').order('created_at', { ascending: false }).limit(20)
     ]);
-    const faturamentoMes = (pagamentosRes.data || []).reduce((sum, p) => sum + Number(p.valor), 0);
     const trainerNomeCompleto = (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '';
     const trainerNome = trainerNomeCompleto ? trainerNomeCompleto.split(/\s+/)[0] : '';
     const trainerFotoUrl = (trainerRes.data && trainerRes.data.foto_url) ? supabaseClient.storage.from('fotos-perfil').getPublicUrl(trainerRes.data.foto_url).data.publicUrl : '';
     this.setState({
-      clientes: clientesRes.data || [], faturamentoMes, trainerNome, trainerNomeCompleto, trainerFotoUrl,
+      trainerId: user.id, clientes: clientesRes.data || [], pagamentos: pagamentosRes.data || [], trainerNome, trainerNomeCompleto, trainerFotoUrl,
       trainerEmail: user.email || '', notificacoes: notifRes.data || []
     });
+  }
+
+  abrirLancamento() {
+    this.setState({ lancOpen: true, lancAluno: '', lancValor: '', lancData: this.dataLocal(new Date()), lancDescricao: '', lancErro: '', lancSalvando: false });
+  }
+
+  async salvarLancamento() {
+    if (this.state.lancSalvando) return;
+    const valor = Number(String(this.state.lancValor).replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+    if (!(valor > 0)) return this.setState({ lancErro: 'Informe um valor maior que zero.' });
+    if (!this.state.lancData) return this.setState({ lancErro: 'Informe a data do pagamento.' });
+    this.setState({ lancSalvando: true, lancErro: '' });
+    const { error } = await supabaseClient.from('pagamentos').insert({
+      trainer_id: this.state.trainerId,
+      cliente_id: this.state.lancAluno || null,
+      valor,
+      data: this.state.lancData,
+      descricao: this.state.lancDescricao.trim() || 'Lançamento manual'
+    });
+    if (error) return this.setState({ lancSalvando: false, lancErro: 'Não foi possível salvar: ' + error.message });
+    this.setState({ lancOpen: false, lancSalvando: false });
+    this.loadDashboard();
   }
 
   toggleNotif() {
@@ -546,17 +613,37 @@ class Component extends DCLogic {
     const hide = this.state.ocultar;
     const m = (v) => hide ? 'R$ ••••' : v;
     const meta = this.props.metaMensal ?? 10000;
-    const fat = this.state.faturamentoMes;
+    const agora = new Date();
+    const hojeStr = this.dataLocal(agora);
+    const inicioMesStr = hojeStr.slice(0, 8) + '01';
+    const inicioSemana = new Date(agora);
+    inicioSemana.setDate(agora.getDate() - ((agora.getDay() + 6) % 7));
+    const inicioSemanaStr = this.dataLocal(inicioSemana);
+    const pags = this.state.pagamentos;
+    const soma = (lista) => lista.reduce((s, p) => s + Number(p.valor), 0);
+    const pagsMes = pags.filter(p => p.data >= inicioMesStr && p.data <= hojeStr);
+    const pagsSemana = pags.filter(p => p.data >= inicioSemanaStr && p.data <= hojeStr);
+    const pagsHoje = pags.filter(p => p.data === hojeStr);
+    const fat = soma(pagsMes);
+    const fatSem = soma(pagsSemana);
+    const fatHj = soma(pagsHoje);
+    const fatAn = soma(pags.filter(p => p.data <= hojeStr));
+    const ticket = (lista) => lista.length ? soma(lista) / lista.length : 0;
     const clientesAtivos = this.state.clientes.filter(c => c.status === 'ativo');
     const iniciais = (nome) => (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
     const pct = Math.min(100, Math.round(fat / meta * 100));
     const falta = Math.max(0, meta - fat);
-    const brl = (n) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const brl = (n) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const tab = this.state.tab;
-    const pts = Array(31).fill(0);
-    const ptsAlunos = Array(31).fill(0);
+    // Receita acumulada dia a dia no mês corrente
+    const diasNoMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
+    const porDia = Array(diasNoMes).fill(0);
+    pagsMes.forEach(p => { porDia[Number(p.data.slice(8, 10)) - 1] += Number(p.valor); });
+    const pts = [];
+    porDia.reduce((acc, v, i) => (pts[i] = acc + v), 0);
+    const ptsAlunos = Array(diasNoMes).fill(0);
     const data = tab === 'receita' ? pts : ptsAlunos;
-    const maxV = tab === 'receita' ? 6000 : 6;
+    const maxV = tab === 'receita' ? Math.max(6000, Math.ceil(Math.max(...pts) * 1.2 / 1500) * 1500) : 6;
     const W = 900, H = 230, PAD = 8;
     const x = (i) => PAD + i * (W - 2 * PAD) / (data.length - 1);
     const y = (v) => H - PAD - (v / maxV) * (H - 2 * PAD);
@@ -587,9 +674,31 @@ class Component extends DCLogic {
       meuFotoUrl: this.state.trainerFotoUrl || '',
       semFoto: !this.state.trainerFotoUrl,
       fatMes: m(brl(fat)), projecao: m(brl(fat)), media3m: m(brl(0)),
-      fatHoje: m('R$ 0,00'), fatSemana: m(brl(0)), fatAno: m(brl(0)),
-      vDiario: m('R$ 0,00'), vSemana: m(brl(0)), vMensal: m(brl(fat)),
-      ticketSemana: m('R$ 0,00'), ticketMes: m('R$ 0,00'), expectativa: m('R$ 0,00'),
+      fatHoje: m(brl(fatHj)), fatSemana: m(brl(fatSem)), fatAno: m(brl(fatAn)),
+      vDiario: m(brl(fatHj)), vSemana: m(brl(fatSem)), vMensal: m(brl(fat)),
+      ticketSemana: m(brl(ticket(pagsSemana))), ticketMes: m(brl(ticket(pagsMes))), expectativa: m('R$ 0,00'),
+      transacoesMes: String(pagsMes.length),
+      lancOpen: this.state.lancOpen,
+      abrirLancamento: () => this.abrirLancamento(),
+      fecharLancamento: () => this.setState({ lancOpen: false }),
+      salvarLancamento: () => this.salvarLancamento(),
+      lancValor: this.state.lancValor,
+      lancData: this.state.lancData,
+      lancDescricao: this.state.lancDescricao,
+      onLancValor: (e) => this.setState({ lancValor: e.target.value }),
+      onLancData: (e) => this.setState({ lancData: e.target.value }),
+      onLancDescricao: (e) => this.setState({ lancDescricao: e.target.value }),
+      lancTemErro: !!this.state.lancErro,
+      lancErro: this.state.lancErro,
+      lancBotao: this.state.lancSalvando ? 'Salvando…' : 'Salvar pagamento',
+      lancAlunoSelect: React.createElement('select', {
+        value: this.state.lancAluno,
+        onChange: (e) => this.setState({ lancAluno: e.target.value }),
+        style: { width: '100%', background: '#0d1119', border: '1px solid #1e2633', borderRadius: 9, padding: '10px 13px', color: '#e5e9f0', fontFamily: 'inherit', fontSize: 13.5, outline: 'none' }
+      },
+        React.createElement('option', { value: '' }, 'Sem aluno vinculado'),
+        this.state.clientes.map(c => React.createElement('option', { key: c.id, value: c.id }, c.nome || c.email || 'Aluno'))
+      ),
       ltv: m('R$ 0,00'), zeroMoney: m('R$ 0,00'),
       metaPct: hide ? '••%' : pct + '%', metaWidth: pct + '%', metaAlvo: m(brl(meta)), metaFalta: m(brl(falta)),
       ocultarLabel: hide ? 'Mostrar valores' : 'Ocultar valores',
