@@ -49,8 +49,12 @@ Object.keys(TEMA_MAPA_HEX).forEach(function (hex) {
 // Só roda no modo claro; o noturno restaura o style original intacto.
 const TEMA_ATIVO_PAR = /background:\s*rgba\(249,\s*115,\s*22,\s*0?\.12\);\s*color:\s*(?:#f97316|rgb\(249,\s*115,\s*22\))/gi;
 const TEMA_ATIVO_FUNDO = /rgba\(249,\s*115,\s*22,\s*0?\.12\)/gi;
+// Selo laranja com borda (tarja "Personal Trainer", destaques, filtro
+// "Todos") também vira laranja sólido com texto branco.
+const TEMA_SELO = /color:\s*(?:#f97316|rgb\(249,\s*115,\s*22\));\s*background:\s*rgba\(249,\s*115,\s*22,\s*0?\.12\);\s*border:\s*1px solid rgba\(249,\s*115,\s*22,\s*0?\.3\)/gi;
 function temaDestaqueClaro(css) {
   return css
+    .replace(TEMA_SELO, 'color: #ffffff; background: #f97316; border: 1px solid #f97316')
     .replace(TEMA_ATIVO_PAR, 'background: #f97316; color: #ffffff')
     .replace(TEMA_ATIVO_FUNDO, '#111111');
 }
