@@ -44,14 +44,14 @@ Object.keys(TEMA_MAPA_HEX).forEach(function (hex) {
 
 // Destaque "selecionado" no modo claro, estilo Glaz: o laranja clarinho
 // (rgba .12) vira preto. Quando vem colado com texto laranja (item ativo
-// do menu lateral), o texto vira branco — pílula preta igual ao Glaz OS.
+// do menu lateral), vira pílula laranja sólida da marca com texto branco.
 // Chips/abas selecionados ficam pretos com o texto laranja da marca.
 // Só roda no modo claro; o noturno restaura o style original intacto.
 const TEMA_ATIVO_PAR = /background:\s*rgba\(249,\s*115,\s*22,\s*0?\.12\);\s*color:\s*(?:#f97316|rgb\(249,\s*115,\s*22\))/gi;
 const TEMA_ATIVO_FUNDO = /rgba\(249,\s*115,\s*22,\s*0?\.12\)/gi;
 function temaDestaqueClaro(css) {
   return css
-    .replace(TEMA_ATIVO_PAR, 'background: #111111; color: #ffffff')
+    .replace(TEMA_ATIVO_PAR, 'background: #f97316; color: #ffffff')
     .replace(TEMA_ATIVO_FUNDO, '#111111');
 }
 
