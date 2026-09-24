@@ -382,6 +382,14 @@ aside + * table{display:block!important;overflow-x:auto!important}
       </sc-for>
     </sc-if>
 
+    <!-- SEM PERSONAL VINCULADO (cadastro de aluno direto, sem convite ainda) -->
+    <sc-if value="{{ mostrarSemVinculo }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 20px;margin-bottom:16px;">
+        <div style="font-size:14px;font-weight:800;">Sua conta está pronta</div>
+        <div style="font-size:12.5px;color:#9aa4b2;margin-top:4px;line-height:1.5;">Peça para o seu personal te convidar pelo e-mail <strong style="color:#e5e9f0;">{{ alunoEmail }}</strong>. O convite aparece aqui para você aceitar, e seu treino e sua dieta são liberados.</div>
+      </div>
+    </sc-if>
+
     <!-- HOJE -->
     <sc-if value="{{ isHoje }}" hint-placeholder-val="{{ true }}">
       <div>
@@ -1380,7 +1388,11 @@ class Component extends DCLogic {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return false;
     const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status, origem_cadastro, anamnese_status').eq('auth_user_id', user.id).maybeSingle();
-    if (!cliente) return false;
+    if (!cliente) {
+      this.setState({ semVinculo: true, alunoEmail: user.email || '' });
+      return false;
+    }
+    if (this.state.semVinculo) this.setState({ semVinculo: false });
 
     // Gate de onboarding: aluno que entrou por convite (origem_cadastro =
     // 'convite') só usa o app depois de concluir a anamnese. anamnese_status
@@ -2193,6 +2205,8 @@ class Component extends DCLogic {
       notificacoes: this.state.notificacoes.map(n => ({ titulo: n.titulo, tempo: new Date(n.created_at).toLocaleDateString('pt-BR'), bg: n.lida ? 'transparent' : 'rgba(249,115,22,.05)' })),
       toggleNotif: () => this.toggleNotif(),
       temConvitePendente: this.state.convitesPendentes.length > 0,
+      mostrarSemVinculo: this.state.semVinculo && this.state.convitesPendentes.length === 0,
+      alunoEmail: this.state.alunoEmail,
       convitesPendentes: this.state.convitesPendentes.map(cv => ({
         trainerNome: cv.trainer_nome,
         onAceitar: () => this.onAceitarConvite(cv.token, cv.tem_cadastro_previo)

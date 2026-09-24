@@ -93,7 +93,7 @@ function renderCadastro(convite) {
     }
 
     const { data, error } = await supabaseClient.auth.signUp({
-      email: convite.email, password: senha, options: { data: { nome } }
+      email: convite.email, password: senha, options: { data: { nome, tipo: 'aluno' } }
     });
     if (error) {
       erroEl.textContent = error.message;

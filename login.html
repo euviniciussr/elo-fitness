@@ -225,12 +225,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         </button>
         <button sc-camel-on-click="{{ escolherAluno }}" style="text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:14px 16px;color:#e5e9f0;font-family:inherit;cursor:pointer;">
           <div style="font-size:13.5px;font-weight:700;margin-bottom:2px;">Sou aluno</div>
-          <div style="font-size:12px;color:#9aa4b2;">Recebi um convite do meu personal trainer</div>
+          <div style="font-size:12px;color:#9aa4b2;">Vou acompanhar meu treino, dieta e evolução</div>
         </button>
       </div>
 
-      <div style="{{ alunoInfoDisplay }}background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:16px;font-size:12.5px;color:#9aa4b2;line-height:1.5;">
-        Conta de aluno é criada a partir do link de convite enviado pelo seu personal trainer — não dá pra se cadastrar por aqui. Peça o link a ele(a).
+      <div style="{{ alunoInfoDisplay }}background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:16px;margin-bottom:14px;font-size:12.5px;color:#9aa4b2;line-height:1.5;">
+        Recebeu o link de convite do seu personal? Abra ele pra já entrar vinculado. Se ainda não recebeu, crie sua conta aqui: quando seu personal te convidar (pelo mesmo e-mail), o convite aparece dentro do app pra você aceitar.
       </div>
 
       <div style="{{ fieldsDisplay }}flex-direction:column;gap:12px;">
@@ -295,7 +295,7 @@ class Component extends DCLogic {
 
   async onEntrarClick() {
     const { perfil, modo, cadastroTipo, nome, email, senha } = this.state;
-    if (modo === 'cadastro' && cadastroTipo !== 'personal') return;
+    if (modo === 'cadastro' && cadastroTipo !== 'personal' && cadastroTipo !== 'aluno') return;
     if (!email || !senha) {
       this.setState({ erro: 'Preencha e-mail e senha.' });
       return;
@@ -303,8 +303,10 @@ class Component extends DCLogic {
     this.setState({ carregando: true, erro: '' });
 
     if (modo === 'cadastro') {
+      // tipo decide o papel da conta no banco (handle_new_trainer, 0058):
+      // 'personal' vira trainers e cai no dashboard; 'aluno' nunca vira.
       const { data: signUpData, error } = await supabaseClient.auth.signUp({
-        email, password: senha, options: { data: { nome } }
+        email, password: senha, options: { data: { nome, tipo: cadastroTipo } }
       });
       if (error) {
         this.setState({ carregando: false, erro: error.message });
@@ -314,6 +316,10 @@ class Component extends DCLogic {
       // conta). Só dá pra chamar com sessão ativa; falha nunca trava o cadastro.
       if (signUpData && signUpData.session) {
         try { await supabaseClient.functions.invoke('enviar-email', { body: { tipo: 'boas_vindas' } }); } catch (e) {}
+      }
+      if (signUpData && signUpData.session) {
+        window.location.href = cadastroTipo === 'personal' ? 'dashboard.html' : 'app-aluno.html';
+        return;
       }
       this.setState({ carregando: false, erro: 'Conta criada! Verifique seu e-mail para confirmar, depois faça login.', modo: 'login', cadastroTipo: null });
       return;
@@ -348,12 +354,12 @@ class Component extends DCLogic {
     const isCadastro = this.state.modo === 'cadastro';
     const cadastroTipo = this.state.cadastroTipo;
     // No cadastro, o tipo de conta é uma pergunta explícita (chooser), não
-    // herdado da aba "Sou personal/Sou aluno" do login — personal e aluno
-    // usam caminhos completamente diferentes: personal se auto-cadastra
-    // aqui, aluno só entra via link de convite do seu personal trainer.
+    // herdado da aba "Sou personal/Sou aluno" do login. Personal cai no
+    // dashboard; aluno cai na área do aluno e se vincula ao personal
+    // pelo convite (link ou dentro do app).
     const showChooser = isCadastro && !cadastroTipo;
     const showAlunoInfo = isCadastro && cadastroTipo === 'aluno';
-    const showFields = !isCadastro || cadastroTipo === 'personal';
+    const showFields = !isCadastro || !!cadastroTipo;
 
     return {
       personalBg: isPersonal ? '#1e2633' : 'transparent', personalColor: isPersonal ? '#e5e9f0' : '#66707e',
@@ -361,9 +367,9 @@ class Component extends DCLogic {
       setPersonal: () => this.setState({ perfil: 'personal' }),
       setAluno: () => this.setState({ perfil: 'aluno', modo: 'login' }),
       topTabsDisplay: isCadastro ? 'display:none;' : 'display:flex;',
-      tituloLogin: showChooser ? 'Criar conta' : showAlunoInfo ? 'Conta de aluno' : isCadastro ? 'Criar conta de personal trainer' : (isPersonal ? 'Entrar como personal trainer' : 'Entrar como aluno'),
+      tituloLogin: showChooser ? 'Criar conta' : showAlunoInfo ? 'Criar conta de aluno' : isCadastro ? 'Criar conta de personal trainer' : (isPersonal ? 'Entrar como personal trainer' : 'Entrar como aluno'),
       subtituloLogin: showChooser ? 'Primeiro, diga que tipo de conta você quer criar' : showAlunoInfo ? '' : isCadastro ? 'Vai gerenciar seus alunos, treinos e financeiro' : (isPersonal ? 'Acesse seu painel de alunos, produtos e financeiro' : 'Acesse seu treino, dieta e evolução'),
-      emailPlaceholder: isPersonal ? 'personal@demo.com' : 'aluno@demo.com',
+      emailPlaceholder: (isCadastro ? cadastroTipo === 'personal' : isPersonal) ? 'personal@demo.com' : 'aluno@demo.com',
       chooserDisplay: showChooser ? 'display:flex;' : 'display:none;',
       alunoInfoDisplay: showAlunoInfo ? 'display:block;' : 'display:none;',
       escolherPersonal: () => this.setState({ cadastroTipo: 'personal', erro: '' }),
