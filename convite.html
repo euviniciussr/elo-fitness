@@ -103,18 +103,23 @@ function renderCadastro(convite) {
     }
 
     if (data.session) {
-      await finalizarAceite(nome);
+      await finalizarAceite(nome, true);
     } else {
       content.innerHTML = '<div class="info">Conta criada! Confirme seu e-mail e depois volte nesse mesmo link pra entrar.</div>';
     }
   });
 }
 
-async function finalizarAceite(nome) {
+async function finalizarAceite(nome, contaNova) {
   const { error } = await supabaseClient.rpc('accept_convite', { p_token: token, p_nome: nome });
   if (error) {
     renderErro('Não foi possível concluir: ' + error.message);
     return;
+  }
+  // E-mail de boas-vindas só pra conta recém-criada (a função também só
+  // envia uma vez por conta). Falha no envio nunca trava o cadastro.
+  if (contaNova) {
+    try { await supabaseClient.functions.invoke('enviar-email', { body: { tipo: 'boas_vindas' } }); } catch (e) {}
   }
   window.location.href = '/app-aluno.html';
 }

@@ -303,12 +303,17 @@ class Component extends DCLogic {
     this.setState({ carregando: true, erro: '' });
 
     if (modo === 'cadastro') {
-      const { error } = await supabaseClient.auth.signUp({
+      const { data: signUpData, error } = await supabaseClient.auth.signUp({
         email, password: senha, options: { data: { nome } }
       });
       if (error) {
         this.setState({ carregando: false, erro: error.message });
         return;
+      }
+      // Boas-vindas por e-mail (Edge Function enviar-email, uma vez por
+      // conta). Só dá pra chamar com sessão ativa; falha nunca trava o cadastro.
+      if (signUpData && signUpData.session) {
+        try { await supabaseClient.functions.invoke('enviar-email', { body: { tipo: 'boas_vindas' } }); } catch (e) {}
       }
       this.setState({ carregando: false, erro: 'Conta criada! Verifique seu e-mail para confirmar, depois faça login.', modo: 'login', cadastroTipo: null });
       return;
