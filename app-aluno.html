@@ -1379,24 +1379,18 @@ class Component extends DCLogic {
   async loadTreino() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return false;
-    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status, anamnese_obrigatoria').eq('auth_user_id', user.id).maybeSingle();
+    const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status, origem_cadastro, anamnese_status').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) return false;
 
-    // Gate de onboarding: aluno que entrou via convite puro (sem cadastro
-    // manual prévio do profissional) precisa concluir a anamnese antes de
-    // ver qualquer treino/dieta/evolução — checagem roda antes de
-    // qualquer setState ou busca de dado protegido, não é só visual.
-    if (cliente.anamnese_obrigatoria) {
-      // A anamnese do aluno agora só cobre nome + dados pessoais (o resto
-      // — rotina, saúde, hábitos, fotos, perguntas dinâmicas — o
-      // profissional preenche em aluno-detalhe.html) — respondido_em em
-      // anamnese_respostas é setado exatamente quando o aluno envia esse
-      // formulário reduzido (ver onEnviar em anamnese.html).
-      const { data: resp } = await supabaseClient.from('anamnese_respostas').select('respondido_em').eq('cliente_id', cliente.id).maybeSingle();
-      if (!resp || !resp.respondido_em) {
-        window.location.href = 'anamnese.html';
-        return true;
-      }
+    // Gate de onboarding: aluno que entrou por convite (origem_cadastro =
+    // 'convite') só usa o app depois de concluir a anamnese. anamnese_status
+    // só vira 'concluida' via concluir_anamnese() no servidor, e as tabelas
+    // do app têm policy RESTRICTIVE (migration 0057) — mesmo pulando este
+    // redirect, a API não devolve nada. replace() pra o "voltar" do
+    // navegador não cair de novo aqui. Aluno manual nunca é bloqueado.
+    if (cliente.origem_cadastro === 'convite' && cliente.anamnese_status !== 'concluida') {
+      window.location.replace('anamnese.html');
+      return true;
     }
 
     const alunoNome = (cliente.nome || '').trim().split(/\s+/)[0] || '';

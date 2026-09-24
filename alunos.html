@@ -393,7 +393,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <div sc-camel-on-click="{{ a.onClick }}" style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;cursor:pointer;" style-hover="background:#131a26;">
                 <div style="flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:12px;">
                   <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">{{ a.initials }}</div>
-                  <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ a.nome }}</div><div style="font-size:11px;color:#66707e;">{{ a.objetivo }}</div></div>
+                  <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ a.nome }}</div><div style="font-size:11px;color:#66707e;">{{ a.objetivo }}</div><sc-if value="{{ a.temAnamneseBadge }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;font-weight:700;color:{{ a.anamneseColor }};margin-top:2px;">● {{ a.anamneseLabel }}</div></sc-if></div>
                 </div>
                 <div style="flex:0 0 130px;font-size:12px;color:#9aa4b2;">{{ a.plano }}</div>
                 <div style="flex:0 0 150px;display:flex;align-items:center;gap:9px;">
@@ -418,7 +418,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <div sc-camel-on-click="{{ a.onClick }}" style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:860px;cursor:pointer;" style-hover="background:#131a26;">
                 <div style="flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:12px;">
                   <div style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#131a26;color:#66707e;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;">{{ a.initials }}</div>
-                  <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ a.nome }}</div><div style="font-size:11px;color:#66707e;">{{ a.objetivo }}</div></div>
+                  <div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;">{{ a.nome }}</div><div style="font-size:11px;color:#66707e;">{{ a.objetivo }}</div><sc-if value="{{ a.temAnamneseBadge }}" hint-placeholder-val="{{ false }}"><div style="font-size:11px;font-weight:700;color:{{ a.anamneseColor }};margin-top:2px;">● {{ a.anamneseLabel }}</div></sc-if></div>
                 </div>
                 <div style="flex:0 0 130px;font-size:12px;color:#9aa4b2;">{{ a.plano }}</div>
                 <span style="flex:1;font-size:12px;font-weight:600;text-align:right;color:#f97316;">abrir perfil ›</span>
@@ -935,6 +935,19 @@ class Component extends DCLogic {
     const f = this.state.filtroTodos;
     if (f !== 'todos') todosBase = todosBase.filter(t => t.status.toLowerCase() === f);
 
+    // Status da anamnese (migration 0057). Aluno de convite sempre mostra
+    // concluída/pendente — é pra ele que a anamnese é obrigatória. Aluno
+    // manual só mostra quando já concluiu (pendente ali é o normal).
+    const anamneseBadge = (c) => {
+      const concluida = c.anamnese_status === 'concluida';
+      const temAnamneseBadge = c.origem_cadastro === 'convite' || concluida;
+      return {
+        temAnamneseBadge,
+        anamneseLabel: concluida ? 'Anamnese concluída' : 'Anamnese pendente',
+        anamneseColor: concluida ? '#4ade80' : '#f97316'
+      };
+    };
+
     return {
       tituloAba: titulos[tab][0], subtituloAba: titulos[tab][1],
       meuNome: this.state.trainerNomeCompleto || 'Seu nome',
@@ -966,6 +979,7 @@ class Component extends DCLogic {
         return {
           initials: iniciais(c.nome), nome: c.nome, objetivo: c.plano || '',
           plano: c.plano || '—',
+          ...anamneseBadge(c),
           aderenciaW: (ad.pct == null ? 0 : ad.pct) + '%', aderenciaColor: cor, aderencia: ad.pct == null ? '—' : ad.pct + '%',
           ultimo: ad.diasSemUltimo == null ? 'nunca' : ad.diasSemUltimo === 0 ? 'hoje' : 'há ' + ad.diasSemUltimo + ' dias',
           ultimoColor: (ad.diasSemUltimo != null && ad.diasSemUltimo > 7) ? '#f87171' : '#9aa4b2',
@@ -985,6 +999,7 @@ class Component extends DCLogic {
       inativos: clientesInativos.map(c => ({
         initials: iniciais(c.nome), nome: c.nome, objetivo: c.plano || '',
         plano: c.plano || '—',
+        ...anamneseBadge(c),
         onClick: () => this.abrirAluno(c.id, c.nome)
       })),
       semInativos: clientesInativos.length === 0, temInativos: clientesInativos.length > 0,

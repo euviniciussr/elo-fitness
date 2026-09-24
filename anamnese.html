@@ -221,6 +221,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
     <sc-if value="{{ isForm }}" hint-placeholder-val="{{ true }}">
       <div>
+        <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ true }}">
+          <div style="background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.35);border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#fdba74;line-height:1.5;"><strong style="color:#f97316;">Complete sua anamnese para continuar.</strong><br>Antes de começar, precisamos conhecer melhor você — o acesso ao app é liberado assim que você enviar.</div>
+        </sc-if>
         <div style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 22px;margin-bottom:20px;">
           <div style="font-size:17px;font-weight:800;">Sua avaliação inicial</div>
           <div style="font-size:13px;color:#9aa4b2;margin-top:6px;line-height:1.5;">Preencha antes de começar. <strong style="color:#e5e9f0;">{{ trainerNome }}</strong> usa essas respostas pra montar seu treino com segurança.</div>
@@ -252,11 +255,61 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           </div>
         </div>
 
-        <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:14px 16px;margin-bottom:24px;font-size:12.5px;color:#9aa4b2;line-height:1.5;">O restante da sua avaliação (rotina de treino, saúde, hábitos alimentares e fotos) é preenchido por <strong style="color:#e5e9f0;">{{ trainerNome }}</strong> com você — não precisa se preocupar com isso aqui.</div>
+        <sc-for list="{{ secoesView }}" as="sec" hint-placeholder-count="0">
+          <div style="margin-bottom:20px;">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.06em;color:#66707e;margin-bottom:10px;">{{ sec.tituloUpper }}</div>
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <sc-for list="{{ sec.perguntas }}" as="q" hint-placeholder-count="0">
+                <div>
+                  <div style="font-size:13px;font-weight:700;margin-bottom:8px;">{{ q.label }}</div>
+                  <sc-if value="{{ q.isTexto }}" hint-placeholder-val="{{ false }}">
+                    <input value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+                  </sc-if>
+                  <sc-if value="{{ q.isTextoLongo }}" hint-placeholder-val="{{ false }}">
+                    <textarea value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" rows="2" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;resize:vertical;"></textarea>
+                  </sc-if>
+                  <sc-if value="{{ q.isHorario }}" hint-placeholder-val="{{ false }}">
+                    <input type="time" value="{{ q.value }}" sc-camel-on-change="{{ q.onChange }}" style="background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+                  </sc-if>
+                  <sc-if value="{{ q.isEscolhaUnica }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ q.opcoesView }}" as="o" hint-placeholder-count="0">
+                        <button type="button" sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ q.isEscolhaMultipla }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <sc-for list="{{ q.opcoesView }}" as="o" hint-placeholder-count="0">
+                        <button type="button" sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ o.label }}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ q.isListaPares }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      <sc-for list="{{ q.rows }}" as="row" hint-placeholder-count="0">
+                        <div style="display:flex;gap:8px;align-items:center;">
+                          <sc-for list="{{ row.campos }}" as="c" hint-placeholder-count="0">
+                            <input value="{{ c.value }}" sc-camel-on-change="{{ c.onChange }}" placeholder="{{ c.label }}" style="flex:1;min-width:0;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;width:100%;">
+                          </sc-for>
+                          <sc-if value="{{ row.canRemove }}" hint-placeholder-val="{{ false }}">
+                            <button type="button" sc-camel-on-click="{{ row.onRemove }}" style="background:none;border:none;color:#66707e;font-size:18px;cursor:pointer;padding:4px 8px;">×</button>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                      <button type="button" sc-camel-on-click="{{ q.onAddRow }}" style="align-self:flex-start;background:none;border:1px dashed #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;">+ adicionar</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+
 
         <button sc-camel-on-click="{{ enviar }}" style="width:100%;background:{{ btnBg }};border:none;color:{{ btnColor }};font-family:inherit;font-size:14px;font-weight:700;padding:13px;border-radius:10px;cursor:pointer;">{{ btnLabel }}</button>
         <sc-if value="{{ mostrarAviso }}" hint-placeholder-val="{{ true }}">
-          <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Preencha seu nome e os dados pessoais pra conseguir enviar.</div>
+          <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Preencha seu nome, os dados pessoais e todas as perguntas marcadas com * pra conseguir enviar.</div>
         </sc-if>
         <div style="{{ erroDisplay }}font-size:12px;color:#f87171;margin-top:10px;text-align:center;">{{ erro }}</div>
       </div>
@@ -277,60 +330,44 @@ class Component extends DCLogic {
     fotoCostas: null, fotoCostasFile: null,
     tentouEnviar: false,
     estrutura: { secoes: [], perguntas: [] },
-    respostasDinamicas: {}
+    respostasDinamicas: {},
+    onboarding: false
   };
 
   _autosaveTimer = null;
 
   async componentDidMount() {
     const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
-    const { data: cliente } = await supabaseClient
-      .from('clientes')
-      .select('id, nome, trainer_id, trainers(nome, anamnese_modo)')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (!cliente) return;
+    if (!user) { window.location.replace('login.html'); return; }
 
-    // Resolução respeita a escolha explícita do trainer (anamnese_modo):
-    // só usa a personalização própria dele se ele optou por isso — se ele
-    // escolheu "padrao", usa a padrão do sistema mesmo que tenha uma
-    // personalizada salva.
-    let estrutura = null;
-    if ((cliente.trainers || {}).anamnese_modo === 'personalizada') {
-      const { data: tplTrainer } = await supabaseClient
-        .from('anamnese_templates').select('estrutura').eq('trainer_id', cliente.trainer_id).maybeSingle();
-      estrutura = tplTrainer && tplTrainer.estrutura;
-    }
-    if (!estrutura) {
-      const { data: tplDefault } = await supabaseClient
-        .from('anamnese_templates').select('estrutura').is('trainer_id', null).maybeSingle();
-      estrutura = (tplDefault && tplDefault.estrutura) || { secoes: [], perguntas: [] };
+    // Qual anamnese (padrão ou personalizada do profissional do aluno) e
+    // qual versão dela é decidido NO SERVIDOR por iniciar_anamnese() — que
+    // também congela essa versão na resposta (estrutura_snapshot) na
+    // primeira abertura. Reabrir depois devolve a mesma versão, com as
+    // respostas já salvas pelo autosave (continua de onde parou).
+    const { data: ini, error: iniErr } = await supabaseClient.rpc('iniciar_anamnese');
+    if (iniErr || !ini) {
+      this.setState({ erro: 'Não foi possível carregar sua anamnese. Recarregue a página. (' + ((iniErr && iniErr.message) || 'sem cadastro') + ')' });
+      return;
     }
 
-    // Carrega rascunho já salvo (autosave de uma sessão anterior, ou
-    // respostas já preenchidas pelo profissional) pra não fazer o aluno
-    // recomeçar do zero se ele já tinha começado.
-    const [{ data: fixo }, { data: dinamica }] = await Promise.all([
-      supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', cliente.id).maybeSingle(),
-      supabaseClient.from('anamnese_respostas_dinamicas').select('respostas').eq('cliente_id', cliente.id).maybeSingle()
+    const [{ data: trainer }, { data: fixo }] = await Promise.all([
+      supabaseClient.from('trainers').select('nome').eq('id', ini.trainer_id).maybeSingle(),
+      supabaseClient.from('anamnese_respostas').select('*').eq('cliente_id', ini.cliente_id).maybeSingle()
     ]);
 
     this.setState({
-      clienteId: cliente.id, trainerId: cliente.trainer_id,
-      trainerNome: (cliente.trainers || {}).nome || this.props.trainerNome || '',
-      nome: cliente.nome || '',
-      estrutura,
+      clienteId: ini.cliente_id, trainerId: ini.trainer_id,
+      trainerNome: (trainer && trainer.nome) || this.props.trainerNome || '',
+      nome: ini.nome || '',
+      onboarding: ini.origem_cadastro === 'convite' && ini.anamnese_status === 'pendente',
+      estrutura: ini.estrutura || { secoes: [], perguntas: [] },
       sexo: (fixo && fixo.sexo) || this.state.sexo,
       idade: fixo && fixo.idade != null ? String(fixo.idade) : this.state.idade,
       altura: fixo && fixo.altura_cm != null ? String(fixo.altura_cm) : this.state.altura,
       peso: fixo && fixo.peso_kg != null ? String(fixo.peso_kg) : this.state.peso,
       objetivo: (fixo && fixo.objetivo) || this.state.objetivo,
-      tempoTreino: (fixo && fixo.tempo_treino) || this.state.tempoTreino,
-      lesoes: (fixo && fixo.lesoes) || this.state.lesoes,
-      medicamentos: (fixo && fixo.medicamentos) || this.state.medicamentos,
-      restricoes: (fixo && fixo.restricoes) || this.state.restricoes,
-      respostasDinamicas: (dinamica && dinamica.respostas) || this.state.respostasDinamicas
+      respostasDinamicas: ini.respostas || {}
     });
   }
 
@@ -346,23 +383,25 @@ class Component extends DCLogic {
     this._autosaveTimer = setTimeout(() => this.autosave(), 800);
   }
 
-  // Só salva os campos que o ALUNO preenche aqui (nome/sexo/idade/altura/
-  // peso/objetivo). tempo_treino/lesões/medicamentos/restrições e as
-  // respostas dinâmicas agora são preenchidos pelo profissional em
-  // aluno-detalhe.html — nunca incluir essas chaves no payload, senão o
-  // autosave do aluno sobrescreveria com os valores em branco/default do
-  // estado local o que o profissional já tiver preenchido.
+  // Autosave de rascunho — nunca conclui nada: anamnese_status só muda
+  // via concluir_anamnese() no envio. Respostas dinâmicas vão só no campo
+  // respostas (update), sem tocar na versão congelada por iniciar_anamnese().
   async autosave() {
     const s = this.state;
     if (!s.clienteId) return;
-    await supabaseClient.from('anamnese_respostas').upsert({
-      cliente_id: s.clienteId, trainer_id: s.trainerId,
-      objetivo: s.objetivo,
-      sexo: s.sexo || null,
-      idade: s.idade ? Number(s.idade) : null,
-      altura_cm: s.altura ? Number(s.altura) : null,
-      peso_kg: s.peso ? Number(s.peso) : null
-    }, { onConflict: 'cliente_id' });
+    await Promise.all([
+      supabaseClient.from('anamnese_respostas').upsert({
+        cliente_id: s.clienteId, trainer_id: s.trainerId,
+        objetivo: s.objetivo,
+        sexo: s.sexo || null,
+        idade: s.idade ? Number(s.idade) : null,
+        altura_cm: s.altura ? Number(s.altura) : null,
+        peso_kg: s.peso ? Number(s.peso) : null
+      }, { onConflict: 'cliente_id' }),
+      supabaseClient.from('anamnese_respostas_dinamicas')
+        .update({ respostas: s.respostasDinamicas, updated_at: new Date().toISOString() })
+        .eq('cliente_id', s.clienteId)
+    ]);
   }
 
   // depende_de: pergunta condicional só conta como visível (e, se
@@ -375,17 +414,20 @@ class Component extends DCLogic {
     return q.depende_de.valores.includes(val);
   }
 
-  // Única fonte de verdade pra "pode enviar" — usada tanto pra habilitar
-  // visualmente o botão (renderVals) quanto, principalmente, pra realmente
-  // bloquear o envio em onEnviar (o botão em si nunca fica com atributo
-  // disabled, só muda de estilo — sem essa checagem aqui o clique passaria
-  // mesmo com pergunta obrigatória em branco).
-  // Só nome + dados pessoais são exigidos do aluno agora — o resto
-  // (rotina, saúde, hábitos, fotos, perguntas dinâmicas) é preenchido pelo
-  // profissional em aluno-detalhe.html.
+  // Única fonte de verdade pra "pode enviar" no front — usada pra estilo
+  // do botão e pra barrar o clique em onEnviar. A validação que vale de
+  // verdade é repetida no servidor em concluir_anamnese().
   isCompleto() {
     const s = this.state;
-    return !!(s.nome.trim() && s.sexo && s.idade && s.altura && s.peso);
+    const respDin = s.respostasDinamicas;
+    const respondeuObrigatoria = (q) => {
+      const val = respDin[q.id];
+      if (Array.isArray(val)) return val.length > 0;
+      return val != null && String(val).trim() !== '';
+    };
+    const obrigatoriasPendentes = (s.estrutura.perguntas || [])
+      .some(q => q.obrigatoria && this.shouldShowPergunta(q) && !respondeuObrigatoria(q));
+    return !!(s.nome.trim() && s.sexo && s.idade && s.altura && s.peso && !obrigatoriasPendentes);
   }
 
   async onEnviar() {
@@ -394,16 +436,18 @@ class Component extends DCLogic {
     this.setState({ enviando: true, erro: '' });
 
     try {
-      const { error: anamneseErr } = await supabaseClient.from('anamnese_respostas').upsert({
-        cliente_id: this.state.clienteId, trainer_id: this.state.trainerId,
-        objetivo: this.state.objetivo,
-        sexo: this.state.sexo || null,
-        idade: this.state.idade ? Number(this.state.idade) : null,
-        altura_cm: this.state.altura ? Number(this.state.altura) : null,
-        peso_kg: this.state.peso ? Number(this.state.peso) : null,
-        respondido_em: new Date().toISOString()
-      }, { onConflict: 'cliente_id' });
-      if (anamneseErr) throw anamneseErr;
+      clearTimeout(this._autosaveTimer);
+      const { error: concluirErr } = await supabaseClient.rpc('concluir_anamnese', {
+        p_pessoais: {
+          objetivo: this.state.objetivo,
+          sexo: this.state.sexo || null,
+          idade: this.state.idade ? Number(this.state.idade) : null,
+          altura_cm: this.state.altura ? Number(this.state.altura) : null,
+          peso_kg: this.state.peso ? Number(this.state.peso) : null
+        },
+        p_respostas: this.state.respostasDinamicas
+      });
+      if (concluirErr) throw concluirErr;
 
       this.setState({ enviando: false, enviado: true });
     } catch (err) {
@@ -428,7 +472,69 @@ class Component extends DCLogic {
     // preenchido pelo profissional em aluno-detalhe.html, não aparece aqui.
     const completo = this.isCompleto();
 
+    const respDin = this.state.respostasDinamicas;
+    const setResp = (id, val) => { this.setState(s => ({ respostasDinamicas: { ...s.respostasDinamicas, [id]: val } })); this.scheduleAutosave(); };
+
+    const buildPergunta = (q) => {
+      const base = {
+        id: q.id, label: q.label + (q.obrigatoria ? ' *' : ''),
+        isTexto: q.tipo === 'texto', isTextoLongo: q.tipo === 'texto_longo', isHorario: q.tipo === 'horario',
+        isEscolhaUnica: q.tipo === 'escolha_unica', isEscolhaMultipla: q.tipo === 'escolha_multipla', isListaPares: q.tipo === 'lista_pares'
+      };
+      if (q.tipo === 'texto' || q.tipo === 'texto_longo' || q.tipo === 'horario') {
+        base.value = respDin[q.id] || '';
+        base.onChange = (e) => setResp(q.id, e.target.value);
+      } else if (q.tipo === 'escolha_unica') {
+        base.opcoesView = (q.opcoes || []).map(o => ({
+          label: o.label,
+          bg: respDin[q.id] === o.valor ? 'rgba(249,115,22,.12)' : '#10151f',
+          border: respDin[q.id] === o.valor ? 'rgba(249,115,22,.35)' : '#1a2130',
+          color: respDin[q.id] === o.valor ? '#f97316' : '#9aa4b2',
+          onClick: () => setResp(q.id, o.valor)
+        }));
+      } else if (q.tipo === 'escolha_multipla') {
+        const atual = Array.isArray(respDin[q.id]) ? respDin[q.id] : [];
+        base.opcoesView = (q.opcoes || []).map(o => {
+          const sel = atual.includes(o.valor);
+          return {
+            label: o.label,
+            bg: sel ? 'rgba(249,115,22,.12)' : '#10151f',
+            border: sel ? 'rgba(249,115,22,.35)' : '#1a2130',
+            color: sel ? '#f97316' : '#9aa4b2',
+            onClick: () => setResp(q.id, sel ? atual.filter(v => v !== o.valor) : [...atual, o.valor])
+          };
+        });
+      } else if (q.tipo === 'lista_pares') {
+        const linhas = Array.isArray(respDin[q.id]) && respDin[q.id].length ? respDin[q.id] : [{}];
+        base.rows = linhas.map((linha, idx) => ({
+          idx,
+          campos: (q.subcampos || []).map(sc => ({
+            label: sc.label,
+            value: linha[sc.key] || '',
+            onChange: (e) => setResp(q.id, linhas.map((l, i) => i === idx ? { ...l, [sc.key]: e.target.value } : l))
+          })),
+          canRemove: linhas.length > 1,
+          onRemove: () => setResp(q.id, linhas.filter((_, i) => i !== idx))
+        }));
+        base.onAddRow = () => setResp(q.id, [...linhas, {}]);
+      }
+      return base;
+    };
+
+    const secoesView = (this.state.estrutura.secoes || [])
+      .slice().sort((a, b) => a.ordem - b.ordem)
+      .map(sec => ({
+        id: sec.id, tituloUpper: (sec.titulo || '').toUpperCase(),
+        perguntas: (this.state.estrutura.perguntas || [])
+          .filter(q => q.secao_id === sec.id && this.shouldShowPergunta(q))
+          .sort((a, b) => a.ordem - b.ordem)
+          .map(buildPergunta)
+      }))
+      .filter(sec => sec.perguntas.length > 0);
+
     return {
+      secoesView,
+      isOnboarding: this.state.onboarding,
       trainerNome,
       isEnviado: this.state.enviado,
       isForm: !this.state.enviado,

@@ -249,6 +249,7 @@ let agendamentosList = [];
 let anamnese = null;
 let anamneseEstrutura = { secoes: [], perguntas: [] };
 let anamneseDinamica = {};
+let anamneseVersaoInfo = null;
 let anamneseDinamicaFormOpen = false;
 let anamneseDinamicaEdit = null;
 let avaliacoesFisicas = [];
@@ -383,6 +384,15 @@ async function init() {
     const { data: tplDefault } = await supabaseClient.from('anamnese_templates').select('estrutura').is('trainer_id', null).maybeSingle();
     anamneseEstrutura = (tplDefault && tplDefault.estrutura) || { secoes: [], perguntas: [] };
   }
+  // Versão congelada no início do onboarding do aluno (migration 0057) —
+  // prevalece sobre o template atual, pra uma edição posterior da anamnese
+  // não mudar retroativamente as perguntas que ele respondeu.
+  if (anamneseDinRes.data && anamneseDinRes.data.estrutura_snapshot) {
+    anamneseEstrutura = anamneseDinRes.data.estrutura_snapshot;
+  }
+  anamneseVersaoInfo = anamneseDinRes.data && anamneseDinRes.data.template_versao
+    ? { tipo: anamneseDinRes.data.template_tipo, versao: anamneseDinRes.data.template_versao }
+    : null;
   const fotosRaw = fotosRes.data || [];
   if (fotosRaw.length) {
     const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosRaw.map(f => f.url), 60 * 60 * 24 * 7);
@@ -428,6 +438,15 @@ const TEMPO_TREINO_LABEL = { '1_a_6_meses': '1 a 6 meses', '6_meses_a_1_ano': '6
 function renderAnamneseTab(container) {
   if (anamneseFormOpen) { renderAnamneseForm(container); return; }
   if (anamneseDinamicaFormOpen) { renderAnamneseDinamicaForm(container); return; }
+
+  const concluida = cliente.anamnese_status === 'concluida';
+  if (cliente.origem_cadastro === 'convite' || concluida) {
+    const cor = concluida ? '#4ade80' : '#f97316';
+    const quando = concluida && cliente.anamnese_concluida_em ? ' em ' + new Date(cliente.anamnese_concluida_em).toLocaleDateString('pt-BR') : '';
+    const versao = anamneseVersaoInfo ? ' · ' + (anamneseVersaoInfo.tipo === 'personalizada' ? 'Anamnese personalizada' : 'Anamnese padrão') + ' v' + anamneseVersaoInfo.versao : '';
+    const obs = cliente.origem_cadastro === 'convite' && !concluida ? ' — o acesso do aluno ao app fica bloqueado até ele enviar' : '';
+    container.appendChild(el('<div style="font-size:12.5px;font-weight:700;color:' + cor + ';margin-bottom:12px;">● ' + (concluida ? 'Anamnese concluída' : 'Anamnese pendente') + esc(quando + versao + obs) + '</div>'));
+  }
 
   if (!anamnese) {
     container.appendChild(el('<div class="empty">Aguardando resposta do aluno. Assim que ele preencher a anamnese, as respostas aparecem aqui.</div>'));
