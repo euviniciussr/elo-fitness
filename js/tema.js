@@ -167,8 +167,40 @@ function temaObservar() {
   temaObserver.observe(document.body, { attributes: true, attributeFilter: ['style'], subtree: true, childList: true });
 }
 
+// Barras de rolagem: cada página fixa `::-webkit-scrollbar-thumb{background:#1e2633}`
+// num <style> próprio (regra de CSS, fora do alcance do DOM-walk), então
+// no modo claro elas ficavam escuras. Esta regra só vale com
+// <html data-tema="claro"> — o modo noturno segue com a regra original.
+function temaInjetarScrollbarClara() {
+  if (document.getElementById('tema-scrollbar-claro')) return;
+  const st = document.createElement('style');
+  st.id = 'tema-scrollbar-claro';
+  st.textContent =
+    'html[data-tema="claro"] ::-webkit-scrollbar-track{background:transparent !important;}' +
+    'html[data-tema="claro"] ::-webkit-scrollbar-thumb{background:#e4e4e7 !important;border-radius:8px !important;}' +
+    'html[data-tema="claro"] ::-webkit-scrollbar-thumb:hover{background:#d4d4d8 !important;}' +
+    '@supports (-moz-appearance:none){html[data-tema="claro"],html[data-tema="claro"] *{scrollbar-color:#e4e4e7 transparent;}}' +
+    'html.tema-sb-refresh *{overflow:hidden !important;}';
+  document.head.appendChild(st);
+}
+
+// O Chrome não repinta a barra de rolagem de um elemento quando o CSS dela
+// muda depois do carregamento — a do menu lateral (<aside overflow-y:auto>)
+// continuava escura. Trocar o overflow por um instante (hidden continua
+// sendo área de rolagem, então a posição não se perde) força o redesenho.
+// Tudo síncrono, sem pintura no meio: nada pisca na tela.
+function temaRepintarScrollbars() {
+  const html = document.documentElement;
+  html.classList.add('tema-sb-refresh');
+  void document.body.offsetHeight;
+  html.classList.remove('tema-sb-refresh');
+  void document.body.offsetHeight;
+}
+
 function temaAplicarNoDom(tema) {
+  temaInjetarScrollbarClara();
   document.documentElement.setAttribute('data-tema', tema);
+  temaRepintarScrollbars();
   temaAplicarBase(tema);
   temaConverterHoverRules();
   if (tema === 'claro') {
