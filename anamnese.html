@@ -311,7 +311,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <sc-if value="{{ mostrarAviso }}" hint-placeholder-val="{{ true }}">
           <div style="font-size:12px;color:#f87171;margin-top:10px;text-align:center;">Preencha seu nome, os dados pessoais e todas as perguntas marcadas com * pra conseguir enviar.</div>
         </sc-if>
-        <div style="{{ erroDisplay }}font-size:12px;color:#f87171;margin-top:10px;text-align:center;">{{ erro }}</div>
+        <div style="{{ erroDisplay }}font-size:13px;font-weight:600;color:#fca5a5;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.35);border-radius:10px;padding:10px 12px;margin-top:10px;text-align:center;">{{ erro }}</div>
       </div>
     </sc-if>
   </div>
@@ -335,6 +335,27 @@ class Component extends DCLogic {
   };
 
   _autosaveTimer = null;
+
+  // Aceita vírgula decimal ("70,5") e altura em metros ("1,75" -> 175 cm).
+  // Sem isso Number("70,5") vira NaN -> null e o servidor recusa o envio
+  // com "Preencha todos os dados pessoais" mesmo com tudo preenchido.
+  num(v) {
+    const n = parseFloat(String(v || '').replace(',', '.').replace(/[^0-9.]/g, ''));
+    return isFinite(n) && n > 0 ? n : null;
+  }
+  pessoais() {
+    const s = this.state;
+    let altura = this.num(s.altura);
+    if (altura != null && altura < 3) altura = Math.round(altura * 100);
+    const idade = this.num(s.idade);
+    return {
+      objetivo: s.objetivo,
+      sexo: s.sexo || null,
+      idade: idade != null ? Math.round(idade) : null,
+      altura_cm: altura != null ? Math.round(altura) : null,
+      peso_kg: this.num(s.peso)
+    };
+  }
 
   async componentDidMount() {
     const { data: { user } } = await supabaseClient.auth.getUser();
@@ -392,11 +413,7 @@ class Component extends DCLogic {
     await Promise.all([
       supabaseClient.from('anamnese_respostas').upsert({
         cliente_id: s.clienteId, trainer_id: s.trainerId,
-        objetivo: s.objetivo,
-        sexo: s.sexo || null,
-        idade: s.idade ? Number(s.idade) : null,
-        altura_cm: s.altura ? Number(s.altura) : null,
-        peso_kg: s.peso ? Number(s.peso) : null
+        ...this.pessoais()
       }, { onConflict: 'cliente_id' }),
       supabaseClient.from('anamnese_respostas_dinamicas')
         .update({ respostas: s.respostasDinamicas, updated_at: new Date().toISOString() })
@@ -427,7 +444,8 @@ class Component extends DCLogic {
     };
     const obrigatoriasPendentes = (s.estrutura.perguntas || [])
       .some(q => q.obrigatoria && this.shouldShowPergunta(q) && !respondeuObrigatoria(q));
-    return !!(s.nome.trim() && s.sexo && s.idade && s.altura && s.peso && !obrigatoriasPendentes);
+    const p = this.pessoais();
+    return !!(s.nome.trim() && p.sexo && p.idade && p.altura_cm && p.peso_kg && !obrigatoriasPendentes);
   }
 
   async onEnviar() {
@@ -438,13 +456,7 @@ class Component extends DCLogic {
     try {
       clearTimeout(this._autosaveTimer);
       const { error: concluirErr } = await supabaseClient.rpc('concluir_anamnese', {
-        p_pessoais: {
-          objetivo: this.state.objetivo,
-          sexo: this.state.sexo || null,
-          idade: this.state.idade ? Number(this.state.idade) : null,
-          altura_cm: this.state.altura ? Number(this.state.altura) : null,
-          peso_kg: this.state.peso ? Number(this.state.peso) : null
-        },
+        p_pessoais: this.pessoais(),
         p_respostas: this.state.respostasDinamicas
       });
       if (concluirErr) throw concluirErr;
@@ -521,12 +533,22 @@ class Component extends DCLogic {
       return base;
     };
 
-    const secoesView = (this.state.estrutura.secoes || [])
-      .slice().sort((a, b) => a.ordem - b.ordem)
+    // Pergunta cuja seção foi apagada no editor continua no template (e o
+    // servidor ainda a exige se for obrigatória) — sem esta seção extra ela
+    // ficaria invisível e o aluno nunca conseguiria enviar.
+    const secoesTpl = (this.state.estrutura.secoes || []).slice();
+    const idsSecoes = new Set(secoesTpl.map(sec => sec.id));
+    if ((this.state.estrutura.perguntas || []).some(q => !idsSecoes.has(q.secao_id))) {
+      secoesTpl.push({ id: '__outras__', titulo: 'Outras perguntas', ordem: Infinity });
+    }
+    const secaoDe = (q) => idsSecoes.has(q.secao_id) ? q.secao_id : '__outras__';
+
+    const secoesView = secoesTpl
+      .sort((a, b) => a.ordem - b.ordem)
       .map(sec => ({
         id: sec.id, tituloUpper: (sec.titulo || '').toUpperCase(),
         perguntas: (this.state.estrutura.perguntas || [])
-          .filter(q => q.secao_id === sec.id && this.shouldShowPergunta(q))
+          .filter(q => secaoDe(q) === sec.id && this.shouldShowPergunta(q))
           .sort((a, b) => a.ordem - b.ordem)
           .map(buildPergunta)
       }))
