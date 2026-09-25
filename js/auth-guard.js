@@ -23,9 +23,19 @@ const PAGINAS_ALUNO = ['app-aluno.html', 'anamnese.html'];
 // auth.uid()` é a única fonte de verdade de "isso é uma conta de personal"
 // (ver supabase/migrations/0001_init.sql) — nunca o que a pessoa escolheu
 // na tela de login.
+//
+// Área do aluno: exige cadastro de aluno (0059 — contas_aluno ou vínculo em
+// clientes). Ser personal não libera a área do aluno sozinho: o personal
+// faz o cadastro de aluno pelo login ("Entrar como aluno").
 async function bloquearAcessoForaDoPerfil(userId) {
   const pagina = location.pathname.split('/').pop();
   const isPaginaAluno = PAGINAS_ALUNO.includes(pagina);
+  if (isPaginaAluno) {
+    const { data: cad, error: cadError } = await supabaseClient.rpc('meus_cadastros');
+    if (cadError || !cad || cad.aluno) return false;
+    window.location.replace(cad.personal ? 'dashboard.html' : 'login.html');
+    return true;
+  }
   const { data: trainer, error } = await supabaseClient.from('trainers').select('id').eq('id', userId).maybeSingle();
   // Uma falha de rede/API aqui não pode ser lida como "não é trainer" — isso
   // chutaria um profissional de verdade pra fora do próprio dashboard numa

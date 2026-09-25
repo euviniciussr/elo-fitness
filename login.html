@@ -210,23 +210,37 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     </div>
 
     <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:28px 26px;">
-      <div style="{{ topTabsDisplay }}background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:3px;margin-bottom:22px;">
-        <button sc-camel-on-click="{{ setPersonal }}" style="flex:1;border:none;font-family:inherit;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;background:{{ personalBg }};color:{{ personalColor }};">Sou personal</button>
-        <button sc-camel-on-click="{{ setAluno }}" style="flex:1;border:none;font-family:inherit;font-size:13px;font-weight:700;padding:10px;border-radius:9px;cursor:pointer;background:{{ alunoBg }};color:{{ alunoColor }};">Sou aluno</button>
+      <div style="{{ trocarDisplay }}align-items:center;justify-content:space-between;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:9px 12px;margin-bottom:20px;font-size:12.5px;color:#9aa4b2;">
+        <span>Entrando como <strong style="color:#e5e9f0;">{{ perfilLabel }}</strong></span>
+        <span sc-camel-on-click="{{ trocarPerfil }}" style="color:#f97316;font-weight:700;cursor:pointer;">Trocar</span>
       </div>
 
       <div style="font-size:18px;font-weight:800;margin-bottom:4px;">{{ tituloLogin }}</div>
-      <div style="font-size:13px;color:#9aa4b2;margin-bottom:20px;">{{ subtituloLogin }}</div>
+      <div style="font-size:13px;color:#9aa4b2;margin-bottom:20px;line-height:1.5;">{{ subtituloLogin }}</div>
 
       <div style="{{ chooserDisplay }}flex-direction:column;gap:10px;">
-        <button sc-camel-on-click="{{ escolherPersonal }}" style="text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:14px 16px;color:#e5e9f0;font-family:inherit;cursor:pointer;">
-          <div style="font-size:13.5px;font-weight:700;margin-bottom:2px;">Sou personal trainer</div>
-          <div style="font-size:12px;color:#9aa4b2;">Vou gerenciar meus alunos, treinos e financeiro</div>
-        </button>
         <button sc-camel-on-click="{{ escolherAluno }}" style="text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:14px 16px;color:#e5e9f0;font-family:inherit;cursor:pointer;">
           <div style="font-size:13.5px;font-weight:700;margin-bottom:2px;">Sou aluno</div>
-          <div style="font-size:12px;color:#9aa4b2;">Vou acompanhar meu treino, dieta e evolução</div>
+          <div style="font-size:12px;color:#9aa4b2;">Acompanhar meu treino, dieta e evolução</div>
         </button>
+        <button sc-camel-on-click="{{ escolherPersonal }}" style="text-align:left;background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:14px 16px;color:#e5e9f0;font-family:inherit;cursor:pointer;">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:2px;">Sou personal trainer</div>
+          <div style="font-size:12px;color:#9aa4b2;">Gerenciar meus alunos, treinos e financeiro</div>
+        </button>
+      </div>
+
+      <div style="{{ completarDisplay }}flex-direction:column;gap:12px;">
+        <div>
+          <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
+          <input value="{{ nome }}" sc-camel-on-change="{{ onNomeChange }}" placeholder="Seu nome" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+        </div>
+        <div sc-camel-on-click="{{ toggleProprioPersonal }}" style="{{ proprioPersonalDisplay }}gap:10px;align-items:flex-start;background:#0d1119;border:1px solid {{ proprioPersonalBorder }};border-radius:11px;padding:12px 14px;cursor:pointer;">
+          <div style="flex-shrink:0;width:18px;height:18px;border-radius:5px;border:1px solid {{ proprioPersonalBorder }};background:{{ proprioPersonalBg }};color:#fff;font-size:12px;line-height:17px;text-align:center;">{{ proprioPersonalCheck }}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;">Sou meu próprio personal</div>
+            <div style="font-size:12px;color:#9aa4b2;margin-top:2px;line-height:1.4;">Vou montar e alimentar meus próprios treinos e dieta pelo meu painel de personal.</div>
+          </div>
+        </div>
       </div>
 
       <div style="{{ alunoInfoDisplay }}background:#0d1119;border:1px solid #1e2633;border-radius:11px;padding:16px;margin-bottom:14px;font-size:12.5px;color:#9aa4b2;line-height:1.5;">
@@ -255,10 +269,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
       <button sc-camel-on-click="{{ onEntrarClick }}" style="{{ botaoDisplay }}text-align:center;width:100%;margin-top:18px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ botaoLabel }}</button>
       <div style="{{ esqueciSenhaDisplay }}text-align:center;margin-top:12px;"><span sc-camel-on-click="{{ onEsqueciSenha }}" style="font-size:12px;color:#66707e;cursor:pointer;">{{ esqueciSenhaLabel }}</span></div>
+      <button sc-camel-on-click="{{ onCompletarClick }}" style="{{ completarBotaoDisplay }}text-align:center;width:100%;margin-top:18px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ completarBotaoLabel }}</button>
+      <div style="{{ completarBotaoDisplay }}text-align:center;margin-top:12px;"><span sc-camel-on-click="{{ onSairCompletar }}" style="font-size:12px;color:#66707e;cursor:pointer;">Agora não, voltar</span></div>
       <div style="{{ resetMensagemDisplay }}text-align:center;margin-top:8px;font-size:12px;color:#9aa4b2;">{{ resetMensagem }}</div>
     </div>
 
-    <div style="text-align:center;margin-top:18px;font-size:12px;color:#66707e;">{{ criarContaTexto }} <span sc-camel-on-click="{{ toggleModo }}" style="color:#f97316;font-weight:700;cursor:pointer;">{{ criarContaLink }}</span></div>
+    <div style="{{ criarContaDisplay }}text-align:center;margin-top:18px;font-size:12px;color:#66707e;">{{ criarContaTexto }} <span sc-camel-on-click="{{ toggleModo }}" style="color:#f97316;font-weight:700;cursor:pointer;">{{ criarContaLink }}</span></div>
     <div style="text-align:center;margin-top:10px;"><a href="adm.html" style="font-size:11px;color:#4a5364;">Acesso admin</a></div>
     <a class="glaz-credit" href="https://www.glaztechnology.com/" target="_blank" rel="noopener"><img src="/assets/glaz-logo.png" alt=""><span>Feito por <strong>Glaz Technology</strong></span></a>
 
@@ -267,7 +283,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:480}}">
 class Component extends DCLogic {
-  state = { perfil: 'personal', modo: 'login', cadastroTipo: null, nome: '', email: '', senha: '', erro: '', carregando: false, resetMensagem: '', resetEnviando: false };
+  state = { perfil: null, modo: 'login', cad: null, proprioPersonal: false, nome: '', email: '', senha: '', erro: '', carregando: false, resetMensagem: '', resetEnviando: false };
 
   // Cooldown fica no localStorage (não no state) pra sobreviver a um F5 —
   // sem isso dava pra recarregar a página e pedir de novo na hora, o que
@@ -293,9 +309,45 @@ class Component extends DCLogic {
     this.setState({ resetEnviando: false, resetMensagem: 'Se esse e-mail tiver conta, enviamos um link pra redefinir a senha.' });
   }
 
+  destinoDe(perfil) { return perfil === 'personal' ? 'dashboard.html' : 'app-aluno.html'; }
+
+  // Cada papel é um cadastro separado (0059): logar como "aluno" só entra
+  // se a conta tem cadastro de aluno, e como "personal" só se tem cadastro
+  // de personal. Faltando, cai na tela "completar" pra fazer esse cadastro
+  // — nunca libera um papel só porque a conta tem o outro.
+  async entrarOuCompletar(user) {
+    const perfil = this.state.perfil;
+    const { data: cad, error } = await supabaseClient.rpc('meus_cadastros');
+    // Falha momentânea de rede não pode travar o login: auth-guard.js
+    // confere de novo na página de destino.
+    if (error || !cad) { window.location.href = this.destinoDe(perfil); return; }
+    if (cad[perfil]) { window.location.href = this.destinoDe(perfil); return; }
+    const meta = (user && user.user_metadata) || {};
+    this.setState({
+      modo: 'completar', carregando: false, erro: '', cad,
+      nome: this.state.nome || meta.nome || meta.full_name || '',
+      proprioPersonal: false
+    });
+  }
+
+  async onCompletarClick() {
+    const { perfil, nome, proprioPersonal, cad } = this.state;
+    this.setState({ carregando: true, erro: '' });
+    const { error } = perfil === 'personal'
+      ? await supabaseClient.rpc('criar_cadastro_personal', { p_nome: nome })
+      : await supabaseClient.rpc('criar_cadastro_aluno', { p_nome: nome, p_proprio_personal: !!(proprioPersonal && cad && cad.personal && !cad.vinculado) });
+    if (error) { this.setState({ carregando: false, erro: error.message }); return; }
+    window.location.href = this.destinoDe(perfil);
+  }
+
+  async onSairCompletar() {
+    await supabaseClient.auth.signOut();
+    this.setState({ modo: 'login', perfil: null, senha: '', erro: '', carregando: false });
+  }
+
   async onEntrarClick() {
-    const { perfil, modo, cadastroTipo, nome, email, senha } = this.state;
-    if (modo === 'cadastro' && cadastroTipo !== 'personal' && cadastroTipo !== 'aluno') return;
+    const { perfil, modo, nome, email, senha } = this.state;
+    if (!perfil) return;
     if (!email || !senha) {
       this.setState({ erro: 'Preencha e-mail e senha.' });
       return;
@@ -303,11 +355,21 @@ class Component extends DCLogic {
     this.setState({ carregando: true, erro: '' });
 
     if (modo === 'cadastro') {
-      // tipo decide o papel da conta no banco (handle_new_trainer, 0058):
-      // 'personal' vira trainers e cai no dashboard; 'aluno' nunca vira.
+      // tipo decide qual cadastro nasce junto com a conta (handle_new_trainer,
+      // 0059): 'personal' vira trainers, 'aluno' vira contas_aluno.
       const { data: signUpData, error } = await supabaseClient.auth.signUp({
-        email, password: senha, options: { data: { nome, tipo: cadastroTipo } }
+        email, password: senha, options: { data: { nome, tipo: perfil } }
       });
+      // E-mail já cadastrado: o Supabase ora devolve erro, ora devolve um
+      // usuário "falso" sem identities (pra não revelar quem tem conta).
+      // Nos dois casos a pessoa já tem login — manda pro login do mesmo
+      // papel; se faltar o cadastro desse papel, ela faz na sequência.
+      const jaExiste = (error && /already|registered|exists/i.test(error.message))
+        || (!error && signUpData && signUpData.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0);
+      if (jaExiste) {
+        this.setState({ carregando: false, modo: 'login', erro: 'Esse e-mail já tem conta. Entre com sua senha — se ainda não tiver cadastro de ' + (perfil === 'personal' ? 'personal' : 'aluno') + ', você faz na sequência.' });
+        return;
+      }
       if (error) {
         this.setState({ carregando: false, erro: error.message });
         return;
@@ -316,12 +378,10 @@ class Component extends DCLogic {
       // conta). Só dá pra chamar com sessão ativa; falha nunca trava o cadastro.
       if (signUpData && signUpData.session) {
         try { await supabaseClient.functions.invoke('enviar-email', { body: { tipo: 'boas_vindas' } }); } catch (e) {}
-      }
-      if (signUpData && signUpData.session) {
-        window.location.href = cadastroTipo === 'personal' ? 'dashboard.html' : 'app-aluno.html';
+        window.location.href = this.destinoDe(perfil);
         return;
       }
-      this.setState({ carregando: false, erro: 'Conta criada! Verifique seu e-mail para confirmar, depois faça login.', modo: 'login', cadastroTipo: null });
+      this.setState({ carregando: false, erro: 'Conta criada! Verifique seu e-mail para confirmar, depois faça login.', modo: 'login' });
       return;
     }
 
@@ -333,48 +393,54 @@ class Component extends DCLogic {
       this.setState({ carregando: false, erro: msg });
       return;
     }
-    // O toggle "Sou Personal / Sou Aluno" é só um atalho de UI — quem manda
-    // de verdade é `trainers.id = auth.uid()` (mesma checagem que
-    // js/auth-guard.js faz em toda página depois disso), pra nunca mandar
-    // uma conta de aluno pro dashboard do personal só porque ela deixou o
-    // toggle errado marcado.
-    const { data: trainer, error: trainerError } = await supabaseClient.from('trainers').select('id').eq('id', signInData.user.id).maybeSingle();
-    // Se a checagem falhar (rede instável logo após o login), não force
-    // 'app-aluno.html' pra uma conta que pode ser de personal de verdade —
-    // cai pro toggle como melhor palpite; auth-guard.js confere de novo com
-    // a mesma regra assim que a página carregar, então isso nunca vira uma
-    // brecha, só evita mandar um personal pro lugar errado por instabilidade.
-    const destino = trainerError ? (perfil === 'personal' ? 'dashboard.html' : 'app-aluno.html') : (trainer ? 'dashboard.html' : 'app-aluno.html');
-    window.location.href = destino;
+    await this.entrarOuCompletar(signInData.user);
   }
 
   renderVals() {
     const perfil = this.state.perfil;
     const isPersonal = perfil === 'personal';
-    const isCadastro = this.state.modo === 'cadastro';
-    const cadastroTipo = this.state.cadastroTipo;
-    // No cadastro, o tipo de conta é uma pergunta explícita (chooser), não
-    // herdado da aba "Sou personal/Sou aluno" do login. Personal cai no
-    // dashboard; aluno cai na área do aluno e se vincula ao personal
-    // pelo convite (link ou dentro do app).
-    const showChooser = isCadastro && !cadastroTipo;
-    const showAlunoInfo = isCadastro && cadastroTipo === 'aluno';
-    const showFields = !isCadastro || !!cadastroTipo;
+    const modo = this.state.modo;
+    const isCadastro = modo === 'cadastro';
+    const isCompletar = modo === 'completar';
+    const showChooser = !perfil;
+    const showFields = !!perfil && !isCompletar;
+    const showAlunoInfo = isCadastro && perfil === 'aluno';
+    const papel = isPersonal ? 'personal' : 'aluno';
+    const cad = this.state.cad || {};
+    const podeProprioPersonal = isCompletar && perfil === 'aluno' && cad.personal && !cad.vinculado;
+    const proprio = !!this.state.proprioPersonal;
 
     return {
-      personalBg: isPersonal ? '#1e2633' : 'transparent', personalColor: isPersonal ? '#e5e9f0' : '#66707e',
-      alunoBg: !isPersonal ? '#1e2633' : 'transparent', alunoColor: !isPersonal ? '#e5e9f0' : '#66707e',
-      setPersonal: () => this.setState({ perfil: 'personal' }),
-      setAluno: () => this.setState({ perfil: 'aluno', modo: 'login' }),
-      topTabsDisplay: isCadastro ? 'display:none;' : 'display:flex;',
-      tituloLogin: showChooser ? 'Criar conta' : showAlunoInfo ? 'Criar conta de aluno' : isCadastro ? 'Criar conta de personal trainer' : (isPersonal ? 'Entrar como personal trainer' : 'Entrar como aluno'),
-      subtituloLogin: showChooser ? 'Primeiro, diga que tipo de conta você quer criar' : showAlunoInfo ? '' : isCadastro ? 'Vai gerenciar seus alunos, treinos e financeiro' : (isPersonal ? 'Acesse seu painel de alunos, produtos e financeiro' : 'Acesse seu treino, dieta e evolução'),
-      emailPlaceholder: (isCadastro ? cadastroTipo === 'personal' : isPersonal) ? 'personal@demo.com' : 'aluno@demo.com',
+      trocarDisplay: (perfil && !isCompletar) ? 'display:flex;' : 'display:none;',
+      perfilLabel: isPersonal ? 'personal trainer' : 'aluno',
+      trocarPerfil: () => this.setState({ perfil: null, modo: 'login', erro: '' }),
+      tituloLogin: showChooser ? 'Como você quer entrar?'
+        : isCompletar ? 'Você ainda não tem cadastro de ' + papel
+        : isCadastro ? (isPersonal ? 'Criar conta de personal trainer' : 'Criar conta de aluno')
+        : (isPersonal ? 'Entrar como personal trainer' : 'Entrar como aluno'),
+      subtituloLogin: showChooser ? 'Escolha o tipo de acesso. Cada um tem o seu cadastro.'
+        : isCompletar ? (isPersonal
+            ? 'Sua conta tem só o cadastro de aluno. Faça seu cadastro de personal pra acessar o painel — você ganha 14 dias de teste.'
+            : 'Sua conta tem só o cadastro de personal. Faça seu cadastro de aluno pra acessar a área do aluno.')
+        : showAlunoInfo ? ''
+        : isCadastro ? 'Vai gerenciar seus alunos, treinos e financeiro'
+        : (isPersonal ? 'Acesse seu painel de alunos, produtos e financeiro' : 'Acesse seu treino, dieta e evolução'),
+      emailPlaceholder: isPersonal ? 'personal@demo.com' : 'aluno@demo.com',
       chooserDisplay: showChooser ? 'display:flex;' : 'display:none;',
       alunoInfoDisplay: showAlunoInfo ? 'display:block;' : 'display:none;',
-      escolherPersonal: () => this.setState({ cadastroTipo: 'personal', erro: '' }),
-      escolherAluno: () => this.setState({ cadastroTipo: 'aluno', erro: '' }),
+      escolherPersonal: () => this.setState({ perfil: 'personal', erro: '' }),
+      escolherAluno: () => this.setState({ perfil: 'aluno', erro: '' }),
       fieldsDisplay: showFields ? 'display:flex;' : 'display:none;',
+      completarDisplay: isCompletar ? 'display:flex;' : 'display:none;',
+      proprioPersonalDisplay: podeProprioPersonal ? 'display:flex;' : 'display:none;',
+      proprioPersonalBorder: proprio ? 'rgba(249,115,22,.5)' : '#1e2633',
+      proprioPersonalBg: proprio ? '#f97316' : 'transparent',
+      proprioPersonalCheck: proprio ? '✓' : '',
+      toggleProprioPersonal: () => this.setState({ proprioPersonal: !proprio }),
+      completarBotaoDisplay: isCompletar ? 'display:block;' : 'display:none;',
+      completarBotaoLabel: this.state.carregando ? 'Aguarde…' : 'Fazer meu cadastro de ' + papel,
+      onCompletarClick: () => this.onCompletarClick(),
+      onSairCompletar: () => this.onSairCompletar(),
       nome: this.state.nome, email: this.state.email, senha: this.state.senha,
       nomeFieldDisplay: isCadastro ? '' : 'display:none;',
       onNomeChange: (e) => this.setState({ nome: e.target.value }),
@@ -390,9 +456,10 @@ class Component extends DCLogic {
       resetMensagemDisplay: (showFields && this.state.resetMensagem) ? '' : 'display:none;',
       erro: this.state.erro,
       erroDisplay: this.state.erro ? '' : 'display:none;',
+      criarContaDisplay: showFields ? '' : 'display:none;',
       criarContaTexto: isCadastro ? 'Já tem conta?' : 'Não tem conta?',
       criarContaLink: isCadastro ? 'Entrar' : 'Criar conta grátis',
-      toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', cadastroTipo: null, erro: '' })
+      toggleModo: () => this.setState({ modo: isCadastro ? 'login' : 'cadastro', erro: '' })
     };
   }
 }

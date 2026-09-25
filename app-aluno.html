@@ -387,6 +387,13 @@ aside + * table{display:block!important;overflow-x:auto!important}
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 20px;margin-bottom:16px;">
         <div style="font-size:14px;font-weight:800;">Sua conta está pronta</div>
         <div style="font-size:12.5px;color:#9aa4b2;margin-top:4px;line-height:1.5;">Peça para o seu personal te convidar pelo e-mail <strong style="color:#e5e9f0;">{{ alunoEmail }}</strong>. O convite aparece aqui para você aceitar, e seu treino e sua dieta são liberados.</div>
+        <sc-if value="{{ podeSerProprioPersonal }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a2130;">
+            <div style="font-size:12.5px;color:#9aa4b2;line-height:1.5;margin-bottom:10px;">Você também é personal. Quer montar e alimentar seus próprios treinos e dieta pelo seu painel?</div>
+            <button sc-camel-on-click="{{ onSerProprioPersonal }}" style="background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:13px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">{{ proprioPersonalLabel }}</button>
+            <div style="{{ proprioPersonalErroDisplay }}font-size:12px;color:#f87171;margin-top:8px;">{{ proprioPersonalErro }}</div>
+          </div>
+        </sc-if>
       </div>
     </sc-if>
 
@@ -1384,12 +1391,23 @@ class Component extends DCLogic {
   // Retorna true se o acesso foi bloqueado (redirecionou pra anamnese) —
   // usado por componentDidMount pra não disparar o resto do carregamento
   // do app quando isso acontece.
+  // "Sou meu próprio personal" (0059): personal sem vínculo de aluno vira
+  // aluno do próprio painel — clientes.trainer_id = auth_user_id = ele.
+  async onSerProprioPersonal() {
+    this.setState({ proprioPersonalEnviando: true, proprioPersonalErro: '' });
+    const { error } = await supabaseClient.rpc('criar_cadastro_aluno', { p_nome: null, p_proprio_personal: true });
+    if (error) { this.setState({ proprioPersonalEnviando: false, proprioPersonalErro: error.message }); return; }
+    window.location.reload();
+  }
+
   async loadTreino() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return false;
     const { data: cliente } = await supabaseClient.from('clientes').select('id, trainer_id, nome, status, origem_cadastro, anamnese_status').eq('auth_user_id', user.id).maybeSingle();
     if (!cliente) {
       this.setState({ semVinculo: true, alunoEmail: user.email || '' });
+      supabaseClient.from('trainers').select('id').eq('id', user.id).maybeSingle()
+        .then(({ data: t }) => this.setState({ souPersonal: !!t }));
       return false;
     }
     if (this.state.semVinculo) this.setState({ semVinculo: false });
@@ -2206,6 +2224,11 @@ class Component extends DCLogic {
       toggleNotif: () => this.toggleNotif(),
       temConvitePendente: this.state.convitesPendentes.length > 0,
       mostrarSemVinculo: this.state.semVinculo && this.state.convitesPendentes.length === 0,
+      podeSerProprioPersonal: !!this.state.souPersonal,
+      onSerProprioPersonal: () => this.onSerProprioPersonal(),
+      proprioPersonalLabel: this.state.proprioPersonalEnviando ? 'Aguarde…' : 'Sou meu próprio personal',
+      proprioPersonalErro: this.state.proprioPersonalErro || '',
+      proprioPersonalErroDisplay: this.state.proprioPersonalErro ? '' : 'display:none;',
       alunoEmail: this.state.alunoEmail,
       convitesPendentes: this.state.convitesPendentes.map(cv => ({
         trainerNome: cv.trainer_nome,
