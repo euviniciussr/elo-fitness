@@ -15,6 +15,7 @@
 <script src="js/avaliacao-charts.js"></script>
 <script src="js/evolucao-treino.js"></script>
 <script src="js/avaliacao-pdf.js"></script>
+<script src="js/fotos-evolucao.js"></script>
 <script src="assets/app-aluno/64d5e401-7786-420f-9671-63290da489fe.js"></script>
 </head>
 <body>
@@ -786,12 +787,49 @@ aside + * table{display:block!important;overflow-x:auto!important}
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button sc-camel-on-click="{{ onIrRegistrarPeso }}" style="background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">+ Peso</button>
-            <div style="position:relative;display:inline-flex;">
-              <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">{{ fotoUploadLabel }}</button>
-              <input type="file" accept="image/*" sc-camel-on-change="{{ onFotoUpload }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;">
-            </div>
+            <button type="button" sc-camel-on-click="{{ onToggleFotosPainel }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">{{ fotoUploadLabel }}</button>
           </div>
         </div>
+
+        <sc-if value="{{ fotosPainelAberto }}" hint-placeholder-val="{{ false }}">
+          <section style="background:#10151f;border:1px solid rgba(249,115,22,.3);border-radius:16px;padding:18px 20px;margin-bottom:16px;">
+            <div style="font-size:14px;font-weight:800;">Fotos de avaliação</div>
+            <div style="font-size:12px;color:#66707e;margin:4px 0 14px;">Envie uma foto de cada posição. Cada uma fica salva com o ângulo certo pro seu personal comparar depois.</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+              <sc-for list="{{ fotoSlots }}" as="s" hint-placeholder-count="4">
+                <div style="background:#0d1119;border:1.5px solid {{ s.border }};border-radius:12px;padding:12px;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <img src="{{ s.icone }}" alt="" style="width:26px;height:42px;flex-shrink:0;">
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:13px;font-weight:800;">{{ s.titulo }}</div>
+                      <div style="font-size:11px;color:#66707e;margin-top:2px;line-height:1.35;">{{ s.dica }}</div>
+                    </div>
+                    <sc-if value="{{ s.temPreview }}" hint-placeholder-val="{{ false }}">
+                      <img src="{{ s.preview }}" alt="{{ s.titulo }}" style="width:48px;height:64px;object-fit:cover;border-radius:8px;border:1px solid rgba(74,222,128,.4);flex-shrink:0;">
+                    </sc-if>
+                  </div>
+                  <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+                    <label style="flex:1;text-align:center;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);color:#f97316;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;cursor:pointer;">
+                      {{ s.galeriaLabel }}
+                      <input type="file" accept="image/*" sc-camel-on-change="{{ s.onChange }}" style="display:none;">
+                    </label>
+                    <label style="flex:1;text-align:center;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;cursor:pointer;">
+                      Tirar foto
+                      <input type="file" accept="image/*" capture="environment" sc-camel-on-change="{{ s.onChange }}" style="display:none;">
+                    </label>
+                    <sc-if value="{{ s.temPreview }}" hint-placeholder-val="{{ false }}">
+                      <button type="button" sc-camel-on-click="{{ s.onRemover }}" style="background:none;border:1px solid #1e2633;color:#f87171;font-family:inherit;font-size:12px;font-weight:700;padding:8px 10px;border-radius:8px;cursor:pointer;">Remover</button>
+                    </sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap;">
+              <button type="button" sc-camel-on-click="{{ onToggleFotosPainel }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 16px;border-radius:9px;cursor:pointer;">Cancelar</button>
+              <button type="button" sc-camel-on-click="{{ onEnviarFotosAngulos }}" style="background:{{ fotosEnviarBg }};border:none;color:{{ fotosEnviarColor }};font-family:inherit;font-size:12.5px;font-weight:700;padding:10px 18px;border-radius:9px;cursor:pointer;">{{ fotosEnviarLabel }}</button>
+            </div>
+          </section>
+        </sc-if>
 
         <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;padding:20px 24px;margin-bottom:16px;">
           <div style="font-size:14px;font-weight:800;margin-bottom:4px;">Evolução do peso corporal</div>
@@ -852,6 +890,9 @@ aside + * table{display:block!important;overflow-x:auto!important}
               <sc-for list="{{ grupo.fotos }}" as="f" hint-placeholder-count="4">
                 <div style="position:relative;">
                   <img src="{{ f.url }}" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid #1e2633;">
+                  <sc-if value="{{ f.temAngulo }}" hint-placeholder-val="{{ false }}">
+                    <div style="position:absolute;left:6px;bottom:6px;background:rgba(10,13,19,.8);color:#e5e9f0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 7px;border-radius:6px;">{{ f.anguloLabel }}</div>
+                  </sc-if>
                   <sc-if value="{{ f.podeExcluir }}" hint-placeholder-val="{{ false }}">
                     <button type="button" sc-camel-on-click="{{ f.onExcluir }}" style="position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:7px;background:rgba(10,13,19,.75);border:1px solid rgba(255,255,255,.25);color:#f87171;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
                   </sc-if>
@@ -1278,6 +1319,7 @@ class Component extends DCLogic {
     humor: -1, rpe: -1, fbEnviado: false, fbEnviando: false, comentarioFeedback: '', pesoSalvo: false,
     exerciciosDoTreino: [], tecnicasPorId: {}, dietaAtual: null,
     clienteId: '', trainerId: '', fotosEvolucao: [], fotoUploadBusy: false,
+    fotosPainelAberto: false, fotosNovas: {},
     convitesPendentes: [], alunoNome: '', alunoNomeCompleto: '', alunoEmail: '', alunoStatus: '', trainerNome: '',
     notifOpen: false, notificacoes: [], treinosPlano: [], agendamentos: [],
     pesoInput: '', pesoHistorico: [], execucoes: [], videoModalUrl: '',
@@ -1805,20 +1847,44 @@ class Component extends DCLogic {
     this.setState(s => ({ mensagens: [...s.mensagens, nova], mensagemTexto: '', enviandoMensagem: false }));
   }
 
-  async onFotoUpload(e) {
+  // Painel "+ Fotos": uma foto por ângulo, cada uma salva com o ângulo
+  // explícito (fotos_evolucao.angulo). Pode enviar só parte dos ângulos.
+  onToggleFotosPainel() {
+    Object.values(this.state.fotosNovas).forEach(f => f.preview && URL.revokeObjectURL(f.preview));
+    this.setState(s => ({ fotosPainelAberto: !s.fotosPainelAberto, fotosNovas: {} }));
+  }
+
+  onFotoAnguloEscolhida(angulo, e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
-    if (!file || !this.state.clienteId) return;
+    if (!file) return;
+    const antiga = this.state.fotosNovas[angulo];
+    if (antiga && antiga.preview) URL.revokeObjectURL(antiga.preview);
+    this.setState(s => ({ fotosNovas: { ...s.fotosNovas, [angulo]: { file, preview: URL.createObjectURL(file) } } }));
+  }
+
+  onFotoAnguloRemover(angulo) {
+    const antiga = this.state.fotosNovas[angulo];
+    if (antiga && antiga.preview) URL.revokeObjectURL(antiga.preview);
+    this.setState(s => { const fotosNovas = { ...s.fotosNovas }; delete fotosNovas[angulo]; return { fotosNovas }; });
+  }
+
+  async onEnviarFotosAngulos() {
+    if (this.state.fotoUploadBusy || !this.state.clienteId) return;
+    const arquivos = {};
+    Object.keys(this.state.fotosNovas).forEach(k => { arquivos[k] = this.state.fotosNovas[k].file; });
+    if (!Object.keys(arquivos).length) { alert('Escolha pelo menos uma foto.'); return; }
     this.setState({ fotoUploadBusy: true });
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = this.state.clienteId + '/evolucao-' + Date.now() + '.' + ext;
-    const { error: upErr } = await supabaseClient.storage.from('fotos-evolucao').upload(path, file);
-    if (upErr) { this.setState({ fotoUploadBusy: false }); alert('Não foi possível enviar a foto: ' + upErr.message); return; }
-    await supabaseClient.from('fotos_evolucao').insert({
-      cliente_id: this.state.clienteId, trainer_id: this.state.trainerId, url: path, tipo: 'evolucao', enviado_por_aluno: true
-    });
+    try {
+      await fotoEnviarAngulos(this.state.clienteId, this.state.trainerId, arquivos, 'evolucao');
+    } catch (err) {
+      this.setState({ fotoUploadBusy: false });
+      alert('Não foi possível enviar as fotos: ' + (err.message || 'erro desconhecido'));
+      return;
+    }
+    Object.values(this.state.fotosNovas).forEach(f => f.preview && URL.revokeObjectURL(f.preview));
     const { data: fotos } = await supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', this.state.clienteId).order('created_at', { ascending: false });
-    this.setState({ fotoUploadBusy: false, fotosEvolucao: await this.resolveFotoUrls(fotos) });
+    this.setState({ fotoUploadBusy: false, fotosPainelAberto: false, fotosNovas: {}, fotosEvolucao: await this.resolveFotoUrls(fotos) });
   }
 
   async onExcluirFoto(foto) {
@@ -2064,8 +2130,9 @@ class Component extends DCLogic {
     });
     const fotosPorData = Object.keys(fotosPorDataMap).sort((a, b) => b.localeCompare(a)).map(d => ({
       dataLabel: new Date(d + 'T00:00:00').toLocaleDateString('pt-BR'),
-      fotos: fotosPorDataMap[d].map(f => ({
+      fotos: ordenarFotosPorAngulo(fotosPorDataMap[d]).map(f => ({
         url: f.url,
+        temAngulo: !!f.angulo, anguloLabel: fotoAnguloLabel(f.angulo),
         podeExcluir: !!f.enviado_por_aluno,
         onExcluir: () => this.onExcluirFoto(f)
       }))
@@ -2074,8 +2141,8 @@ class Component extends DCLogic {
     const fotoPorId = {};
     this.state.fotosEvolucao.forEach(f => { fotoPorId[f.id] = f; });
     const comparacoesList = this.state.comparacoesFotos.map(c => {
-      const antes = (c.fotos_antes_ids || []).map(id => fotoPorId[id]).filter(Boolean);
-      const depois = (c.fotos_depois_ids || []).map(id => fotoPorId[id]).filter(Boolean);
+      const antes = ordenarFotosPorAngulo((c.fotos_antes_ids || []).map(id => fotoPorId[id]).filter(Boolean));
+      const depois = ordenarFotosPorAngulo((c.fotos_depois_ids || []).map(id => fotoPorId[id]).filter(Boolean));
       const dataLabel = (f) => f ? ' — ' + new Date((f.created_at || '').slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR') : '';
       return {
         fotosAntes: antes, fotosDepois: depois,
@@ -2416,7 +2483,25 @@ class Component extends DCLogic {
 
       fotosPorData: fotosPorData,
       semFotosEvolucao: this.state.fotosEvolucao.length === 0,
-      onFotoUpload: (e) => this.onFotoUpload(e),
+      onToggleFotosPainel: () => this.onToggleFotosPainel(),
+      onEnviarFotosAngulos: () => this.onEnviarFotosAngulos(),
+      fotosPainelAberto: this.state.fotosPainelAberto,
+      fotoSlots: FOTO_ANGULOS.map((a, i) => {
+        const f = this.state.fotosNovas[a.key];
+        return {
+          titulo: (i + 1) + '. ' + a.label,
+          dica: a.dica,
+          icone: 'data:image/svg+xml,' + encodeURIComponent(fotoAnguloSvg(a.key, '#f97316')),
+          temPreview: !!f, preview: f ? f.preview : '',
+          galeriaLabel: f ? 'Trocar' : 'Galeria',
+          border: f ? 'rgba(74,222,128,.4)' : '#1a2130',
+          onChange: (e) => this.onFotoAnguloEscolhida(a.key, e),
+          onRemover: () => this.onFotoAnguloRemover(a.key)
+        };
+      }),
+      fotosEnviarBg: Object.keys(this.state.fotosNovas).length ? 'linear-gradient(135deg,#f97316,#ea580c)' : '#131a26',
+      fotosEnviarColor: Object.keys(this.state.fotosNovas).length ? '#fff' : '#66707e',
+      fotosEnviarLabel: this.state.fotoUploadBusy ? 'Enviando…' : 'Enviar fotos',
       fotoUploadLabel: this.state.fotoUploadBusy ? 'Enviando…' : '+ Fotos',
       temComparacoes: comparacoesList.length > 0,
       comparacoesList: comparacoesList,

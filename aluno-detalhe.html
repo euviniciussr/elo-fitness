@@ -16,6 +16,7 @@
 <script src="js/avaliacao-charts.js"></script>
 <script src="js/evolucao-treino.js"></script>
 <script src="js/avaliacao-pdf.js"></script>
+<script src="js/fotos-evolucao.js"></script>
 <script src="js/macros.js"></script>
 <style>
 :root{
@@ -394,13 +395,7 @@ async function init() {
   anamneseVersaoInfo = anamneseDinRes.data && anamneseDinRes.data.template_versao
     ? { tipo: anamneseDinRes.data.template_tipo, versao: anamneseDinRes.data.template_versao }
     : null;
-  const fotosRaw = fotosRes.data || [];
-  if (fotosRaw.length) {
-    const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosRaw.map(f => f.url), 60 * 60 * 24 * 7);
-    fotosList = fotosRaw.map((f, i) => ({ ...f, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
-  } else {
-    fotosList = [];
-  }
+  fotosList = await resolverFotos(fotosRes.data || []);
   feedbacksList = feedbacksRes.data || [];
   agendamentosList = agRes.data || [];
   convite = convRes.data || null;
@@ -2255,10 +2250,46 @@ function renderMedidaComparacao(container) {
 
 // ---- Fotos ----
 
+// path = caminho original no Storage (download/zoom); url = signed URL (exibição)
+async function resolverFotos(fotosRaw) {
+  if (!fotosRaw.length) return [];
+  const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosRaw.map(f => f.url), 60 * 60 * 24 * 7);
+  return fotosRaw.map((f, i) => ({ ...f, path: f.url, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
+}
+
+function fotosAgrupadasPorData() {
+  const porData = {};
+  fotosList.forEach(f => { const d = fotoDataISO(f); (porData[d] = porData[d] || []).push(f); });
+  return Object.keys(porData).sort((a, b) => b.localeCompare(a)).map(data => ({ data, fotos: porData[data] }));
+}
+
+function mesAnoLabel(dataISO) {
+  const d = new Date(dataISO + 'T00:00:00');
+  return d.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase() + '/' + d.getFullYear();
+}
+
+function fotoThumb(f) {
+  const wrap = el('<div style="position:relative;cursor:zoom-in;"></div>');
+  const img = el('<img alt="" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid #1e2633;display:block;">');
+  img.src = f.url;
+  wrap.appendChild(img);
+  const label = fotoAnguloLabel(f.angulo);
+  if (label) wrap.appendChild(el('<div style="position:absolute;left:6px;bottom:6px;background:rgba(10,13,19,.8);color:#e5e9f0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 7px;border-radius:6px;">' + label + '</div>'));
+  wrap.addEventListener('click', () => abrirVisualizadorFoto(f, cliente && cliente.nome));
+  return wrap;
+}
+
 function renderEvolucaoFotos(container) {
-  const uploadWrap = el('<label class="btn btn-outline btn-block" style="display:block;text-align:center;cursor:pointer;margin-bottom:16px;">+ Adicionar foto</label>');
+  const uploadRow = el('<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;"></div>');
+  const anguloSel = el('<select style="flex:1;min-width:150px;"><option value="__" selected disabled>Escolha o ângulo…</option></select>');
+  FOTO_ANGULOS.forEach(a => anguloSel.appendChild(el('<option value="' + a.key + '">' + a.label + '</option>')));
+  anguloSel.appendChild(el('<option value="">Sem ângulo</option>'));
+  const uploadWrap = el('<label class="btn btn-outline" style="flex:1;min-width:150px;text-align:center;cursor:pointer;">+ Adicionar foto</label>');
   const fileInput = el('<input type="file" accept="image/*" style="display:none;">');
   uploadWrap.appendChild(fileInput);
+  uploadWrap.addEventListener('click', (e) => {
+    if (anguloSel.value === '__') { e.preventDefault(); alert('Escolha o ângulo da foto antes de enviar.'); anguloSel.focus(); }
+  });
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -2266,32 +2297,50 @@ function renderEvolucaoFotos(container) {
     const path = clienteIdParam + '/' + Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
     const { error: upErr } = await supabaseClient.storage.from('fotos-evolucao').upload(path, file);
     if (upErr) { alert('Não foi possível enviar a foto: ' + upErr.message); render(); return; }
-    await supabaseClient.from('fotos_evolucao').insert({ cliente_id: clienteIdParam, trainer_id: userId, url: path, tipo: 'evolucao', enviado_por_aluno: false });
+    await supabaseClient.from('fotos_evolucao').insert({ cliente_id: clienteIdParam, trainer_id: userId, url: path, tipo: 'evolucao', angulo: anguloSel.value || null, enviado_por_aluno: false });
     const { data: fotosRaw } = await supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false });
-    if (fotosRaw && fotosRaw.length) {
-      const { data: signed } = await supabaseClient.storage.from('fotos-evolucao').createSignedUrls(fotosRaw.map(f => f.url), 60 * 60 * 24 * 7);
-      fotosList = fotosRaw.map((f, i) => ({ ...f, url: (signed && signed[i] && signed[i].signedUrl) || '' }));
-    } else {
-      fotosList = [];
-    }
+    fotosList = await resolverFotos(fotosRaw || []);
     render();
   });
-  container.appendChild(uploadWrap);
+  uploadRow.appendChild(anguloSel);
+  uploadRow.appendChild(uploadWrap);
+  container.appendChild(uploadRow);
 
   if (!fotosList.length) {
     container.appendChild(el('<div class="empty">Nenhuma foto enviada ainda. As fotos aparecem aqui assim que o aluno enviar pela anamnese ou pelo app, ou quando você adicionar acima.</div>'));
     return;
   }
 
-  const porData = {};
-  fotosList.forEach(f => { const d = (f.created_at || '').slice(0, 10); (porData[d] = porData[d] || []).push(f); });
-  Object.keys(porData).sort((a, b) => b.localeCompare(a)).forEach(data => {
+  container.appendChild(el('<div class="sub" style="margin:0 0 14px;">Clique numa foto pra ampliar, dar zoom e baixar o arquivo original.</div>'));
+
+  // SETEMBRO/2026 → 29/09/2026 → [Frente][Costas] / [Lado direito][Lado esquerdo].
+  // Fotos sem ângulo (antigas) continuam aparecendo, sem reclassificar.
+  let mesAtual = '';
+  fotosAgrupadasPorData().forEach(({ data, fotos }) => {
+    const mes = mesAnoLabel(data);
+    if (mes !== mesAtual) {
+      mesAtual = mes;
+      container.appendChild(el('<div style="font-size:11px;font-weight:800;letter-spacing:.06em;color:#f97316;margin:6px 0 10px;">' + mes + '</div>'));
+    }
     container.appendChild(el('<div class="sub" style="margin:0 0 10px;font-weight:700;color:#e5e9f0;">' + fmtDataBR(data) + '</div>'));
-    const grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:22px;"></div>');
-    porData[data].forEach(f => {
-      grid.appendChild(el('<img src="' + f.url + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;border:1px solid #1e2633;">'));
-    });
-    container.appendChild(grid);
+    const comAngulo = fotos.filter(f => f.angulo);
+    const semAngulo = fotos.filter(f => !f.angulo);
+    if (comAngulo.length) {
+      const grid = el('<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px;max-width:420px;"></div>');
+      FOTO_ANGULOS.forEach(a => {
+        const doAngulo = comAngulo.filter(f => f.angulo === a.key);
+        if (doAngulo.length) doAngulo.forEach(f => grid.appendChild(fotoThumb(f)));
+        else grid.appendChild(el('<div style="aspect-ratio:3/4;border:1.5px dashed #1e2633;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;font-weight:700;color:#66707e;padding:6px;">' + a.label + '<br>não enviada</div>'));
+      });
+      container.appendChild(grid);
+    }
+    if (semAngulo.length) {
+      if (comAngulo.length) container.appendChild(el('<div class="list-row-meta" style="margin:0 0 6px;">Outras fotos</div>'));
+      const grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:14px;"></div>');
+      semAngulo.forEach(f => grid.appendChild(fotoThumb(f)));
+      container.appendChild(grid);
+    }
+    container.appendChild(el('<div style="height:8px;"></div>'));
   });
 }
 
@@ -2305,7 +2354,7 @@ function renderEvolucaoComparacoes(container) {
   if (!comparacoesList.length) {
     container.appendChild(el('<div class="empty">Nenhuma comparação criada ainda.</div>'));
   }
-  comparacoesList.forEach(c => container.appendChild(renderComparacaoCard(c)));
+  comparacoesList.forEach(c => container.appendChild(renderComparacaoFotosCard(c)));
 
   const novoBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:6px;">+ Criar comparação</button>');
   novoBtn.addEventListener('click', () => {
@@ -2328,12 +2377,21 @@ function renderComparacaoForm(container) {
   modoRow.appendChild(chipAntes); modoRow.appendChild(chipDepois);
   box.appendChild(modoRow);
 
-  const porData = {};
-  fotosList.forEach(f => { const d = (f.created_at || '').slice(0, 10); (porData[d] = porData[d] || []).push(f); });
-  Object.keys(porData).sort((a, b) => b.localeCompare(a)).forEach(data => {
-    box.appendChild(el('<div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;margin:10px 0 6px;">' + fmtDataBR(data) + '</div>'));
+  fotosAgrupadasPorData().forEach(({ data, fotos }) => {
+    const head = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 6px;"></div>');
+    head.appendChild(el('<div class="list-row-meta" style="text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;">' + fmtDataBR(data) + '</div>'));
+    const todasBtn = el('<button type="button" class="btn-ghost" style="font-size:11.5px;">Usar esta data em "' + (comparacaoModoAtivo === 'antes' ? 'Antes' : 'Depois') + '"</button>');
+    todasBtn.addEventListener('click', () => {
+      const ids = ordenarFotosPorAngulo(fotos).map(f => f.id);
+      comparacaoSelecaoAntes = comparacaoSelecaoAntes.filter(id => !ids.includes(id));
+      comparacaoSelecaoDepois = comparacaoSelecaoDepois.filter(id => !ids.includes(id));
+      if (comparacaoModoAtivo === 'antes') comparacaoSelecaoAntes.push(...ids); else comparacaoSelecaoDepois.push(...ids);
+      render();
+    });
+    head.appendChild(todasBtn);
+    box.appendChild(head);
     const grid = el('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin-bottom:10px;"></div>');
-    porData[data].forEach(f => {
+    ordenarFotosPorAngulo(fotos).forEach(f => {
       const selecionadaAntes = comparacaoSelecaoAntes.includes(f.id);
       const selecionadaDepois = comparacaoSelecaoDepois.includes(f.id);
       const cor = selecionadaAntes ? '#3b82f6' : selecionadaDepois ? '#4ade80' : 'transparent';
@@ -2341,6 +2399,7 @@ function renderComparacaoForm(container) {
       wrap.appendChild(el('<img src="' + f.url + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;border:2px solid ' + cor + ';">'));
       if (selecionadaAntes) wrap.appendChild(el('<div style="position:absolute;top:4px;left:4px;background:#3b82f6;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;">ANTES</div>'));
       if (selecionadaDepois) wrap.appendChild(el('<div style="position:absolute;top:4px;left:4px;background:#4ade80;color:#0a0d13;font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;">DEPOIS</div>'));
+      if (f.angulo) wrap.appendChild(el('<div style="position:absolute;left:4px;bottom:6px;background:rgba(10,13,19,.8);color:#e5e9f0;font-size:9px;font-weight:800;text-transform:uppercase;padding:2px 6px;border-radius:5px;">' + fotoAnguloLabel(f.angulo) + '</div>'));
       wrap.addEventListener('click', () => {
         comparacaoSelecaoAntes = comparacaoSelecaoAntes.filter(id => id !== f.id);
         comparacaoSelecaoDepois = comparacaoSelecaoDepois.filter(id => id !== f.id);
@@ -2371,22 +2430,41 @@ function renderComparacaoForm(container) {
     comparacaoFormOpen = false;
     render();
   });
-  actions.appendChild(cancelBtn); actions.appendChild(salvarBtn);
+  const baixarBtn = el('<button type="button" class="btn btn-secondary">Baixar comparação</button>');
+  baixarBtn.addEventListener('click', () => {
+    if (!comparacaoSelecaoAntes.length || !comparacaoSelecaoDepois.length) { erro.textContent = 'Selecione pelo menos uma foto de "Antes" e uma de "Depois".'; erro.style.display = ''; return; }
+    const porId = {}; fotosList.forEach(f => { porId[f.id] = f; });
+    baixarComparacaoBtn(baixarBtn, comparacaoSelecaoAntes.map(id => porId[id]).filter(Boolean), comparacaoSelecaoDepois.map(id => porId[id]).filter(Boolean), null);
+  });
+  actions.appendChild(cancelBtn); actions.appendChild(baixarBtn); actions.appendChild(salvarBtn);
   box.appendChild(actions);
   container.appendChild(box);
 }
 
-function renderComparacaoCard(c) {
+async function baixarComparacaoBtn(btn, antes, depois, dataISO) {
+  const texto = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Gerando imagem…';
+  try {
+    await baixarComparacao(antes, depois, cliente && cliente.nome, dataISO);
+  } catch (err) {
+    alert('Não foi possível gerar a imagem da comparação: ' + (err.message || 'erro desconhecido'));
+  }
+  btn.disabled = false; btn.textContent = texto;
+}
+
+// Nome próprio: antes se chamava renderComparacaoCard e sobrescrevia o card
+// "Primeira avaliação × Avaliação atual" da avaliação física (mesmo nome).
+function renderComparacaoFotosCard(c) {
   const fotoPorId = {}; fotosList.forEach(f => { fotoPorId[f.id] = f; });
-  const antesFotos = (c.fotos_antes_ids || []).map(id => fotoPorId[id]).filter(Boolean);
-  const depoisFotos = (c.fotos_depois_ids || []).map(id => fotoPorId[id]).filter(Boolean);
+  const antesFotos = ordenarFotosPorAngulo((c.fotos_antes_ids || []).map(id => fotoPorId[id]).filter(Boolean));
+  const depoisFotos = ordenarFotosPorAngulo((c.fotos_depois_ids || []).map(id => fotoPorId[id]).filter(Boolean));
   const card = el('<div class="list-row"></div>');
   const grid = el('<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px;"></div>');
   const coluna = (titulo, cor, fotos) => {
     const col = el('<div></div>');
     col.appendChild(el('<div style="font-size:10.5px;font-weight:800;color:' + cor + ';text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">' + titulo + (fotos[0] ? ' — ' + fmtDataBR((fotos[0].created_at || '').slice(0, 10)) : '') + '</div>'));
     const g = el('<div style="display:grid;grid-template-columns:repeat(' + (fotos.length > 1 ? 2 : 1) + ',1fr);gap:6px;"></div>');
-    fotos.forEach(f => g.appendChild(el('<img src="' + f.url + '" style="width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;border:1px solid #1e2633;">')));
+    fotos.forEach(f => g.appendChild(fotoThumb(f)));
     col.appendChild(g);
     return col;
   };
@@ -2394,6 +2472,12 @@ function renderComparacaoCard(c) {
   grid.appendChild(coluna('Depois', '#4ade80', depoisFotos));
   card.appendChild(grid);
   const actions = el('<div class="list-row-actions"></div>');
+  const baixarBtn = el('<button type="button" class="btn-ghost">Baixar comparação</button>');
+  baixarBtn.addEventListener('click', () => {
+    if (!antesFotos.length || !depoisFotos.length) { alert('Alguma foto desta comparação foi excluída — não há imagem pra gerar.'); return; }
+    baixarComparacaoBtn(baixarBtn, antesFotos, depoisFotos, (c.created_at || '').slice(0, 10));
+  });
+  actions.appendChild(baixarBtn);
   const delBtn = el('<button type="button" class="btn-ghost">Excluir</button>');
   delBtn.addEventListener('click', async () => {
     if (!window.confirm('Excluir essa comparação?')) return;
