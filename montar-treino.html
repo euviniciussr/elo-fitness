@@ -897,8 +897,9 @@ async function loadExerciciosDoTreino(treino) {
     .from('treino_exercicios')
     .select('*, exercicios(nome, categoria, video_url)')
     .eq('treino_id', treino.id)
-    .order('ordem');
-  treino._exercicios = data || [];
+    .order('ordem').order('created_at').order('id');
+  treino._exercicios = sequenciaVisual(data || []);
+  await normalizarOrdemSeNecessario(treino);
   if (!clienteIdParam) return;
   const { data: execucoesTreino } = await supabaseClient
     .from('treino_execucoes')
@@ -1309,18 +1310,18 @@ async function usarTemplate(template) {
   const novosOrdenados = novos.sort((a, b) => a.ordem - b.ordem);
 
   for (let i = 0; i < origem.length; i++) {
-    const { data: exs } = await supabaseClient.from('treino_exercicios').select('*').eq('treino_id', origem[i].id).order('ordem');
-    const lista = exs || [];
+    const { data: exs } = await supabaseClient.from('treino_exercicios').select('*').eq('treino_id', origem[i].id).order('ordem').order('created_at').order('id');
+    const lista = sequenciaVisual(exs || []);
     if (!lista.length) continue;
     const grupoMap = {};
-    await supabaseClient.from('treino_exercicios').insert(lista.map(te => {
+    await supabaseClient.from('treino_exercicios').insert(lista.map((te, j) => {
       let novoGrupoId = null;
       if (te.grupo_id) {
         if (!grupoMap[te.grupo_id]) grupoMap[te.grupo_id] = crypto.randomUUID();
         novoGrupoId = grupoMap[te.grupo_id];
       }
       return {
-        treino_id: novosOrdenados[i].id, exercicio_id: te.exercicio_id, ordem: te.ordem,
+        treino_id: novosOrdenados[i].id, exercicio_id: te.exercicio_id, ordem: j,
         series_aquecimento: te.series_aquecimento, series: te.series, intervalo_descanso: te.intervalo_descanso,
         descanso_segundos: te.descanso_segundos,
         tecnica_avancada: te.tecnica_avancada, observacoes: te.observacoes, grupo_id: novoGrupoId
@@ -1633,7 +1634,15 @@ function renderTreinoBody(treino) {
         const membros = list.filter(x => x.grupo_id === te.grupo_id);
         membros.forEach(m => rendered.add(m.id));
         const combo = el('<div class="combo-box"></div>');
-        combo.appendChild(el('<div class="combo-label">' + ((tecnicaPorId(te.tecnica_avancada) || {}).nome || 'Combo') + '</div>'));
+        const comboHead = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;"></div>');
+        const comboLabel = el('<div class="combo-label" style="margin-bottom:0;"></div>');
+        comboLabel.textContent = (tecnicaPorId(te.tecnica_avancada) || {}).nome || 'Combo';
+        comboHead.appendChild(comboLabel);
+        const removerComboBtn = el('<button type="button" class="combinar-btn" style="color:#9aa4b2;white-space:nowrap;" title="Desfaz o combo e mantém os exercícios">Remover combo</button>');
+        const grupoIdCombo = te.grupo_id;
+        removerComboBtn.addEventListener('click', () => abrirModalRemoverCombo(treino, grupoIdCombo));
+        comboHead.appendChild(removerComboBtn);
+        combo.appendChild(comboHead);
         membros.forEach(m => apendarComEdicaoInline(combo, m));
         const combinarBtn = el('<button type="button" class="combinar-btn">+ adicionar exercício ao combo</button>');
         combinarBtn.addEventListener('click', () => {
@@ -1663,23 +1672,137 @@ function renderTreinoBody(treino) {
   app.appendChild(body);
 }
 
+function proximaOrdem(treino) {
+  return (treino._exercicios || []).reduce((max, x) => Math.max(max, x.ordem ?? -1), -1) + 1;
+}
+
+// ---- Ordem dos exercícios ----
+// A ordem "de verdade" é a sequência que aparece na tela: avulsos na posição
+// do próprio `ordem`, e cada combo (mesmo grupo_id) como um bloco contíguo na
+// posição do seu primeiro membro. `ordem` no banco é sempre 0..n-1 nessa
+// sequência — sem duplicados (que faziam a troca do ↑/↓ virar no-op) e sem
+// membro de combo "solto" no fim da lista (antes um membro novo de combo
+// ganhava ordem = tamanho da lista e ficava lá ao desfazer o combo).
+// Espera a lista já ordenada por ordem, created_at, id.
+function sequenciaVisual(lista) {
+  return blocosDeExercicios(lista).flat();
+}
+
+function blocosDeExercicios(lista) {
+  const vistos = new Set();
+  const blocos = [];
+  lista.forEach(te => {
+    if (vistos.has(te.id)) return;
+    const membros = te.grupo_id ? lista.filter(x => x.grupo_id === te.grupo_id) : [te];
+    membros.forEach(m => vistos.add(m.id));
+    blocos.push(membros);
+  });
+  return blocos;
+}
+
+// Grava ordem = índice pra cada linha cuja ordem mudou. Só mexe em
+// treino_exercicios.ordem — nenhum outro campo, nenhum id, nada de histórico.
+async function persistirOrdem(treino, seq) {
+  const mudou = seq.map((te, i) => ({ te, i })).filter(({ te, i }) => te.ordem !== i);
+  if (!mudou.length) return null;
+  const resultados = await Promise.all(mudou.map(({ te, i }) =>
+    supabaseClient.from('treino_exercicios').update({ ordem: i }).eq('id', te.id).eq('treino_id', treino.id)
+  ));
+  const falha = resultados.find(r => r.error);
+  if (falha) return falha.error;
+  mudou.forEach(({ te, i }) => { te.ordem = i; });
+  return null;
+}
+
+async function normalizarOrdemSeNecessario(treino) {
+  const seq = treino._exercicios || [];
+  if (seq.every((te, i) => te.ordem === i)) return;
+  const err = await persistirOrdem(treino, seq);
+  if (err) console.warn('[montar-treino] falha ao normalizar ordem', err);
+}
+
+// Dentro de um combo, ↑/↓ troca de lugar com o vizinho do próprio combo; no
+// primeiro/último membro, move o combo inteiro um bloco pra cima/baixo.
+// Exercício avulso pula um bloco inteiro (um avulso ou um combo inteiro).
+function planoMovimento(treino, te, direcao) {
+  const blocos = blocosDeExercicios(treino._exercicios || []);
+  const b = blocos.findIndex(bl => bl.some(x => x.id === te.id));
+  if (b < 0) return null;
+  const bloco = blocos[b];
+  const pos = bloco.findIndex(x => x.id === te.id);
+  if (bloco.length > 1 && pos + direcao >= 0 && pos + direcao < bloco.length) {
+    const novoBloco = bloco.slice();
+    [novoBloco[pos], novoBloco[pos + direcao]] = [novoBloco[pos + direcao], novoBloco[pos]];
+    blocos[b] = novoBloco;
+    return blocos;
+  }
+  const alvo = b + direcao;
+  if (alvo < 0 || alvo >= blocos.length) return null;
+  [blocos[b], blocos[alvo]] = [blocos[alvo], blocos[b]];
+  return blocos;
+}
+
+let movendoExercicio = false;
+
 async function moverExercicio(treino, te, direcao) {
-  const list = treino._exercicios;
-  const idx = list.findIndex(x => x.id === te.id);
-  const alvo = idx + direcao;
-  if (alvo < 0 || alvo >= list.length) return;
-  const a = list[idx], b = list[alvo];
-  const ordemA = a.ordem, ordemB = b.ordem;
-  await Promise.all([
-    supabaseClient.from('treino_exercicios').update({ ordem: ordemB }).eq('id', a.id),
-    supabaseClient.from('treino_exercicios').update({ ordem: ordemA }).eq('id', b.id)
-  ]);
-  await loadExerciciosDoTreino(treino);
-  renderMontar();
+  if (movendoExercicio) return;
+  const blocos = planoMovimento(treino, te, direcao);
+  if (!blocos) return;
+  movendoExercicio = true;
+  try {
+    const seq = blocos.flat();
+    const err = await persistirOrdem(treino, seq);
+    if (err) { alert('Não consegui salvar a nova ordem: ' + err.message); }
+    await loadExerciciosDoTreino(treino);
+    renderMontar();
+  } finally {
+    movendoExercicio = false;
+  }
+}
+
+// Desfaz só a relação de combo: zera grupo_id dos membros. Não apaga
+// nenhuma linha, não muda id nem nenhum outro campo (séries, carga, técnica,
+// observações…), então histórico/cargas/execuções ligados ao
+// treino_exercicio_id continuam intactos. A sequência na tela não muda:
+// a ordem já é contígua (bloco do combo) e é regravada antes por garantia.
+function abrirModalRemoverCombo(treino, grupoId) {
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:400px;"></div>');
+  box.appendChild(el('<h2>Remover combo?</h2>'));
+  box.appendChild(el('<div class="sub" style="margin:0 0 6px;">Os exercícios serão mantidos no treino, mas deixarão de fazer parte deste combo.</div>'));
+  const erro = el('<div class="erro" style="display:none;"></div>');
+  box.appendChild(erro);
+  const btnRow = el('<div style="display:flex;gap:10px;margin-top:16px;"></div>');
+  const cancelBtn = el('<button type="button" class="btn btn-secondary" style="flex:1;">Cancelar</button>');
+  const okBtn = el('<button type="button" class="btn btn-primary" style="flex:1;">Remover combo</button>');
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) overlay.remove(); });
+  okBtn.addEventListener('click', async () => {
+    okBtn.disabled = true;
+    okBtn.textContent = 'Removendo…';
+    const err = await persistirOrdem(treino, sequenciaVisual(treino._exercicios || []));
+    const { error } = err ? { error: err } : await supabaseClient.from('treino_exercicios')
+      .update({ grupo_id: null }).eq('treino_id', treino.id).eq('grupo_id', grupoId);
+    if (error) {
+      erro.textContent = error.message;
+      erro.style.display = '';
+      okBtn.disabled = false;
+      okBtn.textContent = 'Remover combo';
+      return;
+    }
+    overlay.remove();
+    if (formMode.type === 'combo' && formMode.grupoId === grupoId) formMode = { type: 'add' };
+    await loadExerciciosDoTreino(treino);
+    renderMontar();
+  });
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(okBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 function renderExItem(treino, te) {
-  const idx = treino._exercicios.findIndex(x => x.id === te.id);
   const item = el('<div class="ex-item"></div>');
 
   const info = el('<div style="min-width:0;"></div>');
@@ -1723,20 +1846,20 @@ function renderExItem(treino, te) {
   const actions = el('<div class="ex-actions"></div>');
   const upBtn = el('<button type="button" class="ex-icon-btn" title="Mover pra cima">↑</button>');
   const downBtn = el('<button type="button" class="ex-icon-btn" title="Mover pra baixo">↓</button>');
-  if (idx <= 0) upBtn.disabled = true;
-  if (idx >= treino._exercicios.length - 1) downBtn.disabled = true;
+  if (!planoMovimento(treino, te, -1)) upBtn.disabled = true;
+  if (!planoMovimento(treino, te, 1)) downBtn.disabled = true;
   upBtn.addEventListener('click', () => moverExercicio(treino, te, -1));
   downBtn.addEventListener('click', () => moverExercicio(treino, te, 1));
   const editBtn = el('<button type="button" class="ex-icon-btn" title="Editar">✎</button>');
   editBtn.addEventListener('click', () => { formMode = { type: 'edit', te }; renderMontar(); });
-  const removeBtn = el('<button type="button" class="ex-remove">remover</button>');
+  const removeBtn = el('<button type="button" class="ex-remove" title="Excluir exercício do treino">excluir</button>');
   removeBtn.addEventListener('click', () => {
     const nomeEx = (te.exercicios || {}).nome || 'esse exercício';
-    if (!window.confirm('Remover "' + nomeEx + '" do treino?')) return;
+    if (!window.confirm('Excluir "' + nomeEx + '" do treino?')) return;
     const posOriginal = treino._exercicios.indexOf(te);
     treino._exercicios = treino._exercicios.filter(x => x.id !== te.id);
     renderMontar();
-    const ctrl = agendarComDesfazer(nomeEx + ' removido do treino.', async () => {
+    const ctrl = agendarComDesfazer(nomeEx + ' excluído do treino.', async () => {
       await supabaseClient.from('treino_exercicios').delete().eq('id', te.id);
     });
     ctrl.setOnUndo(() => {
@@ -2039,12 +2162,12 @@ function renderAddExForm(treino) {
         await supabaseClient.from('treino_exercicios').update({ grupo_id: mode.grupoId, tecnica_avancada: tecAnchor }).eq('id', mode.anchorTe.id);
       }
       payload.treino_id = treino.id;
-      payload.ordem = (treino._exercicios || []).length;
+      payload.ordem = proximaOrdem(treino);
       payload.grupo_id = mode.grupoId;
       ({ error } = await supabaseClient.from('treino_exercicios').insert(payload));
     } else {
       payload.treino_id = treino.id;
-      payload.ordem = (treino._exercicios || []).length;
+      payload.ordem = proximaOrdem(treino);
       ({ error } = await supabaseClient.from('treino_exercicios').insert(payload));
     }
 

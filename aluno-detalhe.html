@@ -1536,7 +1536,7 @@ async function openTaDetalhe(treinoId) {
     .from('treino_exercicios')
     .select('*, exercicios(nome)')
     .eq('treino_id', treinoId)
-    .order('ordem', { ascending: true });
+    .order('ordem', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
   taDetalheExercicios = data || [];
   taDetalheCargas = {};
   taDetalheFeitosHoje = {};
@@ -1718,6 +1718,7 @@ function renderTaDetalhe(container) {
       salvarBtn.disabled = true; salvarBtn.textContent = 'Salvando…';
       const { error } = await supabaseClient.from('treino_exercicios').insert({
         treino_id: taDetalheId, exercicio_id: select.value,
+        ordem: taDetalheExercicios.reduce((max, x) => Math.max(max, x.ordem ?? -1), -1) + 1,
         series: series.value.trim() || null, intervalo_descanso: descanso.value.trim() || null,
         tecnica_avancada: tecnica.value
       });

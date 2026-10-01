@@ -1503,7 +1503,7 @@ class Component extends DCLogic {
       .from('treino_exercicios')
       .select('*, exercicios(nome, categoria, video_url)')
       .in('treino_id', treinos.map(t => t.id))
-      .order('ordem', { ascending: true });
+      .order('ordem', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
     const tecnicaIds = [...new Set((itens || []).map(te => te.tecnica_avancada).filter(id => id && id !== 'nenhuma'))];
     let tecnicasPorId = {};
     if (tecnicaIds.length) {

@@ -972,7 +972,7 @@ class Component extends DCLogic {
       .from('treino_exercicios')
       .select('*, exercicios(nome)')
       .eq('treino_id', treinoId)
-      .order('ordem', { ascending: true });
+      .order('ordem', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
     this.setState({ treinoDetalheExercicios: data || [] });
   }
 
@@ -1006,6 +1006,7 @@ class Component extends DCLogic {
     const { error } = await supabaseClient.from('treino_exercicios').insert({
       treino_id: this.state.treinoDetalheId,
       exercicio_id: this.state.addExExercicioId,
+      ordem: this.state.treinoDetalheExercicios.reduce((max, x) => Math.max(max, x.ordem ?? -1), -1) + 1,
       series: this.state.addExSeries.trim() || null,
       intervalo_descanso: this.state.addExDescanso.trim() || null,
       tecnica_avancada: this.state.addExTecnica
