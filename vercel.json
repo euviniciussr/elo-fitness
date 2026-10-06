@@ -1,6 +1,10 @@
 {
+  "cleanUrls": true,
+  "redirects": [
+    { "source": "/adm", "destination": "/admin", "permanent": false }
+  ],
   "rewrites": [
-    { "source": "/adm", "destination": "/adm.html" },
-    { "source": "/c/:slug/:codigo", "destination": "/convite.html?token=:codigo" }
+    { "source": "/admin", "destination": "/adm" },
+    { "source": "/c/:slug/:codigo", "destination": "/convite?token=:codigo" }
   ]
 }
