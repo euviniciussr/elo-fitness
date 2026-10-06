@@ -1,6 +1,12 @@
 // Páginas que são a área do ALUNO — tudo que carrega auth-guard.js e não
 // está nessa lista é área exclusiva do personal.
-const PAGINAS_ALUNO = ['app-aluno.html', 'anamnese.html'];
+// Sem extensão: em produção as URLs são servidas sem `.html` (cleanUrls no
+// vercel.json); `paginaAtual()` normaliza os dois formatos.
+const PAGINAS_ALUNO = ['app-aluno', 'anamnese'];
+
+function paginaAtual() {
+  return location.pathname.split('/').pop().replace(/\.html$/, '');
+}
 
 (async function () {
   const { data: { session } } = await supabaseClient.auth.getSession();
@@ -10,7 +16,7 @@ const PAGINAS_ALUNO = ['app-aluno.html', 'anamnese.html'];
   }
   const bloqueado = await bloquearAcessoForaDoPerfil(session.user.id);
   if (bloqueado) return;
-  if (!location.pathname.endsWith('assinatura.html')) {
+  if (paginaAtual() !== 'assinatura') {
     aplicarBloqueioAssinatura(session.user.id);
   }
 })();
@@ -28,7 +34,7 @@ const PAGINAS_ALUNO = ['app-aluno.html', 'anamnese.html'];
 // clientes). Ser personal não libera a área do aluno sozinho: o personal
 // faz o cadastro de aluno pelo login ("Entrar como aluno").
 async function bloquearAcessoForaDoPerfil(userId) {
-  const pagina = location.pathname.split('/').pop();
+  const pagina = paginaAtual();
   const isPaginaAluno = PAGINAS_ALUNO.includes(pagina);
   if (isPaginaAluno) {
     const { data: cad, error: cadError } = await supabaseClient.rpc('meus_cadastros');
