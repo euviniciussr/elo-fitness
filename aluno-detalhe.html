@@ -345,7 +345,7 @@ async function init() {
 
   const [exsRes, tecsRes, trRes, dietaRes, cardioRes, avFisicaRes, calorimetriasRes, pesoRes, medidasRes, comparacoesRes, anamneseRes, anamneseDinRes, tplTrainerRes, fotosRes, feedbacksRes, agRes, convRes, msgRes, trainerRes] = await Promise.all([
     supabaseClient.from('exercicios').select('id, nome').or('is_global.eq.true,trainer_id.eq.' + userId).order('nome'),
-    supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at'),
+    supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').or('is_global.eq.true,trainer_id.eq.' + userId).order('created_at'),
     supabaseClient.from('treinos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('dietas').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),
     supabaseClient.from('cardio_protocolos').select('*').eq('cliente_id', clienteIdParam).order('created_at', { ascending: false }),

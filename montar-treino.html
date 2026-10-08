@@ -197,6 +197,7 @@ let userId = null;
 let treinos = [];
 let exerciciosLib = [];
 let tecnicasLib = [];
+let isAdmin = false;
 let seriesTemplatesLib = [];
 let descansosLib = [];
 let clientes = [];
@@ -299,7 +300,7 @@ function abrirModalTecnica({ tecnica, onSaved }) {
     const payload = { nome, observacao: obsTa.value.trim() || null };
     const result = tecnica
       ? await supabaseClient.from('tecnicas_avancadas').update(payload).eq('id', tecnica.id).select().single()
-      : await supabaseClient.from('tecnicas_avancadas').insert({ ...payload, trainer_id: userId }).select().single();
+      : await supabaseClient.from('tecnicas_avancadas').insert({ ...payload, trainer_id: userId, is_global: isAdmin }).select().single();
 
     if (result.error) {
       erro.textContent = result.error.message;
@@ -358,8 +359,11 @@ function abrirGerenciarTecnicas(onChange) {
         renderList();
         onChange && onChange();
       });
-      actions.appendChild(editBtn);
-      actions.appendChild(delBtn);
+      // Técnica da plataforma só o admin edita/remove (gate real é a RLS).
+      if (!t.is_global || isAdmin) {
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+      }
       row.appendChild(actions);
       list.appendChild(row);
     });
@@ -846,7 +850,10 @@ async function init() {
   const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url, categoria').or('is_global.eq.true,trainer_id.eq.' + userId).order('nome');
   exerciciosLib = exs || [];
 
-  const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at');
+  // Técnicas globais da plataforma + as particulares do próprio profissional (RLS — migration 0062).
+  const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao, is_global').or('is_global.eq.true,trainer_id.eq.' + userId).order('created_at');
+  const { data: trainerRow } = await supabaseClient.from('trainers').select('is_admin').eq('id', userId).maybeSingle();
+  isAdmin = !!(trainerRow && trainerRow.is_admin);
   tecnicasLib = tecs || [];
 
   const { data: sTmpls } = await supabaseClient.from('series_predefinidas').select('id, nome, linhas').eq('trainer_id', userId).order('created_at');

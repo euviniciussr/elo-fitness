@@ -802,7 +802,8 @@ class Component extends DCLogic {
       supabaseClient.from('alimentos').select('*').order('nome', { ascending: true }),
       supabaseClient.from('formulas_alimentares').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('refeicoes_predefinidas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', user.id).order('created_at', { ascending: true }),
+      // Técnicas globais da plataforma + as particulares do próprio profissional (RLS — migration 0062).
+      supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao, is_global').or('is_global.eq.true,trainer_id.eq.' + user.id).order('created_at', { ascending: true }),
       supabaseClient.from('trainers').select('is_admin, nome, foto_url').eq('id', user.id).maybeSingle()
     ]);
     this.setState({
@@ -1199,8 +1200,8 @@ class Component extends DCLogic {
 
   // Técnicas avançadas: mesmo cadastro usado na montagem de treino
   // (tabela tecnicas_avancadas) — aqui só visualiza/edita, sem duplicar.
-  // Qualquer trainer edita (não é exclusivo do admin), e não há exclusão
-  // por aqui — técnica em uso não deve sumir da prescrição de ninguém.
+  // Técnica global só o admin edita; particular, o próprio dono. Não há
+  // exclusão por aqui — técnica em uso não deve sumir da prescrição de ninguém.
   openTecnicaModal(tecnica) {
     this.setState({
       tecnicaModalOpen: true, tecnicaEditId: tecnica ? tecnica.id : '',
@@ -1224,7 +1225,8 @@ class Component extends DCLogic {
       ({ error } = await supabaseClient.from('tecnicas_avancadas').update(payload).eq('id', this.state.tecnicaEditId));
     } else {
       const { data: { user } } = await supabaseClient.auth.getUser();
-      ({ error } = await supabaseClient.from('tecnicas_avancadas').insert({ ...payload, trainer_id: user.id }));
+      // Técnica criada pelo admin entra como global da plataforma; a dos demais é particular.
+      ({ error } = await supabaseClient.from('tecnicas_avancadas').insert({ ...payload, trainer_id: user.id, is_global: this.state.isAdmin }));
     }
     if (error) { this.setState({ tecnicaSalvarLabel: editando ? 'Salvar alterações' : 'Salvar técnica', tecnicaErro: error.message }); return; }
     this.setState({ tecnicaModalOpen: false, tecnicaEditId: '' });
@@ -1353,7 +1355,10 @@ class Component extends DCLogic {
         icon: '', iconBg: 'rgba(168,85,247,.12)',
         nome: t.nome, meta: t.observacao || 'Sem descrição cadastrada',
         tags: [], uso: '', border: '#1a2130',
-        mostrarUsar: false, temAcoesExercicio: true, temVideo: false, podeEditar: true,
+        flag: t.is_global ? 'Plataforma' : 'Particular',
+        flagColor: t.is_global ? '#f97316' : '#9aa4b2', flagBg: t.is_global ? 'rgba(249,115,22,.12)' : '#131a26',
+        // Técnica da plataforma só o admin edita (gate real é a RLS).
+        mostrarUsar: false, temAcoesExercicio: true, temVideo: false, podeEditar: !t.is_global || this.state.isAdmin,
         onEditar: (e) => { e.stopPropagation(); this.openTecnicaModal(t); }
       })),
       treinos: (() => {
