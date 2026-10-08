@@ -843,7 +843,7 @@ async function init() {
   if (!user) return;
   userId = user.id;
 
-  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url, categoria').eq('trainer_id', userId).order('nome');
+  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url, categoria').or('is_global.eq.true,trainer_id.eq.' + userId).order('nome');
   exerciciosLib = exs || [];
 
   const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao').eq('trainer_id', userId).order('created_at');

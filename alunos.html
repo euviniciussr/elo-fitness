@@ -775,7 +775,7 @@ class Component extends DCLogic {
     const [clientesRes, convitesRes, exerciciosRes, notifRes, treinosRes, execucoesRes, trainerRes] = await Promise.all([
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('convites').select('*').eq('trainer_id', user.id).eq('status', 'pendente').order('created_at', { ascending: false }),
-      supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
+      supabaseClient.from('exercicios').select('*').or('is_global.eq.true,trainer_id.eq.' + user.id).order('nome', { ascending: true }),
       supabaseClient.from('notificacoes').select('*').eq('trainer_id', user.id).eq('destino', 'trainer').order('created_at', { ascending: false }).limit(20),
       supabaseClient.from('treinos').select('cliente_id, dias_semana').eq('trainer_id', user.id).eq('habilitado', true),
       supabaseClient.from('treino_execucoes').select('cliente_id, data').eq('trainer_id', user.id).gte('data', desde30.toISOString().slice(0, 10)),

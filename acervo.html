@@ -503,6 +503,15 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Link do vídeo (opcional)</label>
               <input value="{{ exVideoUrl }}" sc-camel-on-change="{{ onExVideoUrlChange }}" placeholder="https://youtube.com/…" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
             </div>
+            <sc-if value="{{ exMostrarOrigem }}" hint-placeholder-val="{{ false }}">
+              <div>
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Origem</label>
+                <select value="{{ exOrigem }}" sc-camel-on-change="{{ onExOrigemChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+                  <option value="plataforma">Exercício da plataforma (todos os profissionais)</option>
+                  <option value="particular">Exercício particular (só eu)</option>
+                </select>
+              </div>
+            </sc-if>
           </div>
           <div style="{{ exErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ exErro }}</div>
           <button sc-camel-on-click="{{ onCriarExercicio }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ criarExLabel }}</button>
@@ -686,7 +695,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                       <sc-if value="{{ i.temVideo }}" hint-placeholder-val="{{ false }}">
                         <span sc-camel-on-click="{{ i.onVerVideo }}" style="font-size:11.5px;font-weight:700;color:#9aa4b2;cursor:pointer;">▶ Ver vídeo</span>
                       </sc-if>
-                      <span sc-camel-on-click="{{ i.onEditar }}" style="font-size:11.5px;font-weight:700;color:#f97316;cursor:pointer;">✎ Editar</span>
+                      <sc-if value="{{ i.podeEditar }}" hint-placeholder-val="{{ true }}">
+                        <span sc-camel-on-click="{{ i.onEditar }}" style="font-size:11.5px;font-weight:700;color:#f97316;cursor:pointer;">✎ Editar</span>
+                      </sc-if>
                     </div>
                   </sc-if>
                 </div>
@@ -746,7 +757,7 @@ class Component extends DCLogic {
     dietasDb: [],
 
     exerciciosDb: [], treinosDb: [], clientesDb: [],
-    exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exEditId: '',
+    exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exEditId: '', exGlobal: false,
 
     treinoDetalheId: '', treinoDetalheExercicios: [],
     addExOpen: false, addExExercicioId: '', addExSeries: '', addExDescanso: '', addExTecnica: 'nenhuma', addExErro: '', salvarExLabel: 'Adicionar',
@@ -779,7 +790,10 @@ class Component extends DCLogic {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
     const [exRes, trRes, clRes, dietasRes, alimentosRes, formulasRes, refeicoesRes, tecnicasRes, trainerRes] = await Promise.all([
-      supabaseClient.from('exercicios').select('*').eq('trainer_id', user.id).order('nome', { ascending: true }),
+      // Exercícios globais da plataforma + os particulares do próprio profissional
+      // (o isolamento real é a RLS — migration 0061; o filtro aqui só evita trazer
+      // exercícios de treinos em que o usuário é aluno de outro personal).
+      supabaseClient.from('exercicios').select('*').or('is_global.eq.true,trainer_id.eq.' + user.id).order('nome', { ascending: true }),
       supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id),
       supabaseClient.from('dietas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
@@ -804,7 +818,7 @@ class Component extends DCLogic {
   }
 
   onBotaoNovoClick(tipo) {
-    if (tipo === 'exercicios') this.setState({ exModalOpen: true, exEditId: '', exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício' });
+    if (tipo === 'exercicios') this.setState({ exModalOpen: true, exEditId: '', exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exGlobal: this.state.isAdmin });
     else if (tipo === 'treinos') window.location.href = 'montar-treino.html';
     else if (tipo === 'alimentos') this.openAlimentoModal();
     else if (tipo === 'formulas') this.openFormulaModal();
@@ -816,7 +830,7 @@ class Component extends DCLogic {
   onEditarExercicio(ex) {
     this.setState({
       exModalOpen: true, exEditId: ex.id,
-      exNome: ex.nome, exCategoria: ex.categoria || '', exVideoUrl: ex.video_url || '',
+      exNome: ex.nome, exCategoria: ex.categoria || '', exVideoUrl: ex.video_url || '', exGlobal: !!ex.is_global,
       exErro: '', criarExLabel: 'Salvar alterações'
     });
   }
@@ -856,6 +870,9 @@ class Component extends DCLogic {
     const editando = !!this.state.exEditId;
     this.setState({ criarExLabel: editando ? 'Salvando…' : 'Criando…', exErro: '' });
     const payload = { nome, categoria: this.state.exCategoria.trim() || null, video_url: this.state.exVideoUrl.trim() || null };
+    // Só o admin escolhe a origem; profissional comum sempre cria particular
+    // (default false no banco, e a RLS barra is_global = true pra quem não é admin).
+    if (this.state.isAdmin) payload.is_global = this.state.exGlobal;
     let error;
     if (editando) {
       ({ error } = await supabaseClient.from('exercicios').update(payload).eq('id', this.state.exEditId));
@@ -933,6 +950,7 @@ class Component extends DCLogic {
         vistos.add(chave);
         const obj = {
           trainer_id: user.id,
+          is_global: this.state.isAdmin,
           nome,
           categoria: catKey ? (String(row[catKey] || '').trim() || null) : null,
           video_url: videoKey ? (String(row[videoKey] || '').trim() || null) : null
@@ -1322,6 +1340,10 @@ class Component extends DCLogic {
         icon: '', iconBg: 'rgba(249,115,22,.12)',
         nome: ex.nome, meta: ex.categoria || 'Sem categoria',
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
+        flag: ex.is_global ? 'Plataforma' : 'Particular',
+        flagColor: ex.is_global ? '#f97316' : '#9aa4b2', flagBg: ex.is_global ? 'rgba(249,115,22,.12)' : '#131a26',
+        // Exercício da plataforma só o admin edita (gate real é a RLS).
+        podeEditar: !ex.is_global || this.state.isAdmin,
         mostrarUsar: false, temAcoesExercicio: true, temVideo: !!ex.video_url,
         onVerVideo: (e) => { e.stopPropagation(); this.onVerVideo(ex.video_url); },
         onEditar: (e) => { e.stopPropagation(); this.onEditarExercicio(ex); },
@@ -1331,7 +1353,7 @@ class Component extends DCLogic {
         icon: '', iconBg: 'rgba(168,85,247,.12)',
         nome: t.nome, meta: t.observacao || 'Sem descrição cadastrada',
         tags: [], uso: '', border: '#1a2130',
-        mostrarUsar: false, temAcoesExercicio: true, temVideo: false,
+        mostrarUsar: false, temAcoesExercicio: true, temVideo: false, podeEditar: true,
         onEditar: (e) => { e.stopPropagation(); this.openTecnicaModal(t); }
       })),
       treinos: (() => {
@@ -1508,6 +1530,8 @@ class Component extends DCLogic {
       exNome: this.state.exNome, exCategoria: this.state.exCategoria, exVideoUrl: this.state.exVideoUrl,
       onExNomeChange: (e) => this.setState({ exNome: e.target.value }),
       onExCategoriaChange: (e) => this.setState({ exCategoria: e.target.value }),
+      exMostrarOrigem: this.state.isAdmin, exOrigem: this.state.exGlobal ? 'plataforma' : 'particular',
+      onExOrigemChange: (e) => this.setState({ exGlobal: e.target.value === 'plataforma' }),
       onExVideoUrlChange: (e) => this.setState({ exVideoUrl: e.target.value }),
       exErro: this.state.exErro, exErroDisplay: this.state.exErro ? '' : 'display:none;',
       criarExLabel: this.state.criarExLabel,
