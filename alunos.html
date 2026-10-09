@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/exercicios-personalizados.js?v=1"></script>
 <script src="assets/alunos/c34902f6-4ea3-4e96-aea0-e68f52b43ff9.js"></script>
 </head>
 <body>
@@ -782,7 +783,7 @@ class Component extends DCLogic {
       supabaseClient.from('trainers').select('nome, foto_url').eq('id', user.id).maybeSingle()
     ]);
     this.setState({
-      clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: exerciciosRes.data || [], notificacoes: notifRes.data || [],
+      clientes: clientesRes.data || [], convites: convitesRes.data || [], exerciciosDb: await ExPers.lista(exerciciosRes.data || [], user.id), notificacoes: notifRes.data || [],
       treinosPorCliente: treinosRes.data || [], execucoes: execucoesRes.data || [],
       trainerNomeCompleto: (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '',
       trainerEmail: user.email || '',

@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/exercicios-personalizados.js?v=1"></script>
 <script src="assets/acervo/0deb736f-e88b-4758-a37c-0cf7cb7d61d8.js"></script>
 </head>
 <body>
@@ -513,7 +514,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
               </div>
             </sc-if>
           </div>
+          <sc-if value="{{ exPersonalizando }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#9aa4b2;line-height:1.5;margin-top:14px;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;">Este é um exercício da plataforma. O que você alterar aqui vale só para o seu painel e para os seus alunos — o exercício original não muda. Para voltar um campo ao padrão, apague o conteúdo dele e salve.</div>
+          </sc-if>
           <div style="{{ exErroDisplay }}color:#f87171;font-size:12px;margin-top:10px;">{{ exErro }}</div>
+          <sc-if value="{{ exTemPers }}" hint-placeholder-val="{{ false }}">
+            <button sc-camel-on-click="{{ onRestaurarExercicio }}" style="width:100%;margin-top:16px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:700;padding:11px;border-radius:10px;cursor:pointer;">Restaurar padrão da plataforma</button>
+          </sc-if>
           <button sc-camel-on-click="{{ onCriarExercicio }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">{{ criarExLabel }}</button>
         </div>
       </div>
@@ -758,6 +765,8 @@ class Component extends DCLogic {
 
     exerciciosDb: [], treinosDb: [], clientesDb: [],
     exModalOpen: false, exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exEditId: '', exGlobal: false,
+    // Personalização individual de exercício da plataforma (js/exercicios-personalizados.js).
+    userId: '', exPersonalizando: false, exOriginal: null, exTemPers: false,
 
     treinoDetalheId: '', treinoDetalheExercicios: [],
     addExOpen: false, addExExercicioId: '', addExSeries: '', addExDescanso: '', addExTecnica: 'nenhuma', addExErro: '', salvarExLabel: 'Adicionar',
@@ -806,8 +815,13 @@ class Component extends DCLogic {
       supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao, is_global').or('is_global.eq.true,trainer_id.eq.' + user.id).order('created_at', { ascending: true }),
       supabaseClient.from('trainers').select('is_admin, nome, foto_url').eq('id', user.id).maybeSingle()
     ]);
+    // Aplica a versão do profissional sobre os exercícios da plataforma — mesma
+    // quantidade de itens, sem duplicar.
+    ExPers.carregar(true);
+    const exerciciosDb = await ExPers.lista(exRes.data || [], user.id);
     this.setState({
-      exerciciosDb: exRes.data || [], treinosDb: trRes.data || [], clientesDb: clRes.data || [],
+      userId: user.id,
+      exerciciosDb, treinosDb: trRes.data || [], clientesDb: clRes.data || [],
       dietasDb: dietasRes.data || [], alimentosDb: alimentosRes.data || [],
       formulasDb: formulasRes.data || [], refeicoesPredefinidasDb: refeicoesRes.data || [],
       tecnicasDb: tecnicasRes.data || [],
@@ -819,7 +833,7 @@ class Component extends DCLogic {
   }
 
   onBotaoNovoClick(tipo) {
-    if (tipo === 'exercicios') this.setState({ exModalOpen: true, exEditId: '', exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exGlobal: this.state.isAdmin });
+    if (tipo === 'exercicios') this.setState({ exModalOpen: true, exEditId: '', exNome: '', exCategoria: '', exVideoUrl: '', exErro: '', criarExLabel: 'Criar exercício', exGlobal: this.state.isAdmin, exPersonalizando: false, exOriginal: null, exTemPers: false });
     else if (tipo === 'treinos') window.location.href = 'montar-treino.html';
     else if (tipo === 'alimentos') this.openAlimentoModal();
     else if (tipo === 'formulas') this.openFormulaModal();
@@ -828,12 +842,26 @@ class Component extends DCLogic {
     else if (tipo === 'cardapios' || tipo === 'minhasDietas') window.location.href = 'montar-dieta.html';
   }
 
+  // Exercício da plataforma aberto por quem não é admin: o mesmo formulário,
+  // mas salvando uma personalização individual em vez do registro original.
   onEditarExercicio(ex) {
+    const personalizando = !!ex.is_global && !this.state.isAdmin;
     this.setState({
       exModalOpen: true, exEditId: ex.id,
       exNome: ex.nome, exCategoria: ex.categoria || '', exVideoUrl: ex.video_url || '', exGlobal: !!ex.is_global,
-      exErro: '', criarExLabel: 'Salvar alterações'
+      exPersonalizando: personalizando, exTemPers: !!ex.personalizacao,
+      exOriginal: personalizando ? (ex.original || { nome: ex.nome, categoria: ex.categoria, video_url: ex.video_url }) : null,
+      exErro: '', criarExLabel: personalizando ? 'Salvar minha versão' : 'Salvar alterações'
     });
+  }
+
+  // Remove a personalização do profissional — o exercício original não é tocado.
+  async onRestaurarExercicio() {
+    if (!window.confirm('Restaurar o padrão da plataforma? Seu nome, grupo muscular e vídeo personalizados deste exercício serão removidos.')) return;
+    const { error } = await ExPers.restaurar(this.state.exEditId, this.state.userId);
+    if (error) { this.setState({ exErro: error.message }); return; }
+    this.setState({ exModalOpen: false, exEditId: '', criarExLabel: 'Criar exercício' });
+    this.loadAcervo();
   }
 
   onVerVideo(url) {
@@ -870,6 +898,14 @@ class Component extends DCLogic {
     if (!nome) { this.setState({ exErro: 'Digite o nome do exercício.' }); return; }
     const editando = !!this.state.exEditId;
     this.setState({ criarExLabel: editando ? 'Salvando…' : 'Criando…', exErro: '' });
+    if (editando && this.state.exPersonalizando) {
+      const { error: persErro } = await ExPers.salvar(this.state.exEditId, this.state.userId, this.state.exOriginal,
+        { nome, categoria: this.state.exCategoria, video_url: this.state.exVideoUrl });
+      if (persErro) { this.setState({ criarExLabel: 'Salvar minha versão', exErro: persErro.message }); return; }
+      this.setState({ exModalOpen: false, exEditId: '', criarExLabel: 'Criar exercício' });
+      this.loadAcervo();
+      return;
+    }
     const payload = { nome, categoria: this.state.exCategoria.trim() || null, video_url: this.state.exVideoUrl.trim() || null };
     // Só o admin escolhe a origem; profissional comum sempre cria particular
     // (default false no banco, e a RLS barra is_global = true pra quem não é admin).
@@ -992,6 +1028,7 @@ class Component extends DCLogic {
       .select('*, exercicios(nome)')
       .eq('treino_id', treinoId)
       .order('ordem', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
+    await ExPers.embutidos(data, this.state.userId);
     this.setState({ treinoDetalheExercicios: data || [] });
   }
 
@@ -1342,10 +1379,12 @@ class Component extends DCLogic {
         icon: '', iconBg: 'rgba(249,115,22,.12)',
         nome: ex.nome, meta: ex.categoria || 'Sem categoria',
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
-        flag: ex.is_global ? 'Plataforma' : 'Particular',
-        flagColor: ex.is_global ? '#f97316' : '#9aa4b2', flagBg: ex.is_global ? 'rgba(249,115,22,.12)' : '#131a26',
-        // Exercício da plataforma só o admin edita (gate real é a RLS).
-        podeEditar: !ex.is_global || this.state.isAdmin,
+        flag: ex.personalizacao ? 'Personalizado' : (ex.is_global ? 'Plataforma' : 'Particular'),
+        flagColor: ex.personalizacao ? '#3b82f6' : (ex.is_global ? '#f97316' : '#9aa4b2'),
+        flagBg: ex.personalizacao ? 'rgba(59,130,246,.12)' : (ex.is_global ? 'rgba(249,115,22,.12)' : '#131a26'),
+        // Todos editam: o admin altera o exercício oficial; os demais salvam uma
+        // personalização individual do exercício da plataforma (gate real é a RLS).
+        podeEditar: true,
         mostrarUsar: false, temAcoesExercicio: true, temVideo: !!ex.video_url,
         onVerVideo: (e) => { e.stopPropagation(); this.onVerVideo(ex.video_url); },
         onEditar: (e) => { e.stopPropagation(); this.onEditarExercicio(ex); },
@@ -1531,7 +1570,9 @@ class Component extends DCLogic {
       onBotaoNovoClick: () => this.onBotaoNovoClick(tipo),
 
       exModalOpen: this.state.exModalOpen,
-      exModalTitulo: this.state.exEditId ? 'Editar exercício' : 'Novo exercício',
+      exModalTitulo: this.state.exEditId ? (this.state.exPersonalizando ? 'Personalizar exercício' : 'Editar exercício') : 'Novo exercício',
+      exPersonalizando: this.state.exPersonalizando, exTemPers: this.state.exPersonalizando && this.state.exTemPers,
+      onRestaurarExercicio: () => this.onRestaurarExercicio(),
       exNome: this.state.exNome, exCategoria: this.state.exCategoria, exVideoUrl: this.state.exVideoUrl,
       onExNomeChange: (e) => this.setState({ exNome: e.target.value }),
       onExCategoriaChange: (e) => this.setState({ exCategoria: e.target.value }),

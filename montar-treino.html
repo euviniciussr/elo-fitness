@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/exercicios-personalizados.js?v=1"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -848,7 +849,8 @@ async function init() {
   userId = user.id;
 
   const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url, categoria').or('is_global.eq.true,trainer_id.eq.' + userId).order('nome');
-  exerciciosLib = exs || [];
+  // Versão do profissional aplicada sobre os exercícios da plataforma (migration 0063).
+  exerciciosLib = await ExPers.lista(exs || [], userId);
 
   // Técnicas globais da plataforma + as particulares do próprio profissional (RLS — migration 0062).
   const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao, is_global').or('is_global.eq.true,trainer_id.eq.' + userId).order('created_at');
@@ -905,6 +907,7 @@ async function loadExerciciosDoTreino(treino) {
     .select('*, exercicios(nome, categoria, video_url)')
     .eq('treino_id', treino.id)
     .order('ordem').order('created_at').order('id');
+  await ExPers.embutidos(data, userId);
   treino._exercicios = sequenciaVisual(data || []);
   await normalizarOrdemSeNecessario(treino);
   if (!clienteIdParam) return;

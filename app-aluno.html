@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/exercicios-personalizados.js?v=1"></script>
 <script src="js/food-measures.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
@@ -1504,6 +1505,8 @@ class Component extends DCLogic {
       .select('*, exercicios(nome, categoria, video_url)')
       .in('treino_id', treinos.map(t => t.id))
       .order('ordem', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
+    // Versão do exercício personalizada pelo profissional do aluno (vídeo, nome, grupo).
+    await ExPers.embutidos(itens, cliente.trainer_id);
     const tecnicaIds = [...new Set((itens || []).map(te => te.tecnica_avancada).filter(id => id && id !== 'nenhuma'))];
     let tecnicasPorId = {};
     if (tecnicaIds.length) {
@@ -1536,6 +1539,7 @@ class Component extends DCLogic {
       supabaseClient.from('registros_peso').select('data, peso').eq('cliente_id', clienteId).order('data', { ascending: true }),
       supabaseClient.from('serie_cargas').select('carga, data, treino_exercicios(exercicio_id, exercicios(nome))').eq('cliente_id', clienteId)
     ]);
+    await ExPers.cargas(cargas, this.state.trainerId);
     this.setState({ pesoCorporalTodos: pesos || [], cargasHistorico: cargas || [] });
   }
 

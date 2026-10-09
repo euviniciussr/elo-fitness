@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/exercicios-personalizados.js?v=1"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="js/avaliacao-fisica.js"></script>
@@ -365,7 +366,7 @@ async function init() {
     supabaseClient.from('trainers').select('nome, anamnese_modo').eq('id', userId).maybeSingle()
   ]);
   trainerNomeCompleto = (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '';
-  exerciciosLib = exsRes.data || [];
+  exerciciosLib = await ExPers.lista(exsRes.data || [], userId);
   tecnicasLib = tecsRes.data || [];
   treinos = trRes.data || [];
   dietaList = dietaRes.data || [];
@@ -1537,6 +1538,7 @@ async function openTaDetalhe(treinoId) {
     .select('*, exercicios(nome)')
     .eq('treino_id', treinoId)
     .order('ordem', { ascending: true }).order('created_at', { ascending: true }).order('id', { ascending: true });
+  await ExPers.embutidos(data, userId);
   taDetalheExercicios = data || [];
   taDetalheCargas = {};
   taDetalheFeitosHoje = {};
@@ -1990,7 +1992,8 @@ function renderEvolucaoCargas(container) {
     container.appendChild(el('<div class="empty">Carregando cargas…</div>'));
     supabaseClient.from('serie_cargas').select('carga, data, treino_exercicios(exercicio_id, exercicios(nome))')
       .eq('cliente_id', clienteIdParam)
-      .then(({ data }) => { cargasEvolucao = data || []; render(); });
+      .then(({ data }) => ExPers.cargas(data, userId))
+      .then((data) => { cargasEvolucao = data; render(); });
     return;
   }
   const progressoes = progressaoPorExercicio(cargasEvolucao);
