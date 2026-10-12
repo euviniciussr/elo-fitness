@@ -299,16 +299,17 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px;">
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
         <div style="font-size:12px;color:#9aa4b2;font-weight:600;">RECEITA · 30 DIAS</div>
-        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">R$ 0,00</div>
+        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">{{ receita30 }}</div>
+        <div style="font-size:12px;color:#66707e;">{{ receita30Sub }}</div>
       </div>
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
         <div style="font-size:12px;color:#9aa4b2;font-weight:600;">A RECEBER</div>
-        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">R$ 0,00</div>
-        <div style="font-size:12px;color:#66707e;">0 pendente · 0 atrasado</div>
+        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">{{ aReceber }}</div>
+        <div style="font-size:12px;color:#66707e;">{{ aReceberSub }}</div>
       </div>
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
         <div style="font-size:12px;color:#9aa4b2;font-weight:600;">TICKET MÉDIO</div>
-        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">R$ 0,00</div>
+        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">{{ ticketMedio }}</div>
         <div style="font-size:12px;color:#66707e;">nos últimos 30 dias</div>
       </div>
       <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
@@ -324,19 +325,23 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       </sc-for>
     </section>
 
+    <sc-if value="{{ temErro }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:12.5px;color:#f87171;background:rgba(248,113,113,.12);border-radius:10px;padding:10px 14px;margin-bottom:14px;">{{ erro }}</div>
+    </sc-if>
+
     <section style="background:#10151f;border:1px solid #1a2130;border-radius:16px;overflow-x:auto;">
-      <div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid #171d29;font-size:11px;font-weight:800;letter-spacing:.06em;color:#4a5364;min-width:760px;">
-        <span style="flex:1 1 180px;">ALUNO</span><span style="flex:1 1 180px;">PRODUTO</span><span style="flex:0 0 120px;">VALOR</span><span style="flex:0 0 130px;">FORMA</span><span style="flex:0 0 110px;">DATA</span><span style="flex:0 0 110px;">STATUS</span>
+      <div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid #171d29;font-size:11px;font-weight:800;letter-spacing:.06em;color:#4a5364;min-width:820px;">
+        <span style="flex:1 1 180px;">ALUNO</span><span style="flex:1 1 180px;">PRODUTO</span><span style="flex:0 0 120px;">VALOR</span><span style="flex:0 0 130px;">FORMA</span><span style="flex:0 0 110px;">DATA</span><span style="flex:0 0 110px;">STATUS</span><span style="flex:0 0 34px;"></span>
       </div>
       <sc-if value="{{ semTransacoes }}" hint-placeholder-val="{{ true }}">
-        <div style="text-align:center;padding:48px 20px;min-width:760px;">
+        <div style="text-align:center;padding:48px 20px;min-width:820px;">
           <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></div>
           <div style="font-size:14.5px;font-weight:800;">Nenhuma transação ainda</div>
           <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Suas vendas e cobranças aparecem aqui.</div>
         </div>
       </sc-if>
       <sc-for list="{{ transacoes }}" as="t" hint-placeholder-count="5">
-        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:760px;" style-hover="background:#131a26;">
+        <div style="display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid #171d29;min-width:820px;" style-hover="background:#131a26;">
           <div style="flex:1 1 180px;min-width:0;display:flex;align-items:center;gap:10px;">
             <div style="width:30px;height:30px;flex-shrink:0;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;">{{ t.initials }}</div>
             <span style="font-size:13.5px;font-weight:700;">{{ t.aluno }}</span>
@@ -346,6 +351,9 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
           <div style="flex:0 0 130px;font-size:12px;color:#9aa4b2;">{{ t.forma }}</div>
           <div style="flex:0 0 110px;font-size:12px;color:#9aa4b2;">{{ t.data }}</div>
           <span style="flex:0 0 110px;"><span style="font-size:10px;font-weight:800;color:{{ t.statusColor }};background:{{ t.statusBg }};padding:3px 10px;border-radius:999px;">{{ t.status }}</span></span>
+          <button sc-camel-on-click="{{ t.onExcluir }}" title="Excluir pagamento" style="flex:0 0 34px;height:30px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #1e2633;border-radius:8px;color:#f87171;cursor:pointer;opacity:{{ t.excluirOpacity }};" style-hover="background:rgba(248,113,113,.12);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+          </button>
         </div>
       </sc-for>
     </section>
@@ -355,10 +363,40 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440}}">
 class Component extends DCLogic {
-  state = { filtro: 'todos', trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '' };
+  state = { filtro: 'todos', trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '', trainerId: null, pagamentos: [], carregando: true, erro: '', excluindoId: null };
 
   componentDidMount() {
     this.loadMeuPerfil();
+    this.loadPagamentos();
+  }
+
+  // 'YYYY-MM-DD' no fuso local (toISOString usaria UTC e viraria o dia à noite)
+  dataLocal(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  // Mesma tabela que o Dashboard lê e grava (`pagamentos`) — fonte única.
+  async loadPagamentos() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabaseClient.from('pagamentos')
+      .select('id, valor, data, descricao, cliente_id, clientes(nome)')
+      .eq('trainer_id', user.id)
+      .order('data', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (error) return this.setState({ trainerId: user.id, carregando: false, erro: 'Não foi possível carregar os pagamentos: ' + error.message });
+    this.setState({ trainerId: user.id, pagamentos: data || [], carregando: false, erro: '' });
+  }
+
+  async excluirPagamento(p, resumo) {
+    if (this.excluindo) return;
+    if (!confirm('Excluir o pagamento de ' + resumo + '? Ele sai do Financeiro e do Dashboard e essa ação não pode ser desfeita.')) return;
+    this.excluindo = true;
+    this.setState({ excluindoId: p.id, erro: '' });
+    const { error } = await supabaseClient.from('pagamentos').delete().eq('id', p.id).eq('trainer_id', this.state.trainerId);
+    if (!error) await this.loadPagamentos();
+    this.excluindo = false;
+    this.setState({ excluindoId: null, erro: error ? 'Não foi possível excluir o pagamento: ' + error.message : this.state.erro });
   }
 
   async loadMeuPerfil() {
@@ -378,7 +416,35 @@ class Component extends DCLogic {
       color: filtro === key ? '#f97316' : '#9aa4b2'
     });
 
-    let base = [];
+    const hojeStr = this.dataLocal(new Date());
+    const ini30 = new Date();
+    ini30.setDate(ini30.getDate() - 30);
+    const ini30Str = this.dataLocal(ini30);
+    const brl = (n) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const soma = (lista) => lista.reduce((s, p) => s + Number(p.valor), 0);
+    const iniciais = (nome) => (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    // Mesma regra do Dashboard: só conta como recebido o que tem data até hoje;
+    // lançamento com data futura fica pendente (a receber).
+    const recebidos = this.state.pagamentos.filter(p => p.data <= hojeStr);
+    const pendentes = this.state.pagamentos.filter(p => p.data > hojeStr);
+    const recebidos30 = recebidos.filter(p => p.data >= ini30Str);
+
+    let base = this.state.pagamentos.map(p => {
+      const aluno = (p.clientes && p.clientes.nome) || '';
+      const valor = brl(Number(p.valor));
+      const data = p.data.split('-').reverse().join('/');
+      return {
+        initials: aluno ? iniciais(aluno) : '—',
+        aluno: aluno || 'Sem aluno vinculado',
+        produto: p.descricao || 'Lançamento manual',
+        valor,
+        forma: 'Manual',
+        data,
+        status: p.data <= hojeStr ? 'PAGO' : 'PENDENTE',
+        excluirOpacity: this.state.excluindoId === p.id ? '.4' : '1',
+        onExcluir: () => this.excluirPagamento(p, valor + ' (' + (aluno || 'sem aluno vinculado') + ', ' + data + ')')
+      };
+    });
 
     if (filtro !== 'todos') base = base.filter(t => t.status.toLowerCase() === filtro);
 
@@ -388,7 +454,14 @@ class Component extends DCLogic {
       meuFotoUrl: this.state.trainerFotoUrl || '',
       semFoto: !this.state.trainerFotoUrl,
       filtros: [chip('todos', 'Todos'), chip('pago', 'Pago'), chip('pendente', 'Pendente'), chip('atrasado', 'Atrasado')],
-      semTransacoes: base.length === 0,
+      receita30: brl(soma(recebidos30)),
+      receita30Sub: recebidos30.length + (recebidos30.length === 1 ? ' pagamento recebido' : ' pagamentos recebidos'),
+      aReceber: brl(soma(pendentes)),
+      aReceberSub: pendentes.length + ' pendente · 0 atrasado',
+      ticketMedio: brl(recebidos30.length ? soma(recebidos30) / recebidos30.length : 0),
+      temErro: !!this.state.erro,
+      erro: this.state.erro,
+      semTransacoes: !this.state.carregando && base.length === 0,
       transacoes: base.map(t => ({
         ...t,
         statusColor: t.status === 'PAGO' ? '#4ade80' : t.status === 'PENDENTE' ? '#facc15' : '#f87171',

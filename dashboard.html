@@ -478,6 +478,27 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Esta semana</div><div style="font-size:18px;font-weight:800;margin-top:5px;">{{ vSemana }}</div></div>
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:14px 16px;"><div style="font-size:11px;color:#66707e;font-weight:600;">Ticket · semana</div><div style="font-size:18px;font-weight:800;margin-top:5px;color:#3b82f6;">{{ ticketSemana }}</div></div>
       </div>
+      <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:16px 20px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;">Pagamentos lançados no mês</div>
+          <a href="financeiro.html" style="font-size:12px;font-weight:600;">Ver todos no Financeiro ›</a>
+        </div>
+        <sc-if value="{{ excluirTemErro }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12px;color:#f87171;margin-bottom:8px;">{{ excluirErro }}</div>
+        </sc-if>
+        <sc-if value="{{ semPagamentosMes }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px;color:#66707e;font-style:italic;">Nenhum pagamento lançado neste mês</div>
+        </sc-if>
+        <sc-for list="{{ pagamentosMes }}" as="p" hint-placeholder-count="2">
+          <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #171d29;">
+            <div style="flex:1 1 160px;min-width:0;"><div style="font-size:13px;font-weight:700;">{{ p.aluno }}</div><div style="font-size:11px;color:#66707e;">{{ p.detalhe }}</div></div>
+            <strong style="font-size:13.5px;">{{ p.valor }}</strong>
+            <button sc-camel-on-click="{{ p.onExcluir }}" title="Excluir pagamento" style="width:34px;height:30px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid #1e2633;border-radius:8px;color:#f87171;cursor:pointer;opacity:{{ p.excluirOpacity }};" style-hover="background:rgba(248,113,113,.12);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+            </button>
+          </div>
+        </sc-for>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
         <div style="background:#0d1119;border:1px solid #1a2130;border-radius:12px;padding:20px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
@@ -546,6 +567,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;metaMensal&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:10000,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1000,&quot;max&quot;:100000,&quot;step&quot;:500,&quot;unit&quot;:&quot;R$&quot;,&quot;section&quot;:&quot;Metas&quot;},&quot;ocultarValores&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Exibição&quot;}}">
 class Component extends DCLogic {
   state = { ocultar: false, tab: 'receita', clientes: [], pagamentos: [], trainerId: null, trainerNome: '', trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '', notifOpen: false, notificacoes: [],
+    excluindoId: null, excluirErro: '',
     lancOpen: false, lancAluno: '', lancValor: '', lancData: '', lancDescricao: '', lancErro: '', lancSalvando: false };
 
   componentDidMount() {
@@ -564,7 +586,7 @@ class Component extends DCLogic {
     const [trainerRes, clientesRes, pagamentosRes, notifRes] = await Promise.all([
       supabaseClient.from('trainers').select('nome, foto_url').eq('id', user.id).maybeSingle(),
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
-      supabaseClient.from('pagamentos').select('valor, data').eq('trainer_id', user.id).gte('data', inicioAnoStr),
+      supabaseClient.from('pagamentos').select('id, valor, data, descricao, cliente_id').eq('trainer_id', user.id).gte('data', inicioAnoStr).order('data', { ascending: false }).order('created_at', { ascending: false }),
       supabaseClient.from('notificacoes').select('*').eq('trainer_id', user.id).eq('destino', 'trainer').order('created_at', { ascending: false }).limit(20)
     ]);
     const trainerNomeCompleto = (trainerRes.data && trainerRes.data.nome) ? trainerRes.data.nome.trim() : '';
@@ -596,6 +618,17 @@ class Component extends DCLogic {
     if (error) return this.setState({ lancSalvando: false, lancErro: 'Não foi possível salvar: ' + error.message });
     this.setState({ lancOpen: false, lancSalvando: false });
     this.loadDashboard();
+  }
+
+  async excluirPagamento(p, resumo) {
+    if (this.excluindo) return;
+    if (!confirm('Excluir o pagamento de ' + resumo + '? Ele sai do faturamento, da meta e do Financeiro, e essa ação não pode ser desfeita.')) return;
+    this.excluindo = true;
+    this.setState({ excluindoId: p.id, excluirErro: '' });
+    const { error } = await supabaseClient.from('pagamentos').delete().eq('id', p.id).eq('trainer_id', this.state.trainerId);
+    if (!error) await this.loadDashboard();
+    this.excluindo = false;
+    this.setState({ excluindoId: null, excluirErro: error ? 'Não foi possível excluir o pagamento: ' + error.message : '' });
   }
 
   toggleNotif() {
@@ -685,6 +718,20 @@ class Component extends DCLogic {
       vDiario: m(brl(fatHj)), vSemana: m(brl(fatSem)), vMensal: m(brl(fat)),
       ticketSemana: m(brl(ticket(pagsSemana))), ticketMes: m(brl(ticket(pagsMes))), expectativa: m('R$ 0,00'),
       transacoesMes: String(pagsMes.length),
+      semPagamentosMes: pagsMes.length === 0,
+      excluirTemErro: !!this.state.excluirErro,
+      excluirErro: this.state.excluirErro,
+      pagamentosMes: pagsMes.map(p => {
+        const cliente = p.cliente_id ? this.state.clientes.find(c => c.id === p.cliente_id) : null;
+        const aluno = cliente ? (cliente.nome || cliente.email || 'Aluno') : 'Sem aluno vinculado';
+        const data = p.data.split('-').reverse().join('/');
+        return {
+          aluno, valor: m(brl(Number(p.valor))),
+          detalhe: (p.descricao || 'Lançamento manual') + ' · ' + data,
+          excluirOpacity: this.state.excluindoId === p.id ? '.4' : '1',
+          onExcluir: () => this.excluirPagamento(p, brl(Number(p.valor)) + ' (' + aluno + ', ' + data + ')')
+        };
+      }),
       lancOpen: this.state.lancOpen,
       abrirLancamento: () => this.abrirLancamento(),
       fecharLancamento: () => this.setState({ lancOpen: false }),
