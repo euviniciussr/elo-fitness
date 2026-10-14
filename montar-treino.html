@@ -11,6 +11,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/exercicios-personalizados.js?v=1"></script>
+<script src="js/series-validas.js?v=1"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -1049,15 +1050,17 @@ function contarLinhasSerie(texto) {
     }, 0);
 }
 
-// Resumo compacto exibido na lista de exercícios (nunca o texto cru das
-// séries, pra deixar claro o que é aquecimento e o que conta como volume).
+// Resumo exibido na lista de exercícios: aquecimento como contagem (igual
+// sempre foi) e as séries válidas com a prescrição de cada uma.
 function resumoSeries(te) {
   const validas = contarLinhasSerie(te.series);
   const aquecimento = contarLinhasSerie(te.series_aquecimento);
   if (!validas && !aquecimento) return ['sem séries definidas'];
   const partes = [];
   if (aquecimento) partes.push(aquecimento + (aquecimento === 1 ? ' série de aquecimento' : ' séries de aquecimento'));
-  partes.push(validas ? (validas + (validas === 1 ? ' série válida' : ' séries válidas')) : 'sem séries válidas');
+  const individuais = SeriesValidas.resumo(te.series);
+  if (individuais.length) partes.push(...individuais);
+  else partes.push('sem séries válidas');
   return partes;
 }
 
@@ -1515,13 +1518,19 @@ function renderQuickEditItem(treino, te) {
   });
   seriesAquecWrap.appendChild(seriesAquecInput);
 
-  const seriesWrap = el('<div><label>Séries válidas</label></div>');
-  const seriesInput = el('<input value="' + (te.series || '').replace(/"/g, '&quot;') + '" placeholder="Ex: 10 reps">');
-  seriesInput.addEventListener('change', async () => {
-    te.series = seriesInput.value.trim() || null;
-    await supabaseClient.from('treino_exercicios').update({ series: te.series }).eq('id', te.id);
+  // Editor por série (o antigo <input> de uma linha descartava as quebras de
+  // linha e juntava séries com prescrições diferentes ao salvar).
+  const seriesWrap = el('<div style="grid-column:1/-1;"><label>Séries válidas</label></div>');
+  const seriesEditor = SeriesValidas.editor({
+    texto: te.series || '',
+    compacto: true,
+    onChange: async (texto) => {
+      if (seriesEditor && seriesEditor.validar()) return;
+      te.series = texto;
+      await supabaseClient.from('treino_exercicios').update({ series: te.series }).eq('id', te.id);
+    }
   });
-  seriesWrap.appendChild(seriesInput);
+  seriesWrap.appendChild(seriesEditor.node);
 
   const descansoWrap = el('<div></div>');
   const descansoLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;"></div>');
@@ -1999,25 +2008,22 @@ function renderAddExForm(treino) {
   const escolherSerieBtn = el('<button type="button" class="serie-tmpl-link">+ Adicionar série pré-definida</button>');
   seriesLabelRow.appendChild(escolherSerieBtn);
   seriesWrap.appendChild(seriesLabelRow);
-  const seriesTa = el('<textarea maxlength="250" placeholder="Ex: 10 reps (uma série por linha)"></textarea>');
-  seriesTa.value = editTe ? (editTe.series || '') : '';
-  const seriesCount = el('<div class="counter">' + seriesTa.value.length + '/250</div>');
-  seriesTa.addEventListener('input', () => seriesCount.textContent = seriesTa.value.length + '/250');
+  // Uma linha por série válida, cada uma com a sua prescrição (js/series-validas.js).
+  const seriesEditor = SeriesValidas.editor({ texto: editTe ? (editTe.series || '') : '' });
   escolherSerieBtn.addEventListener('click', () => abrirEscolherSerieTemplate({
     onAplicar: (tmpl) => {
       seriesAquecTa.value = formatarSerieTemplatePorTipo(tmpl, 'aquecimento').slice(0, 250);
       seriesAquecCount.textContent = seriesAquecTa.value.length + '/250';
-      seriesTa.value = formatarSerieTemplatePorTipo(tmpl, 'valida').slice(0, 250);
-      seriesCount.textContent = seriesTa.value.length + '/250';
+      seriesEditor.setTexto(formatarSerieTemplatePorTipo(tmpl, 'valida'));
     }
   }));
-  seriesWrap.appendChild(seriesTa);
-  seriesWrap.appendChild(seriesCount);
+  seriesEditor.node.style.marginTop = '8px';
+  seriesWrap.appendChild(seriesEditor.node);
   const salvarComoTemplateBtn = el('<button type="button" class="serie-tmpl-link" style="margin-top:4px;">Salvar como série pré-definida</button>');
   salvarComoTemplateBtn.addEventListener('click', () => abrirModalSalvarSerieRapido({
     linhas: [
       ...parseSeriesTextoParaLinhas(seriesAquecTa.value, 'aquecimento'),
-      ...parseSeriesTextoParaLinhas(seriesTa.value, 'valida')
+      ...parseSeriesTextoParaLinhas(seriesEditor.getTexto(), 'valida')
     ]
   }));
   seriesWrap.appendChild(salvarComoTemplateBtn);
@@ -2147,6 +2153,12 @@ function renderAddExForm(treino) {
       erro.style.display = '';
       return;
     }
+    const erroSeries = seriesEditor.validar();
+    if (erroSeries) {
+      erro.textContent = erroSeries;
+      erro.style.display = '';
+      return;
+    }
     erro.style.display = 'none';
     addBtn.disabled = true;
     addBtn.textContent = 'Salvando…';
@@ -2154,7 +2166,7 @@ function renderAddExForm(treino) {
     const payload = {
       exercicio_id: escolhido.id,
       series_aquecimento: seriesAquecTa.value.trim() || null,
-      series: seriesTa.value.trim() || null,
+      series: seriesEditor.getTexto(),
       carga: cargaInput.value.trim() || null,
       intervalo_descanso: descansoTa.value.trim() || null,
       descanso_segundos: descansoSegInput.value.trim() === '' ? null : Math.max(0, parseInt(descansoSegInput.value, 10) || 0),

@@ -11,6 +11,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/exercicios-personalizados.js?v=1"></script>
+<script src="js/series-validas.js?v=1"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="js/avaliacao-fisica.js"></script>
@@ -267,7 +268,9 @@ let medidasList = [];
 let comparacoesList = [];
 let evolucaoSubTab = 'linha_tempo';
 let cargasEvolucao = null; // serie_cargas do aluno, carregado ao abrir a sub-aba Cargas
-let cargasExercicioSelId = '';
+let cargasExercicioSelId = ''; // exercicio_id dentro da divisão escolhida
+let cargasTreinoSelId = '';    // treinos.id da divisão escolhida em Evolução → Cargas
+let cargasEstrutura = [];      // treino_exercicios dos treinos do aluno (ordem e combos)
 let pesoFormOpen = false;
 let medidaFormOpen = false;
 let medidaEditId = '';
@@ -1675,7 +1678,7 @@ function renderTaDetalhe(container) {
     const item = el(
       '<div class="ex-item">' +
         '<div class="ex-nome">' + (feitoHoje ? '<span style="color:#4ade80;">☑</span> ' : '<span style="color:#4a5364;">☐</span> ') + ((te.exercicios || {}).nome || 'Exercício') + '</div>' +
-        '<div class="ex-meta">' + (te.series || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (tec ? tec.nome : 'Sem técnica avançada') + '</div>' +
+        '<div class="ex-meta">' + (SeriesValidas.resumo(te.series).join(' · ') || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (tec ? tec.nome : 'Sem técnica avançada') + '</div>' +
       '</div>'
     );
     const cargasList = renderCargasSerieList(te);
@@ -1987,35 +1990,45 @@ function renderPesoCorporalCard(pesosAsc) {
   return card;
 }
 
+// Evolução → Cargas: Treino (divisão) → Exercício → gráfico. A divisão é o
+// registro em `treinos` (id), nunca o nome exibido; o histórico de um
+// exercício é o das séries registradas nos treino_exercicios DAQUELA divisão.
+// O cartão do gráfico e o cálculo (progressaoPorExercicio) são os mesmos de antes.
 function renderEvolucaoCargas(container) {
   if (cargasEvolucao === null) {
     container.appendChild(el('<div class="empty">Carregando cargas…</div>'));
-    supabaseClient.from('serie_cargas').select('carga, data, treino_exercicios(exercicio_id, exercicios(nome))')
-      .eq('cliente_id', clienteIdParam)
-      .then(({ data }) => ExPers.cargas(data, userId))
-      .then((data) => { cargasEvolucao = data; render(); });
+    const treinoIds = treinos.map(t => t.id);
+    Promise.all([
+      supabaseClient.from('serie_cargas').select('carga, data, treino_exercicios(treino_id, exercicio_id, exercicios(nome))')
+        .eq('cliente_id', clienteIdParam)
+        .then(({ data }) => ExPers.cargas(data, userId)),
+      treinoIds.length
+        ? supabaseClient.from('treino_exercicios').select('id, treino_id, exercicio_id, ordem, grupo_id, created_at, exercicios(nome)')
+            .in('treino_id', treinoIds).order('ordem').order('created_at').order('id')
+            .then(({ data }) => ExPers.embutidos(data, userId))
+        : Promise.resolve([])
+    ]).then(([cargas, estrutura]) => { cargasEstrutura = estrutura || []; cargasEvolucao = cargas || []; render(); });
     return;
   }
-  const progressoes = progressaoPorExercicio(cargasEvolucao);
-  if (!progressoes.length) {
+  if (!treinos.length) {
+    container.appendChild(el('<div class="empty">O aluno ainda não tem treinos cadastrados.</div>'));
+    return;
+  }
+  if (!progressaoPorExercicio(cargasEvolucao).length) {
     container.appendChild(el('<div class="empty">O aluno ainda não registrou carga nas séries dos treinos.</div>'));
     return;
   }
-  const sel = progressoes.find(p => p.exercicioId === cargasExercicioSelId) || progressoes[0];
 
-  const chips = el('<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;"></div>');
-  progressoes.forEach(p => {
-    const ativo = p.exercicioId === sel.exercicioId;
-    const delta = p.pontos.length < 2 ? '' :
-      ' <span style="color:' + (p.delta > 0 ? '#4ade80' : p.delta < 0 ? '#f87171' : '#66707e') + ';">' +
-      (p.delta > 0 ? '↑' : p.delta < 0 ? '↓' : '→') + fmtNum(Math.abs(p.deltaPct), 0) + '%</span>';
-    const b = el('<button type="button" style="flex-shrink:0;white-space:nowrap;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;' +
-      (ativo ? 'background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.35);color:#f97316;' : 'background:#131a26;border:1px solid #1e2633;color:#9aa4b2;') +
-      '">' + esc(p.nome) + delta + '</button>');
-    b.addEventListener('click', () => { cargasExercicioSelId = p.exercicioId; render(); });
-    chips.appendChild(b);
-  });
-  container.appendChild(chips);
+  const treinoSel = treinos.find(t => t.id === cargasTreinoSelId);
+  if (!treinoSel) { renderCargasListaTreinos(container); return; }
+
+  const progressoes = progressaoPorExercicio(cargasEvolucao.filter(c => c.treino_exercicios && c.treino_exercicios.treino_id === treinoSel.id));
+  const sel = progressoes.find(p => p.exercicioId === cargasExercicioSelId);
+  if (!sel) { renderCargasListaExercicios(container, treinoSel, progressoes); return; }
+
+  const voltar = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;padding:4px 0;margin-bottom:10px;">← ' + esc(treinoSel.nome) + '</button>');
+  voltar.addEventListener('click', () => { cargasExercicioSelId = ''; render(); });
+  container.appendChild(voltar);
 
   const card = el('<div class="list-row" style="display:block;margin-bottom:16px;"></div>');
   card.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:4px;">' + esc(sel.nome) + '</div>'));
@@ -2027,6 +2040,87 @@ function renderEvolucaoCargas(container) {
   card.appendChild(wrap);
   container.appendChild(card);
   requestAnimationFrame(() => renderCargaChart(canvas, sel));
+}
+
+// Nível 1: divisões do aluno, agrupadas como na aba Treino.
+function renderCargasListaTreinos(container) {
+  const comCarga = new Set(cargasEvolucao.filter(c => c.treino_exercicios && cargaNumero(c.carga) != null).map(c => c.treino_exercicios.treino_id));
+  const splitIds = Array.from(new Set(treinos.filter(t => t.split_id).map(t => t.split_id)));
+  const grupos = splitIds.map(sid => treinos.filter(t => t.split_id === sid).sort((a, b) => a.ordem - b.ordem))
+    .concat(treinos.filter(t => !t.split_id).map(t => [t]));
+
+  container.appendChild(el('<div style="font-size:12.5px;color:#9aa4b2;margin-bottom:12px;">Escolha o treino e depois o exercício pra ver a evolução da carga.</div>'));
+  grupos.forEach(grupo => {
+    if (grupos.length > 1 && grupo.length > 1) {
+      container.appendChild(el('<div style="font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#66707e;margin:14px 0 8px;">Divisão ' + esc(grupo.map(t => t.nome.replace(/^Treino\s*/i, '')).join('/')) + '</div>'));
+    }
+    grupo.forEach(t => {
+      const nEx = new Set(cargasEstrutura.filter(te => te.treino_id === t.id).map(te => te.exercicio_id)).size;
+      const temCarga = comCarga.has(t.id);
+      const row = el(
+        '<div class="list-row clickable" style="cursor:pointer;">' +
+          '<div class="list-row-nome">' + esc(t.nome) + '</div>' +
+          '<div class="list-row-meta">' + nEx + (nEx === 1 ? ' exercício' : ' exercícios') +
+            (temCarga ? '' : ' · <span style="color:#66707e;">sem cargas registradas</span>') + '</div>' +
+        '</div>'
+      );
+      row.addEventListener('click', () => { cargasTreinoSelId = t.id; cargasExercicioSelId = ''; render(); });
+      container.appendChild(row);
+    });
+  });
+}
+
+// Nível 2: exercícios da divisão escolhida, na ordem do treino (combos juntos).
+function renderCargasListaExercicios(container, treino, progressoes) {
+  const voltar = el('<button type="button" class="btn-ghost" style="color:#9aa4b2;padding:4px 0;margin-bottom:6px;">← Treinos</button>');
+  voltar.addEventListener('click', () => { cargasTreinoSelId = ''; cargasExercicioSelId = ''; render(); });
+  container.appendChild(voltar);
+  container.appendChild(el('<div style="font-weight:800;font-size:14px;margin-bottom:12px;">' + esc(treino.nome) + '</div>'));
+
+  const lista = cargasEstrutura.filter(te => te.treino_id === treino.id);
+  if (!lista.length) {
+    container.appendChild(el('<div class="empty">Nenhum exercício neste treino.</div>'));
+    return;
+  }
+  const porId = {};
+  progressoes.forEach(p => { porId[p.exercicioId] = p; });
+  const vistos = new Set();
+  const blocos = [];
+  lista.forEach(te => {
+    if (vistos.has(te.id)) return;
+    const membros = te.grupo_id ? lista.filter(x => x.grupo_id === te.grupo_id) : [te];
+    membros.forEach(m => vistos.add(m.id));
+    blocos.push(membros);
+  });
+  const exerciciosListados = new Set();
+
+  const linhaExercicio = (te) => {
+    if (exerciciosListados.has(te.exercicio_id)) return null; // mesmo exercício 2x no treino = um histórico só
+    exerciciosListados.add(te.exercicio_id);
+    const p = porId[te.exercicio_id];
+    const nome = (te.exercicios && te.exercicios.nome) || 'Exercício';
+    if (!p) {
+      return el('<div class="list-row" style="opacity:.6;"><div class="list-row-nome">' + esc(nome) + '</div><div class="list-row-meta">Sem cargas registradas neste treino</div></div>');
+    }
+    const delta = p.pontos.length < 2 ? '' :
+      ' <span style="color:' + (p.delta > 0 ? '#4ade80' : p.delta < 0 ? '#f87171' : '#66707e') + ';">' +
+      (p.delta > 0 ? '↑' : p.delta < 0 ? '↓' : '→') + fmtNum(Math.abs(p.deltaPct), 0) + '%</span>';
+    const row = el('<div class="list-row clickable" style="cursor:pointer;"><div class="list-row-nome">' + esc(nome) + '</div>' +
+      '<div class="list-row-meta">Atual: ' + fmtKg(p.atual) + delta + ' · ' + p.pontos.length + (p.pontos.length === 1 ? ' registro' : ' registros') + '</div></div>');
+    row.addEventListener('click', () => { cargasExercicioSelId = te.exercicio_id; render(); });
+    return row;
+  };
+
+  blocos.forEach(membros => {
+    if (membros.length > 1) {
+      const box = el('<div style="border:1px solid rgba(168,85,247,.3);border-radius:12px;padding:10px 10px 0;margin-bottom:10px;background:rgba(168,85,247,.04);"><div style="font-size:10.5px;font-weight:800;color:#a855f7;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;">Combo</div></div>');
+      membros.forEach(te => { const r = linhaExercicio(te); if (r) box.appendChild(r); });
+      container.appendChild(box);
+    } else {
+      const r = linhaExercicio(membros[0]);
+      if (r) container.appendChild(r);
+    }
+  });
 
   const estagnados = progressoes.filter(p => p.estagnado);
   if (estagnados.length) {
