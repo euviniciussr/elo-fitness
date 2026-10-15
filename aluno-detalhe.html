@@ -1524,6 +1524,12 @@ function renderTreinoTab(container) {
     window.location.href = 'montar-treino.html?cliente_id=' + clienteIdParam + '&cliente_nome=' + encodeURIComponent(clienteNomeParam || cliente.nome || '');
   });
   container.appendChild(novoBtn);
+
+  const importarBtn = el('<button type="button" class="btn btn-outline btn-block" style="margin-top:8px;">Importar treino com IA</button>');
+  importarBtn.addEventListener('click', () => {
+    window.location.href = 'importar-treino.html?cliente_id=' + clienteIdParam;
+  });
+  container.appendChild(importarBtn);
 }
 
 let taDetalheCargas = {}; // treino_exercicio_id -> serie_index -> [{data, carga}, ...] desc por data

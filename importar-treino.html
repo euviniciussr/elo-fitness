@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="assets/brand/favicon-180.png">
+<title>Importar treino com IA — Elo Fitness</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/exercicios-personalizados.js?v=1"></script>
+<style>
+:root{
+  --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
+  --borda:#171d29; --borda-forte:#1a2130;
+  --texto:#e5e9f0; --texto-2:#9aa4b2; --texto-3:#66707e; --texto-4:#4a5364;
+  --erro:#f87171; --ok:#4ade80; --roxo:#a855f7; --aviso:#f59e0b;
+}
+html[data-tema="claro"]{
+  --bg:#ffffff; --bg-2:#fafafa; --bg-3:#ffffff; --bg-hover:#f4f4f5; --bg-ativo:#e4e4e7;
+  --borda:#ececee; --borda-forte:#e7e7ea;
+  --texto:#0a0a0a; --texto-2:#71717a; --texto-3:#8a8a93; --texto-4:#a1a1aa;
+  --erro:#dc2626; --ok:#16a34a; --roxo:#9333ea; --aviso:#d97706;
+}
+
+html,body{margin:0;padding:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--texto);}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+textarea{font-family:inherit;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--borda);}
+.logo{display:flex;align-items:center;gap:6px;}
+.logo-badge{width:34px;height:34px;border-radius:9px;object-fit:cover;display:block;}
+.logo-text{font-size:17px;font-weight:800;}
+.logo-text span{color:#f97316;}
+.voltar{font-size:13px;font-weight:700;color:var(--texto-2);}
+.voltar:hover{color:var(--texto);}
+
+.wrap{max-width:920px;margin:0 auto;padding:32px 20px 120px;}
+.card{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:16px;padding:28px;}
+h1{font-size:20px;font-weight:800;margin:0 0 6px;}
+h2{font-size:16px;font-weight:800;margin:0;}
+.sub{font-size:13.5px;color:var(--texto-2);margin:0 0 20px;line-height:1.5;}
+
+label{font-size:12px;font-weight:700;color:var(--texto-2);display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:var(--bg-2);border:1px solid var(--bg-ativo);border-radius:9px;padding:9px 12px;color:var(--texto);font-size:13.5px;outline:none;}
+textarea{resize:vertical;min-height:44px;}
+
+.btn{border:none;border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:var(--bg-ativo);color:var(--texto);}
+.btn-link{background:none;border:none;color:#f97316;font-size:12.5px;font-weight:700;padding:2px 0;}
+.btn-link:hover{text-decoration:underline;}
+.btn-link.perigo{color:var(--erro);}
+.btn:disabled{opacity:.55;cursor:default;}
+
+.drop{border:1.5px dashed var(--bg-ativo);border-radius:14px;padding:30px 18px;text-align:center;cursor:pointer;background:var(--bg-2);}
+.drop:hover,.drop.over{border-color:rgba(249,115,22,.55);}
+.drop-titulo{font-size:14.5px;font-weight:700;}
+.drop-sub{font-size:12px;color:var(--texto-3);margin-top:6px;}
+.arq-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg-2);border:1px solid var(--borda-forte);border-radius:10px;padding:9px 12px;margin-top:8px;font-size:13px;}
+.arq-meta{font-size:11.5px;color:var(--texto-3);}
+
+.erro{color:var(--erro);font-size:12.5px;margin-top:8px;line-height:1.45;}
+.aviso-box{border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.06);border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.5;margin-bottom:12px;}
+.erro-box{border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.06);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:12px;}
+.ok-box{border:1px solid rgba(74,222,128,.3);background:rgba(74,222,128,.06);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;margin-bottom:12px;}
+
+.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--bg-ativo);border-top-color:#f97316;animation:gira 0.9s linear infinite;margin:0 auto 14px;}
+@keyframes gira{to{transform:rotate(360deg);}}
+
+.legenda{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--texto-3);margin:6px 0 18px;}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap;}
+.chip-ok{background:rgba(74,222,128,.12);color:var(--ok);}
+.chip-aviso{background:rgba(245,158,11,.14);color:var(--aviso);}
+.chip-erro{background:rgba(248,113,113,.13);color:var(--erro);}
+.chip-info{background:var(--bg-ativo);color:var(--texto-2);}
+.chip-combo{background:rgba(168,85,247,.13);color:var(--roxo);}
+
+.div-card{border:1px solid var(--borda-forte);border-radius:14px;padding:18px;margin-top:18px;background:var(--bg-2);}
+.div-head{display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;}
+.ex-card{border:1px solid var(--borda-forte);border-left:3px solid var(--ok);border-radius:12px;padding:14px;margin-top:12px;background:var(--bg-3);}
+.ex-card.pendente{border-left-color:var(--aviso);}
+.ex-card.sem-match{border-left-color:var(--erro);}
+.ex-card.removido{opacity:.6;border-left-color:var(--texto-4);}
+.ex-topo{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;}
+.ex-original{font-size:11.5px;color:var(--texto-3);}
+.ex-original b{color:var(--texto);font-size:13.5px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.campo{margin-top:10px;}
+.dica{font-size:11.5px;color:var(--texto-3);margin-top:4px;line-height:1.4;}
+.dica.falta{color:var(--aviso);}
+.pend{font-size:12px;line-height:1.45;border-radius:9px;padding:8px 10px;margin-top:8px;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;}
+.pend.aviso{background:rgba(245,158,11,.08);color:var(--texto);}
+.pend.erro{background:rgba(248,113,113,.08);color:var(--texto);}
+.pend.info{background:var(--bg-2);color:var(--texto-2);}
+.pend .acoes{display:flex;gap:10px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+
+.ex-search-wrap{position:relative;}
+.ex-search-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg-hover);border:1px solid var(--bg-ativo);border-radius:10px;max-height:230px;overflow-y:auto;z-index:30;box-shadow:0 10px 28px rgba(0,0,0,.45);}
+.ex-search-item{padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;}
+.ex-search-item small{font-weight:500;color:var(--texto-3);margin-left:6px;}
+.ex-search-item:hover{background:rgba(249,115,22,.12);color:#f97316;}
+.ex-search-empty{padding:9px 13px;font-size:12px;color:var(--texto-3);}
+
+.rodape{position:fixed;left:0;right:0;bottom:0;background:var(--bg-3);border-top:1px solid var(--borda-forte);padding:12px 20px;z-index:50;}
+.rodape-in{max-width:920px;margin:0 auto;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+.rodape-status{font-size:12.5px;color:var(--texto-2);}
+
+@media (max-width:640px){
+  .wrap{padding:16px 12px 150px;}
+  .card{padding:16px;}
+  .topbar{padding:14px 16px;}
+  .grid2,.grid3{grid-template-columns:1fr;}
+  .div-card{padding:12px;}
+  .rodape-in .btn{flex:1;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <img class="logo-badge" src="assets/brand/logo-inline.png" alt="Elo Fitness">
+    <div class="logo-text">Elo <span>Fitness</span></div>
+  </div>
+  <a class="voltar" id="voltar-link" href="alunos.html">← Voltar pro aluno</a>
+</div>
+
+<div class="wrap">
+  <div class="card" id="app">Carregando…</div>
+</div>
+<div class="rodape" id="rodape" style="display:none;"></div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const clienteId = params.get('cliente_id');
+const app = document.getElementById('app');
+const rodape = document.getElementById('rodape');
+
+const BUCKET = 'importacoes-treino';
+const MAX_ARQUIVOS = 6;
+const MAX_MB = 20;
+const MAX_BYTES = MAX_MB * 1024 * 1024;
+const TIPOS_ACEITOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+const LADO_MAX_IMAGEM = 2000;      // px — legível pra IA e bem abaixo do limite de upload
+const POLL_MS = 3000;
+const TRAVADO_MS = 8 * 60 * 1000;  // mesmo limite da Edge Function
+const RETENCAO_DIAS = 7;           // documentos originais não confirmados são apagados depois disso
+
+let userId = null;
+let cliente = null;
+let exerciciosLib = [];
+let tecnicasLib = [];
+let categoriasLib = [];
+let importacao = null;    // linha de importacoes_treino em uso
+let revisao = null;       // modelo editável da prévia
+let arquivosSelecionados = [];
+let pollTimer = null;
+let salvando = false;
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const fmtMB = (b) => (b / 1024 / 1024).toFixed(b < 1024 * 1024 ? 2 : 1) + ' MB';
+
+function formatarSegundosHumano(seg) {
+  if (seg < 60) return seg + (seg === 1 ? ' segundo' : ' segundos');
+  const min = Math.floor(seg / 60), resto = seg % 60;
+  const minTxt = min + (min === 1 ? ' minuto' : ' minutos');
+  if (!resto) return minTxt;
+  return minTxt + ' e ' + resto + (resto === 1 ? ' segundo' : ' segundos');
+}
+
+async function sha256Hex(buffer) {
+  const hash = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Inicialização
+
+async function init() {
+  if (!clienteId) { app.innerHTML = '<div class="erro">Aluno não informado.</div>'; return; }
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  userId = user.id;
+
+  // Só aluno do próprio profissional (a RLS também garante isso no banco).
+  const { data: cl } = await supabaseClient.from('clientes').select('id, nome').eq('id', clienteId).eq('trainer_id', userId).maybeSingle();
+  if (!cl) { app.innerHTML = '<div class="erro">Aluno não encontrado entre os seus alunos.</div>'; return; }
+  cliente = cl;
+  document.getElementById('voltar-link').href = 'aluno-detalhe.html?cliente_id=' + clienteId + '&cliente_nome=' + encodeURIComponent(cliente.nome || '') + '&tab=treino';
+
+  const { data: exs } = await supabaseClient.from('exercicios').select('id, nome, video_url, categoria').or('is_global.eq.true,trainer_id.eq.' + userId).order('nome');
+  exerciciosLib = await ExPers.lista(exs || [], userId);
+  categoriasLib = Array.from(new Set(exerciciosLib.map(e => e.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const { data: tecs } = await supabaseClient.from('tecnicas_avancadas').select('id, nome, observacao, is_global').or('is_global.eq.true,trainer_id.eq.' + userId).order('created_at');
+  tecnicasLib = tecs || [];
+
+  limparArquivosAntigos();
+
+  // Retoma uma importação deste aluno que ainda não foi confirmada nem descartada.
+  const { data: pend } = await supabaseClient.from('importacoes_treino')
+    .select('*').eq('cliente_id', clienteId).in('status', ['enviado', 'processando', 'concluido', 'erro'])
+    .order('created_at', { ascending: false }).limit(1);
+  if (pend && pend.length) {
+    importacao = pend[0];
+    seguirStatus();
+  } else {
+    renderEnvio();
+  }
+}
+
+// Política de retenção: o documento original só serve pra leitura da IA.
+// Confirmado ou descartado, é apagado na hora (ver confirmar/descartar); o
+// que ficou esquecido é apagado aqui depois de RETENCAO_DIAS.
+async function limparArquivosAntigos() {
+  try {
+    const limite = new Date(Date.now() - RETENCAO_DIAS * 86400000).toISOString();
+    const { data } = await supabaseClient.from('importacoes_treino')
+      .select('id, arquivos, status, created_at').eq('arquivos_removidos', false)
+      .or('status.in.(importado,descartado),created_at.lt.' + limite);
+    for (const imp of (data || [])) await removerArquivos(imp);
+  } catch (e) { /* best effort */ }
+}
+
+async function removerArquivos(imp) {
+  const paths = (imp.arquivos || []).map(a => a.path).filter(Boolean);
+  if (paths.length) await supabaseClient.storage.from(BUCKET).remove(paths);
+  await supabaseClient.from('importacoes_treino').update({ arquivos_removidos: true, updated_at: new Date().toISOString() }).eq('id', imp.id);
+}
+
+// ---------------------------------------------------------------------------
+// 1. Envio dos arquivos
+
+function renderEnvio(mensagemErro) {
+  pararPoll();
+  rodape.style.display = 'none';
+  app.innerHTML = '';
+  app.appendChild(el('<h1>Importar treino com IA</h1>'));
+  app.appendChild(el('<p class="sub">Envie a ficha de treino de <b>' + esc(cliente.nome) + '</b> — PDF, foto de ficha impressa ou print de outro aplicativo. A IA monta uma prévia com divisões, exercícios, séries de aquecimento e válidas, cargas, descansos, técnicas e combos. <b>Nada é salvo no aluno antes da sua revisão.</b></p>'));
+  if (mensagemErro) app.appendChild(el('<div class="erro-box">' + esc(mensagemErro) + '</div>'));
+  app.appendChild(el('<div class="dica" style="margin:-8px 0 16px;">Limite de uso da IA: no plano gratuito, 1 importação por aluno; nos planos pagos, 1 importação por dia. Se a leitura der erro, a tentativa não conta.</div>'));
+
+  const input = el('<input type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic" style="display:none;">');
+  const drop = el('<div class="drop"><div class="drop-titulo">Escolher arquivos</div><div class="drop-sub">PDF, JPG, PNG ou WEBP · até ' + MAX_ARQUIVOS + ' arquivos · máx. ' + MAX_MB + ' MB no total<br>Para fichas com várias páginas em fotos, envie todas juntas, na ordem.</div></div>');
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); adicionarArquivos(e.dataTransfer.files); });
+  input.addEventListener('change', () => { adicionarArquivos(input.files); input.value = ''; });
+  app.appendChild(drop);
+  app.appendChild(input);
+
+  const lista = el('<div id="lista-arquivos"></div>');
+  app.appendChild(lista);
+  const erro = el('<div class="erro" id="erro-envio" style="display:none;"></div>');
+  app.appendChild(erro);
+
+  const btn = el('<button type="button" class="btn btn-primary" id="btn-enviar" style="margin-top:18px;width:100%;">Ler ficha com IA</button>');
+  btn.addEventListener('click', enviar);
+  app.appendChild(btn);
+  renderListaArquivos();
+}
+
+function renderListaArquivos() {
+  const lista = document.getElementById('lista-arquivos');
+  const btn = document.getElementById('btn-enviar');
+  if (!lista) return;
+  lista.innerHTML = '';
+  arquivosSelecionados.forEach((f, i) => {
+    const row = el('<div class="arq-row"><div><div>' + (i + 1) + '. ' + esc(f.name) + '</div><div class="arq-meta">' + (f.type === 'application/pdf' ? 'PDF' : 'Imagem') + ' · ' + fmtMB(f.size) + '</div></div></div>');
+    const rm = el('<button type="button" class="btn-link perigo">Remover</button>');
+    rm.addEventListener('click', () => { arquivosSelecionados.splice(i, 1); renderListaArquivos(); });
+    row.appendChild(rm);
+    lista.appendChild(row);
+  });
+  if (btn) btn.disabled = !arquivosSelecionados.length;
+}
+
+function mostrarErroEnvio(msg) {
+  const erro = document.getElementById('erro-envio');
+  if (!erro) return;
+  erro.textContent = msg;
+  erro.style.display = msg ? '' : 'none';
+}
+
+function adicionarArquivos(fileList) {
+  mostrarErroEnvio('');
+  const novos = Array.from(fileList || []);
+  const recusados = [];
+  novos.forEach(f => {
+    const ehPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+    const ehImagem = (f.type || '').startsWith('image/') || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name);
+    if (!ehPdf && !ehImagem) { recusados.push(f.name + ' (formato não permitido)'); return; }
+    if (f.size > MAX_BYTES) { recusados.push(f.name + ' (maior que ' + MAX_MB + ' MB)'); return; }
+    if (arquivosSelecionados.some(a => a.name === f.name && a.size === f.size)) return; // mesmo arquivo duas vezes
+    arquivosSelecionados.push(f);
+  });
+  if (arquivosSelecionados.length > MAX_ARQUIVOS) {
+    arquivosSelecionados = arquivosSelecionados.slice(0, MAX_ARQUIVOS);
+    recusados.push('máximo de ' + MAX_ARQUIVOS + ' arquivos por importação');
+  }
+  renderListaArquivos();
+  if (recusados.length) mostrarErroEnvio('Não adicionado: ' + recusados.join('; ') + '.');
+}
+
+// Fotos grandes (ou HEIC, que só alguns navegadores abrem) viram JPEG com no
+// máximo LADO_MAX_IMAGEM px — suficiente pra leitura e bem mais leve.
+async function prepararArquivo(f) {
+  const ehPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  if (ehPdf) return { blob: f, tipo: 'application/pdf', nome: f.name };
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(f);
+  } catch (e) {
+    throw new Error('Não foi possível abrir a imagem "' + f.name + '". Envie em JPG, PNG ou WEBP.');
+  }
+  const maior = Math.max(bitmap.width, bitmap.height);
+  if (TIPOS_ACEITOS.includes(f.type) && maior <= LADO_MAX_IMAGEM && f.size <= 4 * 1024 * 1024) {
+    return { blob: f, tipo: f.type, nome: f.name };
+  }
+  const escala = Math.min(1, LADO_MAX_IMAGEM / maior);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * escala);
+  canvas.height = Math.round(bitmap.height * escala);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.9));
+  if (!blob) throw new Error('Não foi possível processar a imagem "' + f.name + '".');
+  return { blob, tipo: 'image/jpeg', nome: f.name.replace(/\.[^.]+$/, '') + '.jpg' };
+}
+
+async function enviar() {
+  const btn = document.getElementById('btn-enviar');
+  if (!arquivosSelecionados.length || btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = 'Preparando arquivos…';
+  mostrarErroEnvio('');
+
+  try {
+    // Hash dos originais: identifica reenvio do mesmo conjunto de arquivos.
+    const hashes = [];
+    for (const f of arquivosSelecionados) hashes.push(await sha256Hex(await f.arrayBuffer()));
+    const hashConjunto = await sha256Hex(new TextEncoder().encode(hashes.join(':')));
+
+    const { data: iguais } = await supabaseClient.from('importacoes_treino')
+      .select('*').eq('cliente_id', clienteId).eq('hash_arquivos', hashConjunto)
+      .order('created_at', { ascending: false }).limit(1);
+    const anterior = iguais && iguais[0];
+    if (anterior && ['enviado', 'processando', 'concluido'].includes(anterior.status) && !anterior.arquivos_removidos) {
+      importacao = anterior;
+      arquivosSelecionados = [];
+      seguirStatus();
+      return;
+    }
+    if (anterior && anterior.status === 'importado') {
+      const quando = new Date(anterior.updated_at).toLocaleDateString('pt-BR');
+      if (!confirm('Estes mesmos arquivos já foram importados para este aluno em ' + quando + '. Importar de novo vai criar outra divisão de treino. Continuar?')) {
+        btn.disabled = false;
+        btn.textContent = 'Ler ficha com IA';
+        return;
+      }
+    }
+
+    // Limite do plano (o servidor confere de novo, de forma atômica, antes de chamar a IA).
+    const { data: bloqueio, error: cotaErr } = await supabaseClient.rpc('motivo_bloqueio_importacao_ia', { p_cliente_id: clienteId });
+    if (cotaErr) throw new Error('Não foi possível verificar o limite do seu plano: ' + cotaErr.message);
+    if (bloqueio) throw new Error(bloqueio);
+
+    const preparados = [];
+    let total = 0;
+    for (let i = 0; i < arquivosSelecionados.length; i++) {
+      const p = await prepararArquivo(arquivosSelecionados[i]);
+      p.sha256 = hashes[i];
+      total += p.blob.size;
+      preparados.push(p);
+    }
+    if (total > MAX_BYTES) throw new Error('Os arquivos somam ' + fmtMB(total) + '. O máximo por importação é ' + MAX_MB + ' MB.');
+
+    btn.textContent = 'Enviando…';
+    const id = crypto.randomUUID();
+    const { error: insErr } = await supabaseClient.from('importacoes_treino')
+      .insert({ id, trainer_id: userId, cliente_id: clienteId, hash_arquivos: hashConjunto });
+    if (insErr) throw new Error('Não foi possível iniciar a importação: ' + insErr.message);
+
+    const arquivos = [];
+    for (let i = 0; i < preparados.length; i++) {
+      const p = preparados[i];
+      const seguro = p.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.\-]+/g, '_').slice(-80);
+      const path = userId + '/' + id + '/' + (i + 1) + '-' + seguro;
+      const { error: upErr } = await supabaseClient.storage.from(BUCKET).upload(path, p.blob, { contentType: p.tipo, upsert: true });
+      if (upErr) {
+        await removerArquivos({ id, arquivos });
+        await supabaseClient.from('importacoes_treino').update({ status: 'descartado' }).eq('id', id);
+        throw new Error('Falha ao enviar "' + p.nome + '": ' + upErr.message);
+      }
+      arquivos.push({ path, nome: p.nome, tipo: p.tipo, tamanho: p.blob.size, sha256: p.sha256 });
+    }
+    const { data: atualizada, error: upRowErr } = await supabaseClient.from('importacoes_treino')
+      .update({ arquivos, updated_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (upRowErr) throw new Error(upRowErr.message);
+
+    importacao = atualizada;
+    arquivosSelecionados = [];
+    await iniciarProcessamento();
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Ler ficha com IA';
+    mostrarErroEnvio(e.message || String(e));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 2. Processamento (Edge Function em segundo plano + acompanhamento)
+
+async function iniciarProcessamento() {
+  renderProcessando();
+  const { data, error } = await supabaseClient.functions.invoke('importar-treino-ia', { body: { importacao_id: importacao.id } });
+  if (error) {
+    let msg = 'Não foi possível iniciar a leitura da ficha.';
+    try { const corpo = await error.context.json(); if (corpo && corpo.error) msg = corpo.error; } catch (e) {}
+    importacao.status = 'erro';
+    importacao.erro = msg;
+    renderErro();
+    return;
+  }
+  agendarPoll();
+}
+
+function seguirStatus() {
+  const s = importacao.status;
+  if (s === 'concluido') { montarRevisao(); return; }
+  if (s === 'erro') { renderErro(); return; }
+  if (s === 'enviado') { iniciarProcessamento(); return; }
+  if (s === 'processando') {
+    const desde = importacao.processando_desde ? new Date(importacao.processando_desde).getTime() : Date.now();
+    if (Date.now() - desde > TRAVADO_MS) {
+      importacao.erro = 'A leitura demorou mais do que o esperado e foi interrompida.';
+      renderErro();
+      return;
+    }
+    renderProcessando();
+    agendarPoll();
+  }
+}
+
+function pararPoll() { if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+function agendarPoll() {
+  pararPoll();
+  pollTimer = setTimeout(async () => {
+    const { data } = await supabaseClient.from('importacoes_treino').select('*').eq('id', importacao.id).maybeSingle();
+    if (!data) { renderEnvio('A importação não foi encontrada.'); return; }
+    importacao = data;
+    seguirStatus();
+  }, POLL_MS);
+}
+
+function renderProcessando() {
+  rodape.style.display = 'none';
+  const n = (importacao.arquivos || []).length;
+  app.innerHTML = '';
+  const box = el('<div style="text-align:center;padding:30px 0;"></div>');
+  box.appendChild(el('<div class="spinner"></div>'));
+  box.appendChild(el('<h2>Lendo a ficha…</h2>'));
+  box.appendChild(el('<p class="sub" style="margin:8px 0 0;">A IA está analisando ' + n + (n === 1 ? ' arquivo' : ' arquivos') + ' e comparando com o seu acervo de exercícios e técnicas. Fichas com várias páginas podem levar alguns minutos — você pode sair desta tela e voltar depois, o processamento continua.</p>'));
+  app.appendChild(box);
+}
+
+function renderErro() {
+  pararPoll();
+  rodape.style.display = 'none';
+  app.innerHTML = '';
+  app.appendChild(el('<h1>Importar treino com IA</h1>'));
+  app.appendChild(el('<div class="erro-box">' + esc(importacao.erro || 'Falha ao processar a ficha.') + '</div>'));
+  const row = el('<div style="display:flex;gap:10px;flex-wrap:wrap;"></div>');
+  if (!importacao.arquivos_removidos && (importacao.arquivos || []).length) {
+    const tentar = el('<button type="button" class="btn btn-primary">Tentar novamente com os mesmos arquivos</button>');
+    tentar.addEventListener('click', () => { tentar.disabled = true; iniciarProcessamento(); });
+    row.appendChild(tentar);
+  }
+  const outros = el('<button type="button" class="btn btn-secondary">Enviar outros arquivos</button>');
+  outros.addEventListener('click', async () => { outros.disabled = true; await descartar(false); renderEnvio(); });
+  row.appendChild(outros);
+  app.appendChild(row);
+}
+
+async function descartar(confirmar) {
+  if (confirmar && !confirm('Descartar esta importação? A prévia e os arquivos enviados serão apagados.')) return false;
+  pararPoll();
+  await supabaseClient.from('importacoes_treino').update({ status: 'descartado', updated_at: new Date().toISOString() }).eq('id', importacao.id);
+  await removerArquivos(importacao);
+  try { localStorage.removeItem(chaveRascunho()); } catch (e) {}
+  importacao = null;
+  revisao = null;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// 3. Revisão — a prévia vira um modelo editável no mesmo formato de
+// treino_exercicios (texto 1 linha = 1 série, "3x10" = 3 séries).
+
+function textoRepeticoes(reps) { return reps || ''; }
+
+function linhasDeSeries(lista, incluirCarga) {
+  const linhas = [];
+  let semReps = false, semQtd = false;
+  (lista || []).forEach(s => {
+    const reps = textoRepeticoes(s.repeticoes);
+    const sufixo = (incluirCarga && s.carga ? ' (' + s.carga + ')' : '') + (s.observacao ? ' — ' + s.observacao : '');
+    if (s.series && reps) {
+      // "3x8-10" é a notação que o app já expande em 3 séries; texto não
+      // numérico ("falha") vira uma linha por série pra contagem continuar certa.
+      if (/^\d/.test(reps)) linhas.push(s.series + 'x' + reps.replace(/\s+/g, '') + sufixo);
+      else for (let i = 0; i < Math.min(s.series, 15); i++) linhas.push(reps + sufixo);
+    } else if (s.series) {
+      semReps = true;
+      for (let i = 0; i < Math.min(s.series, 15); i++) linhas.push('reps não informadas' + sufixo);
+    } else if (reps) {
+      semQtd = true;
+      linhas.push(reps + sufixo);
+    } else if (sufixo) {
+      linhas.push(sufixo.replace(/^ \(|\)$/g, '').replace(/^ — /, ''));
+    }
+  });
+  return { texto: linhas.join('\n'), semReps, semQtd };
+}
+
+function chaveTecnica(nome) { return norm(nome).replace(/[^a-z0-9]/g, ''); }
+
+function montarItem(ex) {
+  const validas = ex.validas || [];
+  // Carga única pra todas as séries válidas vai no campo "Carga"; cargas
+  // diferentes por série ficam na própria linha da série.
+  const cargas = Array.from(new Set(validas.map(s => s.carga).filter(Boolean)));
+  const cargaUnica = cargas.length === 1 && validas.every(s => s.carga === cargas[0]) ? cargas[0] : '';
+  const aq = linhasDeSeries(ex.aquecimento, true);
+  const va = linhasDeSeries(validas, !cargaUnica);
+
+  let tecnicaId = ex.tecnica_id || '';
+  let tecnicaConf = ex.tecnica_confianca || 'nenhuma';
+  // Sem técnica própria, o tipo do combo (Bi-set, Super set, Tri-set) só é
+  // associado quando o nome bate exatamente com uma técnica do acervo.
+  if (!tecnicaId && !ex.tecnica_texto_original && ex.tipo_combo) {
+    const t = tecnicasLib.find(t => chaveTecnica(t.nome) === chaveTecnica(ex.tipo_combo));
+    if (t) { tecnicaId = t.id; tecnicaConf = 'alta'; }
+  }
+
+  const avisosSeries = [];
+  if (aq.semReps || va.semReps) avisosSeries.push('Repetições não identificadas em parte das séries.');
+  if (aq.semQtd || va.semQtd) avisosSeries.push('Quantidade de séries não identificada em parte da prescrição.');
+
+  return {
+    uid: crypto.randomUUID(),
+    nome_original: ex.nome_original,
+    exercicio_id: ex.exercicio_id || '',
+    exercicio_confianca: ex.exercicio_id ? ex.exercicio_confianca : 'nenhuma',
+    exercicio_motivo: ex.exercicio_motivo || '',
+    exercicio_confirmado: !!ex.exercicio_id && ex.exercicio_confianca === 'alta',
+    novo_exercicio: null,
+    series_aquecimento: aq.texto,
+    series: va.texto,
+    carga: cargaUnica,
+    intervalo_descanso: ex.descanso_texto || (ex.descanso_segundos != null ? formatarSegundosHumano(ex.descanso_segundos) : ''),
+    descanso_segundos: ex.descanso_segundos != null ? String(ex.descanso_segundos) : '',
+    tecnica_texto_original: ex.tecnica_texto_original || '',
+    tecnica_id: tecnicaId,
+    tecnica_confianca: tecnicaId ? tecnicaConf : 'nenhuma',
+    tecnica_confirmada: !ex.tecnica_texto_original || (!!tecnicaId && tecnicaConf === 'alta'),
+    tecnica_destino: '',  // sem match: 'nova' (cadastrar particular) ou 'texto' (manter só nas observações)
+    nova_tecnica_nome: ex.tecnica_texto_original || '',
+    tecnica_instrucoes: ex.tecnica_detalhes || '',
+    observacoes: ex.observacoes || '',
+    combo: ex.combo || '',
+    tipo_combo: ex.tipo_combo || '',
+    classificacao_series: ex.classificacao_series,
+    duvida_classificacao: ex.duvida_classificacao || '',
+    classificacao_confirmada: ex.classificacao_series !== 'ambigua',
+    campos_incertos: ex.campos_incertos || [],
+    contradicoes: ex.contradicoes || [],
+    contradicoes_conferidas: !(ex.contradicoes || []).length,
+    avisos_series: avisosSeries,
+    removido: false
+  };
+}
+
+function rotuloCombo(combo) { return String(combo || '').replace(/^[^:]*:/, ''); }
+
+function chaveRascunho() { return 'elo-import-rascunho-' + (importacao ? importacao.id : ''); }
+function salvarRascunho() {
+  try { localStorage.setItem(chaveRascunho(), JSON.stringify(revisao)); } catch (e) {}
+}
+
+function montarRevisao() {
+  pararPoll();
+  const r = importacao.resultado || {};
+  let rascunho = null;
+  try { rascunho = JSON.parse(localStorage.getItem(chaveRascunho()) || 'null'); } catch (e) {}
+  revisao = rascunho && Array.isArray(rascunho.divisoes) ? rascunho : {
+    divisoes: (r.divisoes || []).map(d => {
+      const uid = crypto.randomUUID();
+      const exercicios = (d.exercicios || []).map(montarItem);
+      // Rótulo do combo sempre prefixado pela divisão: o mesmo "combo-1" em
+      // treinos diferentes nunca vira o mesmo grupo.
+      exercicios.forEach(it => { if (it.combo) it.combo = uid + ':' + rotuloCombo(it.combo); });
+      return { uid, nome: d.nome, observacoes: d.observacoes || '', removido: false, exercicios };
+    })
+  };
+  renderRevisao();
+}
+
+function exercicioPorId(id) { return exerciciosLib.find(e => e.id === id); }
+function tecnicaPorId(id) { return tecnicasLib.find(t => t.id === id); }
+
+// Pendências que impedem salvar (o profissional precisa decidir) e avisos
+// que só informam. Nunca bloqueia por campo opcional vazio.
+function pendenciasDo(it) {
+  const p = [];
+  if (it.removido) return p;
+  if (!it.exercicio_id && !it.novo_exercicio) p.push('exercicio');
+  else if (it.exercicio_id && !it.exercicio_confirmado) p.push('exercicio_confirmar');
+  if (it.novo_exercicio && !String(it.novo_exercicio.nome || '').trim()) p.push('novo_exercicio');
+  if (it.tecnica_texto_original && !it.tecnica_confirmada) p.push('tecnica');
+  if (!it.classificacao_confirmada) p.push('classificacao');
+  if (!it.contradicoes_conferidas) p.push('contradicoes');
+  return p;
+}
+
+function totalPendencias() {
+  let n = 0;
+  revisao.divisoes.forEach(d => { if (!d.removido) d.exercicios.forEach(it => { n += pendenciasDo(it).length; }); });
+  return n;
+}
+
+function renderRevisao() {
+  app.innerHTML = '';
+  const r = importacao.resultado || {};
+  app.appendChild(el('<h1>Revisar treino importado</h1>'));
+  app.appendChild(el('<p class="sub">Confira cada exercício antes de salvar no perfil de <b>' + esc(cliente.nome) + '</b>. O treino vai ser criado como uma <b>divisão nova, oculta para o aluno</b> até você habilitar — nenhum treino existente é alterado.</p>'));
+
+  const legenda = el('<div class="legenda"></div>');
+  legenda.appendChild(el('<span><span class="chip chip-ok">✓ Alta confiança</span></span>'));
+  legenda.appendChild(el('<span><span class="chip chip-aviso">Confirmar sugestão</span></span>'));
+  legenda.appendChild(el('<span><span class="chip chip-erro">Sem correspondência</span></span>'));
+  legenda.appendChild(el('<span><span class="chip chip-info">Não identificado na ficha</span></span>'));
+  app.appendChild(legenda);
+
+  if (r.legibilidade === 'parcial') app.appendChild(el('<div class="aviso-box"><b>Leitura parcial:</b> parte da ficha estava pouco legível. Confira com atenção os campos marcados e compare com o original.</div>'));
+  if ((r.paginas_com_problema || []).length) {
+    const nomes = (importacao.arquivos || []).map(a => a.nome);
+    const itens = r.paginas_com_problema.map(p => '<li>' + esc((nomes[(p.arquivo || 1) - 1] || ('Arquivo ' + p.arquivo)) + (p.pagina ? ', página ' + p.pagina : '')) + ' — ' + esc(p.motivo) + '</li>').join('');
+    app.appendChild(el('<div class="aviso-box"><b>Partes que não puderam ser processadas — a importação pode estar incompleta:</b><ul style="margin:6px 0 0 18px;padding:0;">' + itens + '</ul></div>'));
+  }
+  if ((r.avisos_gerais || []).length) {
+    app.appendChild(el('<div class="aviso-box"><b>Observações da leitura:</b><ul style="margin:6px 0 0 18px;padding:0;">' + r.avisos_gerais.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>'));
+  }
+
+  revisao.divisoes.forEach((d, di) => app.appendChild(renderDivisao(d, di)));
+
+  const addDiv = el('<button type="button" class="btn-link" style="margin-top:16px;">+ Adicionar treino (divisão) não reconhecido</button>');
+  addDiv.addEventListener('click', () => {
+    revisao.divisoes.push({ uid: crypto.randomUUID(), nome: 'Treino ' + String.fromCharCode(65 + revisao.divisoes.length), observacoes: '', removido: false, exercicios: [] });
+    salvarRascunho();
+    renderRevisao();
+  });
+  app.appendChild(addDiv);
+
+  renderRodape();
+}
+
+function renderDivisao(d, di) {
+  const card = el('<div class="div-card"></div>');
+  if (d.removido) {
+    const row = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div style="font-size:13px;color:var(--texto-3);">' + esc(d.nome) + ' removido da importação</div></div>');
+    const desfazer = el('<button type="button" class="btn-link">Desfazer</button>');
+    desfazer.addEventListener('click', () => { d.removido = false; salvarRascunho(); renderRevisao(); });
+    row.appendChild(desfazer);
+    card.appendChild(row);
+    return card;
+  }
+  const head = el('<div class="div-head"></div>');
+  const nomeWrap = el('<div style="flex:1;"><label>Nome do treino</label></div>');
+  const nomeIn = el('<input maxlength="120">');
+  nomeIn.value = d.nome;
+  nomeIn.addEventListener('input', () => { d.nome = nomeIn.value; salvarRascunho(); renderRodape(); });
+  nomeWrap.appendChild(nomeIn);
+  head.appendChild(nomeWrap);
+  const rm = el('<button type="button" class="btn-link perigo" style="margin-bottom:10px;">Remover treino</button>');
+  rm.addEventListener('click', () => { d.removido = true; salvarRascunho(); renderRevisao(); });
+  head.appendChild(rm);
+  card.appendChild(head);
+
+  const obsWrap = el('<div><label>Observações do treino</label></div>');
+  const obs = el('<textarea maxlength="500" placeholder="Opcional"></textarea>');
+  obs.value = d.observacoes;
+  obs.addEventListener('input', () => { d.observacoes = obs.value; salvarRascunho(); });
+  obsWrap.appendChild(obs);
+  card.appendChild(obsWrap);
+
+  const ativos = d.exercicios.filter(it => !it.removido).length;
+  card.appendChild(el('<div class="dica" style="margin-top:12px;">' + ativos + (ativos === 1 ? ' exercício' : ' exercícios') + ', na ordem da ficha</div>'));
+
+  d.exercicios.forEach((it, i) => card.appendChild(renderItem(d, it, i)));
+
+  const add = el('<button type="button" class="btn-link" style="margin-top:12px;">+ Adicionar exercício não reconhecido</button>');
+  add.addEventListener('click', () => {
+    d.exercicios.push(montarItem({ nome_original: '(adicionado na revisão)', validas: [], aquecimento: [], classificacao_series: 'explicita', campos_incertos: [], contradicoes: [] }));
+    salvarRascunho();
+    renderRevisao();
+  });
+  card.appendChild(add);
+  return card;
+}
+
+function seletorExercicio(it, aoEscolher) {
+  const wrap = el('<div class="ex-search-wrap"></div>');
+  const atual = exercicioPorId(it.exercicio_id);
+  const input = el('<input placeholder="Buscar exercício no acervo…" autocomplete="off">');
+  input.value = atual ? atual.nome : '';
+  const dd = el('<div class="ex-search-dropdown" style="display:none;"></div>');
+  const fechar = () => { dd.style.display = 'none'; dd.innerHTML = ''; };
+  const abrir = () => {
+    const q = norm(input.value.trim());
+    const termos = q.split(/\s+/).filter(Boolean);
+    const matches = exerciciosLib.filter(e => !termos.length || termos.every(t => norm(e.nome).includes(t))).slice(0, 40);
+    dd.innerHTML = '';
+    if (!matches.length) dd.appendChild(el('<div class="ex-search-empty">Nenhum exercício encontrado.</div>'));
+    matches.forEach(e => {
+      const item = el('<div class="ex-search-item">' + esc(e.nome) + (e.categoria ? '<small>' + esc(e.categoria) + '</small>' : '') + '</div>');
+      item.addEventListener('mousedown', (ev) => { ev.preventDefault(); fechar(); aoEscolher(e); });
+      dd.appendChild(item);
+    });
+    dd.style.display = 'block';
+  };
+  input.addEventListener('input', abrir);
+  input.addEventListener('focus', () => { input.select(); abrir(); });
+  input.addEventListener('blur', () => setTimeout(() => { fechar(); input.value = atual ? atual.nome : ''; }, 150));
+  wrap.appendChild(input);
+  wrap.appendChild(dd);
+  return wrap;
+}
+
+function chipConfianca(conf, temId, confirmado) {
+  if (!temId) return '<span class="chip chip-erro">Sem correspondência</span>';
+  if (confirmado && conf === 'alta') return '<span class="chip chip-ok">✓ Alta confiança</span>';
+  if (confirmado) return '<span class="chip chip-ok">✓ Confirmado</span>';
+  return '<span class="chip chip-aviso">Confirmar sugestão</span>';
+}
+
+function incertosDe(it, campo) { return (it.campos_incertos || []).filter(c => c.campo === campo); }
+
+function campoTexto({ label, valor, onInput, multilinha, placeholder, faltaMsg, incertos, tipo }) {
+  const w = el('<div class="campo"><label>' + esc(label) + '</label></div>');
+  const inp = multilinha ? el('<textarea></textarea>') : el('<input' + (tipo ? ' type="' + tipo + '" min="0"' : '') + '>');
+  if (placeholder) inp.placeholder = placeholder;
+  inp.value = valor || '';
+  const dica = el('<div class="dica falta"></div>');
+  const atualizar = () => {
+    const msgs = (incertos || []).map(c => c.motivo).filter(Boolean);
+    if (!inp.value.trim() && faltaMsg) msgs.unshift(faltaMsg);
+    dica.textContent = msgs.join(' ');
+    dica.style.display = msgs.length ? '' : 'none';
+  };
+  inp.addEventListener('input', () => { onInput(inp.value); atualizar(); });
+  w.appendChild(inp);
+  w.appendChild(dica);
+  atualizar();
+  return w;
+}
+
+const MSG_FALTA = 'Esta informação não foi identificada na ficha. Preencha ou confirme antes de concluir, se necessário.';
+
+function renderItem(d, it, i) {
+  const pend = pendenciasDo(it);
+  const semMatch = !it.removido && pend.includes('exercicio');
+  const card = el('<div class="ex-card' + (it.removido ? ' removido' : semMatch ? ' sem-match' : pend.length ? ' pendente' : '') + '" id="item-' + it.uid + '"></div>');
+
+  if (it.removido) {
+    const row = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div style="font-size:12.5px;">' + esc(it.nome_original) + ' — removido da importação</div></div>');
+    const desfazer = el('<button type="button" class="btn-link">Desfazer</button>');
+    desfazer.addEventListener('click', () => { it.removido = false; salvarRascunho(); renderRevisao(); });
+    row.appendChild(desfazer);
+    card.appendChild(row);
+    return card;
+  }
+
+  const rerender = () => { salvarRascunho(); renderRevisao(); requestAnimationFrame(() => { const n = document.getElementById('item-' + it.uid); if (n) n.scrollIntoView({ block: 'nearest' }); }); };
+
+  // Topo: nome na ficha + combo + remover
+  const topo = el('<div class="ex-topo"></div>');
+  const esq = el('<div><div class="ex-original">' + (i + 1) + '. Na ficha: <b>' + esc(it.nome_original) + '</b></div></div>');
+  if (it.combo) {
+    const parceiros = d.exercicios.filter(o => o !== it && !o.removido && o.combo === it.combo).map(o => o.nome_original);
+    esq.appendChild(el('<div style="margin-top:6px;"><span class="chip chip-combo">' + esc(it.tipo_combo || 'Combo') + (parceiros.length ? ' com ' + esc(parceiros.join(', ')) : '') + '</span></div>'));
+  }
+  topo.appendChild(esq);
+  const rm = el('<button type="button" class="btn-link perigo">Remover da importação</button>');
+  rm.addEventListener('click', () => { it.removido = true; rerender(); });
+  topo.appendChild(rm);
+  card.appendChild(topo);
+
+  // Exercício do acervo
+  const exWrap = el('<div></div>');
+  const exHead = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;"><label style="margin:0;">Exercício no acervo da Elo</label></div>');
+  if (!it.novo_exercicio) exHead.appendChild(el(chipConfianca(it.exercicio_confianca, !!it.exercicio_id, it.exercicio_confirmado)));
+  else exHead.appendChild(el('<span class="chip chip-info">Novo exercício particular</span>'));
+  exWrap.appendChild(exHead);
+
+  if (it.novo_exercicio) {
+    const g = el('<div class="grid2"></div>');
+    const nomeIn = el('<input maxlength="120" placeholder="Nome do exercício">');
+    nomeIn.value = it.novo_exercicio.nome;
+    nomeIn.addEventListener('input', () => { it.novo_exercicio.nome = nomeIn.value; salvarRascunho(); renderRodape(); });
+    const catSel = el('<select><option value="">Grupo muscular…</option></select>');
+    categoriasLib.forEach(c => catSel.appendChild(el('<option value="' + esc(c) + '">' + esc(c) + '</option>')));
+    catSel.value = it.novo_exercicio.categoria || '';
+    catSel.addEventListener('change', () => { it.novo_exercicio.categoria = catSel.value; salvarRascunho(); });
+    g.appendChild(nomeIn);
+    g.appendChild(catSel);
+    exWrap.appendChild(g);
+    exWrap.appendChild(el('<div class="dica">Será cadastrado no seu acervo como exercício particular (só você vê). O acervo da plataforma não é alterado.</div>'));
+    const voltar = el('<button type="button" class="btn-link" style="margin-top:6px;">Escolher um exercício do acervo</button>');
+    voltar.addEventListener('click', () => { it.novo_exercicio = null; rerender(); });
+    exWrap.appendChild(voltar);
+  } else {
+    exWrap.appendChild(seletorExercicio(it, (e) => {
+      it.exercicio_id = e.id;
+      it.exercicio_confirmado = true;
+      it.exercicio_confianca = 'manual';
+      rerender();
+    }));
+    if (!it.exercicio_id) {
+      const p = el('<div class="pend erro"><div>Não encontramos uma correspondência segura para este exercício. Confira o nome e selecione o exercício correto antes de concluir a importação.</div></div>');
+      const acoes = el('<div class="acoes"></div>');
+      const novo = el('<button type="button" class="btn-link">Cadastrar como novo</button>');
+      novo.addEventListener('click', () => { it.novo_exercicio = { nome: it.nome_original === '(adicionado na revisão)' ? '' : it.nome_original, categoria: '' }; rerender(); });
+      acoes.appendChild(novo);
+      p.appendChild(acoes);
+      exWrap.appendChild(p);
+    } else if (!it.exercicio_confirmado) {
+      const atual = exercicioPorId(it.exercicio_id);
+      const p = el('<div class="pend aviso"><div>Sugestão da IA: <b>' + esc(atual ? atual.nome : '') + '</b> para “' + esc(it.nome_original) + '”.' + (it.exercicio_motivo ? ' ' + esc(it.exercicio_motivo) : '') + ' Confirme ou escolha outro exercício acima.</div></div>');
+      const acoes = el('<div class="acoes"></div>');
+      const ok = el('<button type="button" class="btn-link">Confirmar</button>');
+      ok.addEventListener('click', () => { it.exercicio_confirmado = true; rerender(); });
+      const novo = el('<button type="button" class="btn-link">Cadastrar como novo</button>');
+      novo.addEventListener('click', () => { it.exercicio_id = ''; it.novo_exercicio = { nome: it.nome_original, categoria: '' }; rerender(); });
+      acoes.appendChild(ok);
+      acoes.appendChild(novo);
+      p.appendChild(acoes);
+      exWrap.appendChild(p);
+    }
+    incertosDe(it, 'exercicio').forEach(c => exWrap.appendChild(el('<div class="dica falta">' + esc(c.motivo) + '</div>')));
+  }
+  card.appendChild(exWrap);
+
+  // Séries
+  const g1 = el('<div class="grid2"></div>');
+  g1.appendChild(campoTexto({
+    label: 'Séries de aquecimento', valor: it.series_aquecimento, multilinha: true,
+    placeholder: 'Uma série por linha. Não contam no volume.',
+    onInput: v => { it.series_aquecimento = v; salvarRascunho(); }
+  }));
+  g1.appendChild(campoTexto({
+    label: 'Séries válidas', valor: it.series, multilinha: true,
+    placeholder: 'Ex.: 3x8-10 (uma prescrição por linha)', faltaMsg: MSG_FALTA,
+    incertos: incertosDe(it, 'series').concat(incertosDe(it, 'repeticoes')),
+    onInput: v => { it.series = v; salvarRascunho(); }
+  }));
+  card.appendChild(g1);
+  (it.avisos_series || []).forEach(a => card.appendChild(el('<div class="dica falta">' + esc(a) + '</div>')));
+
+  if (!it.classificacao_confirmada) {
+    const p = el('<div class="pend aviso"><div><b>Aquecimento ou séries válidas?</b> ' + esc(it.duvida_classificacao || 'A ficha não deixa claro como classificar estas séries.') + ' Ajuste os campos acima se necessário.</div></div>');
+    const ok = el('<button type="button" class="btn-link">Conferido</button>');
+    ok.addEventListener('click', () => { it.classificacao_confirmada = true; rerender(); });
+    p.appendChild(el('<div class="acoes"></div>')).appendChild(ok);
+    card.appendChild(p);
+  } else if (it.classificacao_series === 'sem_classificacao' && it.series) {
+    card.appendChild(el('<div class="dica">A ficha não separa aquecimento de séries válidas — registrado como séries válidas.</div>'));
+  }
+
+  const g2 = el('<div class="grid3"></div>');
+  g2.appendChild(campoTexto({
+    label: 'Carga', valor: it.carga, placeholder: 'Opcional',
+    incertos: incertosDe(it, 'carga'),
+    onInput: v => { it.carga = v; salvarRascunho(); }
+  }));
+  g2.appendChild(campoTexto({
+    label: 'Descanso entre séries', valor: it.intervalo_descanso, placeholder: 'Ex.: 90 segundos', faltaMsg: MSG_FALTA,
+    incertos: incertosDe(it, 'descanso'),
+    onInput: v => { it.intervalo_descanso = v; salvarRascunho(); }
+  }));
+  g2.appendChild(campoTexto({
+    label: 'Descanso (segundos, timer)', valor: it.descanso_segundos, tipo: 'number', placeholder: 'Ex.: 90',
+    onInput: v => { it.descanso_segundos = v; salvarRascunho(); }
+  }));
+  card.appendChild(g2);
+
+  // Técnica avançada
+  const tw = el('<div class="campo"></div>');
+  const th = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;"><label style="margin:0;">Técnica avançada</label></div>');
+  if (it.tecnica_texto_original) {
+    if (it.tecnica_destino === 'nova') th.appendChild(el('<span class="chip chip-info">Nova técnica particular</span>'));
+    else if (it.tecnica_destino === 'texto') th.appendChild(el('<span class="chip chip-info">Mantida só no texto</span>'));
+    else th.appendChild(el(chipConfianca(it.tecnica_confianca, !!it.tecnica_id, it.tecnica_confirmada)));
+  }
+  tw.appendChild(th);
+  if (it.tecnica_texto_original) tw.appendChild(el('<div class="dica" style="margin:0 0 6px;">Na ficha: “' + esc(it.tecnica_texto_original) + '”</div>'));
+
+  if (it.tecnica_destino === 'nova') {
+    const nomeIn = el('<input maxlength="80" placeholder="Nome da técnica">');
+    nomeIn.value = it.nova_tecnica_nome;
+    nomeIn.addEventListener('input', () => { it.nova_tecnica_nome = nomeIn.value; salvarRascunho(); });
+    tw.appendChild(nomeIn);
+    tw.appendChild(el('<div class="dica">Será cadastrada como técnica particular sua (se já existir uma com o mesmo nome, ela é reaproveitada).</div>'));
+  } else {
+    const sel = el('<select><option value="">Nenhuma</option></select>');
+    tecnicasLib.forEach(t => sel.appendChild(el('<option value="' + esc(t.id) + '">' + esc(t.nome) + '</option>')));
+    sel.value = it.tecnica_id || '';
+    sel.addEventListener('change', () => {
+      it.tecnica_id = sel.value;
+      it.tecnica_confianca = sel.value ? 'manual' : 'nenhuma';
+      it.tecnica_destino = '';
+      it.tecnica_confirmada = !!sel.value || !it.tecnica_texto_original;
+      rerender();
+    });
+    tw.appendChild(sel);
+  }
+
+  if (it.tecnica_texto_original && !it.tecnica_confirmada) {
+    if (it.tecnica_id) {
+      const t = tecnicaPorId(it.tecnica_id);
+      const p = el('<div class="pend aviso"><div>Sugestão da IA: <b>' + esc(t ? t.nome : '') + '</b>. Confirme ou escolha outra técnica.</div></div>');
+      const ok = el('<button type="button" class="btn-link">Confirmar</button>');
+      ok.addEventListener('click', () => { it.tecnica_confirmada = true; rerender(); });
+      p.appendChild(el('<div class="acoes"></div>')).appendChild(ok);
+      tw.appendChild(p);
+    } else {
+      const p = el('<div class="pend erro"><div>Técnica não encontrada no acervo. Escolha uma acima, cadastre como técnica particular ou mantenha apenas o texto original nas observações.</div></div>');
+      const acoes = el('<div class="acoes"></div>');
+      const nova = el('<button type="button" class="btn-link">Cadastrar técnica</button>');
+      nova.addEventListener('click', () => { it.tecnica_destino = 'nova'; it.tecnica_confirmada = true; rerender(); });
+      const texto = el('<button type="button" class="btn-link">Manter só o texto</button>');
+      texto.addEventListener('click', () => { it.tecnica_destino = 'texto'; it.tecnica_confirmada = true; rerender(); });
+      acoes.appendChild(nova);
+      acoes.appendChild(texto);
+      p.appendChild(acoes);
+      tw.appendChild(p);
+    }
+  }
+  if (it.tecnica_destino) {
+    const desfazer = el('<button type="button" class="btn-link" style="margin-top:6px;">Escolher técnica do acervo</button>');
+    desfazer.addEventListener('click', () => { it.tecnica_destino = ''; it.tecnica_confirmada = false; rerender(); });
+    tw.appendChild(desfazer);
+  }
+  incertosDe(it, 'tecnica').forEach(c => tw.appendChild(el('<div class="dica falta">' + esc(c.motivo) + '</div>')));
+  card.appendChild(tw);
+
+  if (it.tecnica_id || it.tecnica_destino || it.tecnica_instrucoes) {
+    card.appendChild(campoTexto({
+      label: it.tecnica_destino === 'texto' ? 'Detalhes da técnica (vão para as observações)' : 'Como executar a técnica neste exercício',
+      valor: it.tecnica_instrucoes, multilinha: true,
+      placeholder: 'Ex.: cluster 4+2+2 reps, 15 s de pausa intrassérie',
+      onInput: v => { it.tecnica_instrucoes = v; salvarRascunho(); }
+    }));
+  }
+
+  const g3 = el('<div class="grid2"></div>');
+  g3.appendChild(campoTexto({
+    label: 'Observações', valor: it.observacoes, multilinha: true, placeholder: 'Opcional',
+    incertos: incertosDe(it, 'observacoes'),
+    onInput: v => { it.observacoes = v; salvarRascunho(); }
+  }));
+  const comboW = campoTexto({
+    label: 'Combo (bi-set / superset / tri-set)', valor: rotuloCombo(it.combo),
+    placeholder: 'Mesmo rótulo = executados juntos',
+    incertos: incertosDe(it, 'combo'),
+    onInput: v => { it.combo = v.trim() ? d.uid + ':' + v.trim() : ''; salvarRascunho(); }
+  });
+  comboW.querySelector('input').addEventListener('change', rerender);
+  g3.appendChild(comboW);
+  card.appendChild(g3);
+
+  if (!it.contradicoes_conferidas) {
+    const p = el('<div class="pend aviso"><div><b>Informações contraditórias na ficha:</b><ul style="margin:4px 0 0 18px;padding:0;">' + it.contradicoes.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>Ajuste os campos acima conforme a prescrição correta.</div></div>');
+    const ok = el('<button type="button" class="btn-link">Conferido</button>');
+    ok.addEventListener('click', () => { it.contradicoes_conferidas = true; rerender(); });
+    p.appendChild(el('<div class="acoes"></div>')).appendChild(ok);
+    card.appendChild(p);
+  }
+  return card;
+}
+
+function renderRodape() {
+  rodape.style.display = '';
+  rodape.innerHTML = '';
+  const n = totalPendencias();
+  const ativos = revisao.divisoes.filter(d => !d.removido);
+  const nEx = ativos.reduce((s, d) => s + d.exercicios.filter(it => !it.removido).length, 0);
+  const semNome = ativos.some(d => !String(d.nome || '').trim());
+  const vazios = ativos.filter(d => !d.exercicios.some(it => !it.removido));
+
+  const inner = el('<div class="rodape-in"></div>');
+  let status;
+  if (!ativos.length || !nEx) status = 'Nenhum exercício para importar.';
+  else if (n) status = '<b style="color:var(--aviso);">' + n + (n === 1 ? ' pendência' : ' pendências') + '</b> para resolver antes de salvar';
+  else if (semNome) status = 'Dê um nome a cada treino.';
+  else status = '<b style="color:var(--ok);">Pronto para salvar</b> · ' + ativos.length + (ativos.length === 1 ? ' treino' : ' treinos') + ', ' + nEx + ' exercícios';
+  if (!n && vazios.length && nEx) status += ' · treinos vazios serão ignorados';
+  const st = el('<div class="rodape-status">' + status + '</div>');
+  if (n) {
+    const ir = el('<button type="button" class="btn-link" style="margin-left:8px;">Ir para a próxima</button>');
+    ir.addEventListener('click', () => {
+      for (const d of revisao.divisoes) {
+        if (d.removido) continue;
+        const it = d.exercicios.find(x => pendenciasDo(x).length);
+        if (it) { const node = document.getElementById('item-' + it.uid); if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      }
+    });
+    st.appendChild(ir);
+  }
+  inner.appendChild(st);
+
+  const btns = el('<div style="display:flex;gap:10px;"></div>');
+  const desc = el('<button type="button" class="btn btn-secondary">Descartar</button>');
+  desc.addEventListener('click', async () => { if (await descartar(true)) renderEnvio(); });
+  const salvar = el('<button type="button" class="btn btn-primary" id="btn-salvar">Salvar treino no aluno</button>');
+  salvar.disabled = salvando || !!n || !nEx || semNome;
+  salvar.addEventListener('click', confirmarImportacao);
+  btns.appendChild(desc);
+  btns.appendChild(salvar);
+  inner.appendChild(btns);
+  inner.appendChild(el('<div class="erro" id="erro-salvar" style="display:none;width:100%;margin:0;"></div>'));
+  rodape.appendChild(inner);
+}
+
+// ---------------------------------------------------------------------------
+// 4. Confirmação: grava tudo de uma vez na rpc transacional.
+
+function payloadDaRevisao() {
+  return revisao.divisoes
+    .filter(d => !d.removido && d.exercicios.some(it => !it.removido))
+    .map(d => {
+      const ativos = d.exercicios.filter(it => !it.removido);
+      // Combo que sobrou com um exercício só (o parceiro foi removido) não é combo.
+      const membros = {};
+      ativos.forEach(it => { if (it.combo) membros[it.combo] = (membros[it.combo] || 0) + 1; });
+      return {
+        nome: d.nome.trim(),
+        observacoes: d.observacoes.trim() || null,
+        exercicios: ativos.map(it => {
+          let observacoes = it.observacoes.trim();
+          let tecnicaInstrucoes = it.tecnica_instrucoes.trim();
+          if (it.tecnica_destino === 'texto') {
+            // Técnica sem cadastro: o texto original nunca é descartado.
+            const linha = 'Técnica: ' + it.tecnica_texto_original + (tecnicaInstrucoes ? ' — ' + tecnicaInstrucoes : '');
+            observacoes = observacoes ? observacoes + '\n' + linha : linha;
+            tecnicaInstrucoes = '';
+          }
+          const seg = parseInt(it.descanso_segundos, 10);
+          return {
+            exercicio_id: it.novo_exercicio ? null : (it.exercicio_id || null),
+            novo_exercicio: it.novo_exercicio ? { nome: it.novo_exercicio.nome.trim(), categoria: it.novo_exercicio.categoria || null } : undefined,
+            series_aquecimento: it.series_aquecimento.trim() || null,
+            series: it.series.trim() || null,
+            carga: it.carga.trim() || null,
+            intervalo_descanso: it.intervalo_descanso.trim() || null,
+            descanso_segundos: Number.isFinite(seg) && seg >= 0 ? seg : null,
+            tecnica_id: it.tecnica_destino ? null : (it.tecnica_id || null),
+            nova_tecnica_nome: it.tecnica_destino === 'nova' ? it.nova_tecnica_nome.trim() : null,
+            tecnica_instrucoes: tecnicaInstrucoes || null,
+            observacoes: observacoes || null,
+            combo: it.combo && membros[it.combo] > 1 ? it.combo : null
+          };
+        })
+      };
+    });
+}
+
+async function confirmarImportacao() {
+  if (salvando || totalPendencias()) return;
+  salvando = true;
+  const btn = document.getElementById('btn-salvar');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+  const erro = document.getElementById('erro-salvar');
+  erro.style.display = 'none';
+
+  const { data: splitId, error } = await supabaseClient.rpc('confirmar_importacao_treino', {
+    p_importacao_id: importacao.id,
+    p_divisoes: payloadDaRevisao()
+  });
+  if (error || !splitId) {
+    // A rpc é uma transação só: em erro nada foi gravado, a revisão continua aqui.
+    salvando = false;
+    btn.disabled = false;
+    btn.textContent = 'Salvar treino no aluno';
+    erro.textContent = 'O treino não foi salvo (nenhuma alteração foi feita no aluno): ' + ((error && error.message) || 'erro desconhecido') + '. Revise e tente novamente.';
+    erro.style.display = '';
+    return;
+  }
+
+  try { localStorage.removeItem(chaveRascunho()); } catch (e) {}
+  await removerArquivos(importacao);
+  window.location.href = 'montar-treino.html?split_id=' + splitId + '&cliente_id=' + clienteId + '&cliente_nome=' + encodeURIComponent(cliente.nome || '');
+}
+
+init();
+</script>
+</body>
+</html>
