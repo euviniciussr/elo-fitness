@@ -1480,7 +1480,7 @@ class Component extends DCLogic {
       supabaseClient.from('treinos').select('id, nome, dias_semana, ordem').eq('cliente_id', cliente.id).eq('habilitado', true).order('ordem', { ascending: true }),
       supabaseClient.from('fotos_evolucao').select('*').eq('cliente_id', cliente.id).order('created_at', { ascending: false }),
       supabaseClient.from('dietas').select('*').eq('cliente_id', cliente.id).eq('habilitado', true).order('created_at', { ascending: false }).limit(1),
-      supabaseClient.from('agendamentos').select('*').eq('cliente_id', cliente.id).eq('concluido', false).order('data_lembrete', { ascending: true }),
+      supabaseClient.from('agendamentos').select('*').eq('cliente_id', cliente.id).eq('concluido', false).order('data_lembrete', { ascending: true }).order('hora_inicio', { ascending: true, nullsFirst: true }),
       supabaseClient.from('registros_peso').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str).order('data', { ascending: false }),
       supabaseClient.from('treino_execucoes').select('*').eq('cliente_id', cliente.id).gte('data', desde90Str),
       supabaseClient.from('avaliacoes_fisicas').select('*').eq('cliente_id', cliente.id).order('data', { ascending: false }),
@@ -2264,7 +2264,7 @@ class Component extends DCLogic {
       const d = new Date(a.data_lembrete + 'T00:00:00');
       return {
         mes: MESES[d.getMonth()].slice(0, 3).toUpperCase(), dia: d.getDate(),
-        titulo: a.titulo, hora: '—', local: a.tipo || '',
+        titulo: a.titulo, hora: a.hora_inicio ? a.hora_inicio.slice(0, 5) : '—', local: ({ sessao_treino: 'Sessão de treino', avaliacao: 'Avaliação', reavaliacao: 'Reavaliação', online: 'Atendimento online', revisao_treino: 'Revisão de treino', revisao_dieta: 'Revisão de dieta', outro: 'Outro' })[a.tipo] || a.tipo || '',
         status: a.confirmado ? 'Confirmada' : 'Aguardando confirmação',
         statusColor: a.confirmado ? '#4ade80' : '#f97316',
         statusBg: a.confirmado ? 'rgba(74,222,128,.12)' : 'rgba(249,115,22,.12)',

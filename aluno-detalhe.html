@@ -1687,6 +1687,8 @@ function renderTaDetalhe(container) {
         '<div class="ex-meta">' + (SeriesValidas.resumo(te.series).join(' · ') || 'sem séries definidas') + ' · ' + (te.intervalo_descanso || 'sem descanso definido') + ' · ' + (tec ? tec.nome : 'Sem técnica avançada') + '</div>' +
       '</div>'
     );
+    const comoFazer = tec ? (te.tecnica_instrucoes || tec.observacao || '') : '';
+    if (comoFazer) item.appendChild(el('<div class="ex-meta" style="margin-top:4px;white-space:pre-line;"></div>')).textContent = 'Como realizar: ' + comoFazer;
     const cargasList = renderCargasSerieList(te);
     if (cargasList) item.appendChild(cargasList);
     container.appendChild(item);
@@ -2634,6 +2636,9 @@ function renderFeedbackTab(container) {
 
 const TIPOS_AGENDAMENTO = [
   ['revisao_treino', 'Revisão de treino'],
+  ['sessao_treino', 'Sessão de treino'],
+  ['avaliacao', 'Avaliação'],
+  ['online', 'Atendimento online'],
   ['revisao_dieta', 'Revisão de dieta'],
   ['reavaliacao', 'Reavaliação'],
   ['outro', 'Outro']
@@ -2652,7 +2657,7 @@ function renderAgendamentosTab(container) {
     const row = el(
       '<div class="list-row" style="opacity:' + (ag.concluido ? '.55' : '1') + ';">' +
         '<div class="list-row-nome">' + ag.titulo + (ag.concluido ? ' ✓' : '') + '</div>' +
-        '<div class="list-row-meta">' + tipoLabel + ' · ' + new Date(ag.data_lembrete + 'T00:00:00').toLocaleDateString('pt-BR') + '</div>' +
+        '<div class="list-row-meta">' + tipoLabel + ' · ' + new Date(ag.data_lembrete + 'T00:00:00').toLocaleDateString('pt-BR') + (ag.hora_inicio ? ' às ' + ag.hora_inicio.slice(0, 5) : '') + '</div>' +
         (ag.observacoes ? '<div class="list-row-meta" style="margin-top:6px;">' + ag.observacoes + '</div>' : '') +
       '</div>'
     );

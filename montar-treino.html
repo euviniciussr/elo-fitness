@@ -69,6 +69,9 @@ textarea{resize:vertical;min-height:52px;}
 .ex-meta-line{margin-top:2px;}
 .ex-meta-line:first-child{margin-top:0;}
 .ex-obs{font-size:11.5px;color:var(--texto-4);margin-top:5px;font-style:italic;}
+.ex-tecnica{margin-top:6px;}
+.ex-tecnica-nome{display:inline-block;font-size:11px;font-weight:700;color:#a855f7;background:rgba(168,85,247,.12);border-radius:999px;padding:2px 9px;}
+.ex-tecnica-obs{font-size:11.5px;color:var(--texto-3);margin-top:4px;line-height:1.45;white-space:pre-line;}
 .ex-actions{display:flex;gap:2px;flex-shrink:0;}
 .ex-icon-btn{background:none;border:none;color:var(--texto-3);font-size:13px;padding:4px 6px;line-height:1;border-radius:6px;}
 .ex-icon-btn:hover{color:var(--texto);background:var(--bg-hover);}
@@ -1837,6 +1840,17 @@ function renderExItem(treino, te) {
   }
   metaWrap.appendChild(el('<div class="ex-meta-line"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 15.5"></polyline></svg> descanso ' + (te.intervalo_descanso || '—') + '</div>'));
   info.appendChild(metaWrap);
+  // Técnica prescrita neste exercício — mesma informação que o aluno vê
+  // (nome + instruções desta prescrição, ou a descrição da técnica). Em combo
+  // o nome já aparece no cabeçalho do grupo, então só entram as instruções.
+  const tec = tecnicaPorId(te.tecnica_avancada);
+  if (tec) {
+    const comoFazer = te.tecnica_instrucoes || (te.grupo_id ? '' : tec.observacao) || '';
+    const tecBox = el('<div class="ex-tecnica"></div>');
+    if (!te.grupo_id) tecBox.appendChild(el('<span class="ex-tecnica-nome"></span>')).textContent = '⚡ ' + tec.nome;
+    if (comoFazer) tecBox.appendChild(el('<div class="ex-tecnica-obs"></div>')).textContent = 'Como realizar: ' + comoFazer;
+    if (tecBox.childNodes.length) info.appendChild(tecBox);
+  }
   if (te.observacoes) info.appendChild(el('<div class="ex-obs">' + te.observacoes + '</div>'));
   const teVideoUrl = (te.exercicios || {}).video_url;
   if (teVideoUrl) {
