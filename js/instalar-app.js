@@ -19,7 +19,7 @@
 // display:block em todo div filho do body que não comece com "pf-".
 (function () {
   var CHAVE = 'elofitness_instalar';
-  var VIDEO = '/assets/tutorial/instalar-app-iphone.mp4';
+  var VIDEO = '/assets/tutorial/instalar-app-iphone.mp4?v=2';
   var ADIAR_DIAS = 7, MAX_DISPENSAS = 3, ESPERA_PRIMEIRA_MS = 25000, ESPERA_MS = 2500;
 
   function hojeStr() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
@@ -83,7 +83,13 @@
     'html[data-tema="claro"] .pf-inst-txt{color:#71717a;}html[data-tema="claro"] .pf-inst-txt b{color:#0a0a0a;}' +
     'html[data-tema="claro"] .pf-inst-box ol{color:#3f3f46;}' +
     'html[data-tema="claro"] .pf-inst-ok{background:#e4e4e7;color:#0a0a0a;}' +
-    '@media (min-width:861px){.pf-inst-banner{left:auto;right:20px;bottom:20px;max-width:400px;}}';
+    '.pf-inst-banner.pf-inst-entrada{bottom:calc(12px + env(safe-area-inset-bottom));}' +
+    '@media (min-width:861px){.pf-inst-banner,.pf-inst-banner.pf-inst-entrada{left:auto;right:20px;bottom:20px;max-width:400px;}}' +
+    // Enquanto o aviso está na tela, reserva o espaço dele no fim da página:
+    // nas telas de entrada (conteúdo centralizado) o selo da Glaz sobe acima
+    // dele; nas demais, o fim da página rola até ficar acima do aviso.
+    'html.pf-inst-ativo .glaz-credit{margin-bottom:calc(var(--pf-inst-h,0px) + 24px) !important;}' +
+    'html.pf-inst-ativo body{padding-bottom:var(--pf-inst-h,0px);}';
 
   function injetarCss() {
     if (document.getElementById('pf-inst-css')) return;
@@ -155,7 +161,23 @@
     } catch (e) { abrirTutorial(); }
   }
 
-  function removerBanner() { var b = document.querySelector('.pf-inst-banner'); if (b) b.remove(); }
+  function removerBanner() {
+    var b = document.querySelector('.pf-inst-banner');
+    if (b) b.remove();
+    document.documentElement.classList.remove('pf-inst-ativo');
+  }
+
+  // Espaço reservado = altura do aviso + distância dele até o rodapé.
+  function reservarEspaco(b) {
+    var medir = function () {
+      if (!b.isConnected) return;
+      var r = b.getBoundingClientRect();
+      document.documentElement.style.setProperty('--pf-inst-h', Math.ceil(window.innerHeight - r.top) + 'px');
+    };
+    document.documentElement.classList.add('pf-inst-ativo');
+    medir();
+    window.addEventListener('resize', medir);
+  }
 
   function dispensar() {
     atualizar(function (d) { d.dispensas = (d.dispensas || 0) + 1; d.ultimaDispensa = Date.now(); });
@@ -186,10 +208,11 @@
       '<div class="pf-inst-txt"><b>Use a Elo como app</b>' + sub + '</div>' +
       '<button type="button" class="pf-inst-ver">' + (!celular ? 'Ver vídeo' : promptNativo ? 'Instalar' : 'Ver como') + '</button>' +
       '<button type="button" class="pf-inst-x" aria-label="Agora não">×</button>';
-    if (telaDeEntrada && celular) b.style.bottom = 'calc(12px + env(safe-area-inset-bottom))'; // sem barra inferior aqui
+    if (telaDeEntrada) b.className += ' pf-inst-entrada'; // sem barra inferior aqui
     b.querySelector('.pf-inst-ver').addEventListener('click', instalar);
     b.querySelector('.pf-inst-x').addEventListener('click', dispensar);
     document.body.appendChild(b);
+    reservarEspaco(b);
   }
 
   function iniciar() {
