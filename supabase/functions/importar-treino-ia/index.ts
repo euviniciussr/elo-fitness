@@ -116,7 +116,7 @@ const EXERCICIO = {
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["divisoes", "paginas_com_problema", "avisos_gerais", "legibilidade"],
+  required: ["divisoes", "exercicios_sem_divisao", "paginas_com_problema", "avisos_gerais", "legibilidade"],
   properties: {
     divisoes: {
       type: "array",
@@ -128,6 +128,19 @@ const SCHEMA = {
           nome: { type: "string", description: "Nome da divisão como na ficha ('Treino A', 'Superiores')." },
           observacoes: { type: "string" },
           exercicios: { type: "array", items: EXERCICIO },
+        },
+      },
+    },
+    exercicios_sem_divisao: {
+      type: "array",
+      description: "Exercícios cuja divisão a ficha não deixa clara. Nunca atribua por palpite.",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["motivo", "exercicio"],
+        properties: {
+          motivo: { type: "string", description: "Por que não dá para saber a qual treino pertence." },
+          exercicio: EXERCICIO,
         },
       },
     },
@@ -153,7 +166,8 @@ const SYSTEM = `Você converte fichas de treino de musculação (PDF, foto de fi
 
 Como ler a ficha:
 - Analise o documento inteiro (todas as páginas e arquivos) antes de responder. Fichas costumam ter séries, repetições, descanso e técnicas em colunas ou linhas separadas: associe cada dado ao exercício certo pela estrutura visual, não linha a linha.
-- Preserve a divisão (Treino A, B, C...), a ordem dos exercícios e a ordem das séries. Se não houver divisão, use uma única divisão com o nome que a ficha der (ou "Treino A").
+- Divisões: identifique cada treino pelos títulos, cabeçalhos, páginas e pela estrutura do documento. A quantidade é a que a ficha tiver (2, 3, 5, 7...). Preserve o nome original de cada divisão ("Treino A", "Treino 1", "Superior", "Peito e tríceps", "Pernas"...), a ordem das divisões, a ordem dos exercícios e a ordem das séries. Se a ficha inteira não tiver divisão, use uma única divisão com o nome que a ficha der (ou "Treino A").
+- Exercício que você não consegue associar com segurança a uma divisão (sem cabeçalho, página solta, lista ambígua): coloque em exercicios_sem_divisao com o motivo, em vez de escolher uma divisão por palpite.
 - Séries de aquecimento (aquecimento, preparatórias, warm-up, aproximação...) vão em "aquecimento"; séries válidas (válidas, de trabalho, efetivas, working sets, work sets, WS...) vão em "validas". Use o contexto e os cabeçalhos da ficha, não só essas palavras.
 - Prescrição sem classificação ("4 x 10"): registre em "validas" com classificacao_series "sem_classificacao" e não crie aquecimento. Só use "ambigua" quando houver de fato duas leituras plausíveis, e descreva-as em duvida_classificacao.
 - Séries com cargas ou repetições diferentes (aquecimento progressivo, pirâmide) viram itens separados, preservando a ordem; não reduza a uma prescrição genérica.
@@ -206,62 +220,71 @@ function validarResultado(bruto: unknown, exercicios: Map<string, ItemCatalogo>,
     };
   });
 
-  const divisoes = arr(r.divisoes).slice(0, 12).map((d, di) => {
-    const dv = (d || {}) as Record<string, unknown>;
-    const exs = arr(dv.exercicios).slice(0, 60).map((e) => {
-      const o = (e || {}) as Record<string, unknown>;
-      const incertos = arr(o.campos_incertos).slice(0, 20).map((c) => {
-        const x = (c || {}) as Record<string, unknown>;
-        return { campo: CAMPOS_INCERTOS.includes(x.campo as string) ? x.campo as string : "observacoes", motivo: str(x.motivo, 300) || "" };
-      });
-
-      let exRef = str(o.exercicio_ref, 12);
-      let exConf = CONFIANCAS.includes(o.exercicio_confianca as string) ? o.exercicio_confianca as string : "nenhuma";
-      const exItem = exRef ? exercicios.get(exRef) : undefined;
-      if (exRef && !exItem) {
-        exRef = null;
-        exConf = "nenhuma";
-      }
-      if (!exRef) exConf = "nenhuma";
-
-      let tecRef = str(o.tecnica_ref, 12);
-      let tecConf = CONFIANCAS.includes(o.tecnica_confianca as string) ? o.tecnica_confianca as string : "nenhuma";
-      const tecItem = tecRef ? tecnicas.get(tecRef) : undefined;
-      if (tecRef && !tecItem) {
-        tecRef = null;
-        tecConf = "nenhuma";
-      }
-      if (!tecRef) tecConf = "nenhuma";
-
-      return {
-        nome_original: str(o.nome_original, 160) || "(nome não identificado)",
-        combo: str(o.combo, 40) ? `${di}:${str(o.combo, 40)}` : null,
-        tipo_combo: str(o.tipo_combo, 60),
-        aquecimento: series(o.aquecimento),
-        validas: series(o.validas),
-        classificacao_series: ["explicita", "sem_classificacao", "ambigua"].includes(o.classificacao_series as string) ? o.classificacao_series as string : "sem_classificacao",
-        duvida_classificacao: str(o.duvida_classificacao, 400),
-        descanso_segundos: int(o.descanso_segundos, 0, 1800),
-        descanso_texto: str(o.descanso_texto, 80),
-        tecnica_texto_original: str(o.tecnica_texto_original, 300),
-        tecnica_id: tecItem ? tecItem.id : null,
-        tecnica_nome: tecItem ? tecItem.nome : null,
-        tecnica_confianca: tecConf,
-        tecnica_detalhes: str(o.tecnica_detalhes, 400),
-        exercicio_id: exItem ? exItem.id : null,
-        exercicio_nome: exItem ? exItem.nome : null,
-        exercicio_confianca: exConf,
-        exercicio_motivo: str(o.exercicio_motivo, 300),
-        observacoes: str(o.observacoes, 500),
-        campos_incertos: incertos,
-        contradicoes: arr(o.contradicoes).map((c) => str(c, 300)).filter(Boolean),
-      };
+  // prefixoCombo: o mesmo "combo-1" em treinos diferentes nunca vira o mesmo grupo.
+  const exercicio = (e: unknown, prefixoCombo: string) => {
+    const o = (e || {}) as Record<string, unknown>;
+    const incertos = arr(o.campos_incertos).slice(0, 20).map((c) => {
+      const x = (c || {}) as Record<string, unknown>;
+      return { campo: CAMPOS_INCERTOS.includes(x.campo as string) ? x.campo as string : "observacoes", motivo: str(x.motivo, 300) || "" };
     });
+
+    let exRef = str(o.exercicio_ref, 12);
+    let exConf = CONFIANCAS.includes(o.exercicio_confianca as string) ? o.exercicio_confianca as string : "nenhuma";
+    const exItem = exRef ? exercicios.get(exRef) : undefined;
+    if (exRef && !exItem) {
+      exRef = null;
+      exConf = "nenhuma";
+    }
+    if (!exRef) exConf = "nenhuma";
+
+    let tecRef = str(o.tecnica_ref, 12);
+    let tecConf = CONFIANCAS.includes(o.tecnica_confianca as string) ? o.tecnica_confianca as string : "nenhuma";
+    const tecItem = tecRef ? tecnicas.get(tecRef) : undefined;
+    if (tecRef && !tecItem) {
+      tecRef = null;
+      tecConf = "nenhuma";
+    }
+    if (!tecRef) tecConf = "nenhuma";
+
+    return {
+      nome_original: str(o.nome_original, 160) || "(nome não identificado)",
+      combo: str(o.combo, 40) ? `${prefixoCombo}:${str(o.combo, 40)}` : null,
+      tipo_combo: str(o.tipo_combo, 60),
+      aquecimento: series(o.aquecimento),
+      validas: series(o.validas),
+      classificacao_series: ["explicita", "sem_classificacao", "ambigua"].includes(o.classificacao_series as string) ? o.classificacao_series as string : "sem_classificacao",
+      duvida_classificacao: str(o.duvida_classificacao, 400),
+      descanso_segundos: int(o.descanso_segundos, 0, 1800),
+      descanso_texto: str(o.descanso_texto, 80),
+      tecnica_texto_original: str(o.tecnica_texto_original, 300),
+      tecnica_id: tecItem ? tecItem.id : null,
+      tecnica_nome: tecItem ? tecItem.nome : null,
+      tecnica_confianca: tecConf,
+      tecnica_detalhes: str(o.tecnica_detalhes, 400),
+      exercicio_id: exItem ? exItem.id : null,
+      exercicio_nome: exItem ? exItem.nome : null,
+      exercicio_confianca: exConf,
+      exercicio_motivo: str(o.exercicio_motivo, 300),
+      observacoes: str(o.observacoes, 500),
+      campos_incertos: incertos,
+      contradicoes: arr(o.contradicoes).map((c) => str(c, 300)).filter(Boolean),
+    };
+  };
+
+  const divisoes = arr(r.divisoes).slice(0, 20).map((d, di) => {
+    const dv = (d || {}) as Record<string, unknown>;
+    const exs = arr(dv.exercicios).slice(0, 60).map((e) => exercicio(e, String(di)));
     return { nome: str(dv.nome, 120) || `Treino ${String.fromCharCode(65 + di)}`, observacoes: str(dv.observacoes, 500), exercicios: exs };
+  });
+
+  const exercicios_sem_divisao = arr(r.exercicios_sem_divisao).slice(0, 60).map((x) => {
+    const o = (x || {}) as Record<string, unknown>;
+    return { motivo: str(o.motivo, 300) || "", exercicio: exercicio(o.exercicio, "sem") };
   });
 
   return {
     divisoes,
+    exercicios_sem_divisao,
     paginas_com_problema: arr(r.paginas_com_problema).slice(0, 50).map((p) => {
       const o = (p || {}) as Record<string, unknown>;
       return { arquivo: int(o.arquivo, 1, 99), pagina: int(o.pagina, 1, 9999), motivo: str(o.motivo, 300) || "" };
@@ -391,7 +414,7 @@ async function processar(db: SupabaseClient, svc: SupabaseClient, importacaoId: 
     }
 
     const resultado = validarResultado(bruto, exercicios, tecnicas);
-    const totalExercicios = resultado.divisoes.reduce((n, d) => n + d.exercicios.length, 0);
+    const totalExercicios = resultado.divisoes.reduce((n, d) => n + d.exercicios.length, 0) + resultado.exercicios_sem_divisao.length;
     if (!totalExercicios) {
       return await falhar(resultado.legibilidade === "ilegivel"
         ? "Não foi possível ler a ficha. Envie um arquivo mais nítido ou com melhor resolução."

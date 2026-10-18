@@ -80,6 +80,20 @@ textarea{resize:vertical;min-height:44px;}
 .chip-info{background:var(--bg-ativo);color:var(--texto-2);}
 .chip-combo{background:rgba(168,85,247,.13);color:var(--roxo);}
 
+.div-tabs{position:sticky;top:0;z-index:20;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;background:var(--bg-3);padding:12px 0;margin-top:6px;border-bottom:1px solid var(--borda-forte);}
+.div-tabs::-webkit-scrollbar{display:none;}
+.div-tab{flex-shrink:0;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--borda-forte);background:var(--bg-2);color:var(--texto-2);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;max-width:240px;}
+.div-tab span.nome{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.div-tab:hover{color:var(--texto);}
+.div-tab.ativa{background:rgba(249,115,22,.14);border-color:rgba(249,115,22,.6);color:#f97316;}
+.div-tab.removida span.nome{text-decoration:line-through;opacity:.6;}
+.div-tab.incerta{border-style:dashed;}
+.div-tab .badge{font-size:10.5px;font-weight:800;border-radius:999px;padding:1px 7px;}
+.div-tab .badge.pend{background:rgba(245,158,11,.18);color:var(--aviso);}
+.div-tab .badge.ok{background:rgba(74,222,128,.14);color:var(--ok);}
+.div-tab.add{border-style:dashed;color:#f97316;background:none;}
+#div-area{scroll-margin-top:70px;}
+.mover-sel{width:auto;max-width:200px;padding:5px 8px;font-size:12px;}
 .div-card{border:1px solid var(--borda-forte);border-radius:14px;padding:18px;margin-top:18px;background:var(--bg-2);}
 .div-head{display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;}
 .ex-card{border:1px solid var(--borda-forte);border-left:3px solid var(--ok);border-radius:12px;padding:14px;margin-top:12px;background:var(--bg-3);}
@@ -117,6 +131,7 @@ textarea{resize:vertical;min-height:44px;}
   .topbar{padding:14px 16px;}
   .grid2,.grid3{grid-template-columns:1fr;}
   .div-card{padding:12px;}
+  .div-tabs{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;}
   .rodape-in .btn{flex:1;}
 }
 </style>
@@ -159,6 +174,7 @@ let tecnicasLib = [];
 let categoriasLib = [];
 let importacao = null;    // linha de importacoes_treino em uso
 let revisao = null;       // modelo editável da prévia
+let divAtiva = null;      // uid da divisão aberta na revisão (ou 'sem' = treino não identificado)
 let arquivosSelecionados = [];
 let pollTimer = null;
 let salvando = false;
@@ -591,6 +607,8 @@ function montarItem(ex) {
     contradicoes: ex.contradicoes || [],
     contradicoes_conferidas: !(ex.contradicoes || []).length,
     avisos_series: avisosSeries,
+    sem_divisao: false,   // a IA não soube a qual treino pertence: precisa ser movido antes de salvar
+    motivo_divisao: '',
     removido: false
   };
 }
@@ -615,9 +633,43 @@ function montarRevisao() {
       // treinos diferentes nunca vira o mesmo grupo.
       exercicios.forEach(it => { if (it.combo) it.combo = uid + ':' + rotuloCombo(it.combo); });
       return { uid, nome: d.nome, observacoes: d.observacoes || '', removido: false, exercicios };
-    })
+    }),
+    sem_divisao: semDivisaoDe(r)
   };
+  if (!revisao.sem_divisao) revisao.sem_divisao = semDivisaoDe({}); // rascunho anterior a esta versão
+  divAtiva = null;
   renderRevisao();
+}
+
+// Exercícios que a IA não conseguiu associar a um treino: ficam num grupo à
+// parte, nunca num treino escolhido por palpite, até o profissional mover.
+function semDivisaoDe(r) {
+  const exercicios = (r.exercicios_sem_divisao || []).map(x => {
+    const it = montarItem(x.exercicio || {});
+    it.sem_divisao = true;
+    it.motivo_divisao = x.motivo || '';
+    return it;
+  });
+  return { uid: 'sem', nome: 'Treino não identificado', exercicios };
+}
+
+function divisaoPorUid(uid) {
+  return uid === 'sem' ? revisao.sem_divisao : revisao.divisoes.find(d => d.uid === uid);
+}
+
+function moverItem(it, origem, destino) {
+  const i = origem.exercicios.indexOf(it);
+  if (i < 0 || !destino || destino === origem) return;
+  origem.exercicios.splice(i, 1);
+  // O combo continua com o prefixo da origem: só se junta com quem veio do
+  // mesmo grupo, nunca com um combo de mesmo rótulo do treino de destino.
+  it.sem_divisao = false;
+  destino.exercicios.push(it);
+  salvarRascunho();
+}
+
+function pendenciasDaDivisao(d) {
+  return d.exercicios.reduce((n, it) => n + pendenciasDo(it).length, 0);
 }
 
 function exercicioPorId(id) { return exerciciosLib.find(e => e.id === id); }
@@ -628,6 +680,7 @@ function tecnicaPorId(id) { return tecnicasLib.find(t => t.id === id); }
 function pendenciasDo(it) {
   const p = [];
   if (it.removido) return p;
+  if (it.sem_divisao) p.push('divisao');
   if (!it.exercicio_id && !it.novo_exercicio) p.push('exercicio');
   else if (it.exercicio_id && !it.exercicio_confirmado) p.push('exercicio_confirmar');
   if (it.novo_exercicio && !String(it.novo_exercicio.nome || '').trim()) p.push('novo_exercicio');
@@ -639,8 +692,8 @@ function pendenciasDo(it) {
 
 function totalPendencias() {
   let n = 0;
-  revisao.divisoes.forEach(d => { if (!d.removido) d.exercicios.forEach(it => { n += pendenciasDo(it).length; }); });
-  return n;
+  revisao.divisoes.forEach(d => { if (!d.removido) n += pendenciasDaDivisao(d); });
+  return n + pendenciasDaDivisao(revisao.sem_divisao);
 }
 
 function renderRevisao() {
@@ -666,20 +719,64 @@ function renderRevisao() {
     app.appendChild(el('<div class="aviso-box"><b>Observações da leitura:</b><ul style="margin:6px 0 0 18px;padding:0;">' + r.avisos_gerais.map(a => '<li>' + esc(a) + '</li>').join('') + '</ul></div>'));
   }
 
-  revisao.divisoes.forEach((d, di) => app.appendChild(renderDivisao(d, di)));
+  // Um treino por vez: abas no topo, só a divisão selecionada abaixo.
+  const temSem = revisao.sem_divisao.exercicios.some(it => !it.removido);
+  if (!divisaoPorUid(divAtiva) || (divAtiva === 'sem' && !revisao.sem_divisao.exercicios.length)) {
+    divAtiva = temSem ? 'sem' : (revisao.divisoes[0] || {}).uid || null;
+  }
+  app.appendChild(renderAbas());
 
-  const addDiv = el('<button type="button" class="btn-link" style="margin-top:16px;">+ Adicionar treino (divisão) não reconhecido</button>');
-  addDiv.addEventListener('click', () => {
-    revisao.divisoes.push({ uid: crypto.randomUUID(), nome: 'Treino ' + String.fromCharCode(65 + revisao.divisoes.length), observacoes: '', removido: false, exercicios: [] });
-    salvarRascunho();
-    renderRevisao();
-  });
-  app.appendChild(addDiv);
+  const area = el('<div id="div-area"></div>');
+  const atual = divisaoPorUid(divAtiva);
+  if (atual) area.appendChild(atual === revisao.sem_divisao ? renderSemDivisao() : renderDivisao(atual));
+  app.appendChild(area);
 
   renderRodape();
 }
 
-function renderDivisao(d, di) {
+function abrirDivisao(uid) {
+  divAtiva = uid;
+  renderRevisao();
+  const area = document.getElementById('div-area');
+  if (area && area.getBoundingClientRect().top < 0) area.scrollIntoView({ block: 'start' });
+}
+
+function renderAbas() {
+  const bar = el('<div class="div-tabs" role="tablist"></div>');
+  const aba = (d, extraClasse) => {
+    const n = d.removido ? 0 : pendenciasDaDivisao(d);
+    const qtd = d.exercicios.filter(it => !it.removido).length;
+    const badge = d.removido ? '' : n ? '<span class="badge pend" title="Pendências">' + n + '</span>' : qtd ? '<span class="badge ok" title="Sem pendências">✓</span>' : '';
+    const b = el('<button type="button" role="tab" class="div-tab' + (d.uid === divAtiva ? ' ativa' : '') + (d.removido ? ' removida' : '') + (extraClasse || '') + '"><span class="nome"></span>' + badge + '</button>');
+    b.querySelector('.nome').textContent = (String(d.nome || '').trim() || 'Sem nome') + (d.removido ? '' : ' · ' + qtd);
+    b.setAttribute('aria-selected', d.uid === divAtiva ? 'true' : 'false');
+    b.addEventListener('click', () => abrirDivisao(d.uid));
+    bar.appendChild(b);
+    if (d.uid === divAtiva) requestAnimationFrame(() => b.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  };
+  if (revisao.sem_divisao.exercicios.length) aba(revisao.sem_divisao, ' incerta');
+  revisao.divisoes.forEach(d => aba(d));
+  const add = el('<button type="button" class="div-tab add" title="Adicionar treino (divisão) não reconhecido">+ Treino</button>');
+  add.addEventListener('click', () => {
+    const nova = { uid: crypto.randomUUID(), nome: 'Treino ' + String.fromCharCode(65 + revisao.divisoes.length), observacoes: '', removido: false, exercicios: [] };
+    revisao.divisoes.push(nova);
+    salvarRascunho();
+    abrirDivisao(nova.uid);
+  });
+  bar.appendChild(add);
+  return bar;
+}
+
+function renderSemDivisao() {
+  const d = revisao.sem_divisao;
+  const card = el('<div class="div-card"></div>');
+  card.appendChild(el('<div class="aviso-box" style="margin:0;"><b>Treino não identificado.</b> A IA encontrou estes exercícios, mas a ficha não deixa claro a qual treino eles pertencem. Mova cada um para o treino certo (ou remova) antes de salvar.</div>'));
+  if (!d.exercicios.some(it => !it.removido)) card.appendChild(el('<div class="dica" style="margin-top:12px;">Nenhum exercício pendente aqui.</div>'));
+  d.exercicios.forEach((it, i) => card.appendChild(renderItem(d, it, i)));
+  return card;
+}
+
+function renderDivisao(d) {
   const card = el('<div class="div-card"></div>');
   if (d.removido) {
     const row = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div style="font-size:13px;color:var(--texto-3);">' + esc(d.nome) + ' removido da importação</div></div>');
@@ -698,6 +795,7 @@ function renderDivisao(d, di) {
   head.appendChild(nomeWrap);
   const rm = el('<button type="button" class="btn-link perigo" style="margin-bottom:10px;">Remover treino</button>');
   rm.addEventListener('click', () => { d.removido = true; salvarRascunho(); renderRevisao(); });
+  nomeIn.addEventListener('change', renderRevisao); // atualiza o nome na aba
   head.appendChild(rm);
   card.appendChild(head);
 
@@ -805,10 +903,40 @@ function renderItem(d, it, i) {
     esq.appendChild(el('<div style="margin-top:6px;"><span class="chip chip-combo">' + esc(it.tipo_combo || 'Combo') + (parceiros.length ? ' com ' + esc(parceiros.join(', ')) : '') + '</span></div>'));
   }
   topo.appendChild(esq);
+  const topoAcoes = el('<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;"></div>');
+  const destinos = revisao.divisoes.filter(o => !o.removido && o !== d);
+  if (destinos.length && !it.sem_divisao) {
+    const mover = el('<select class="mover-sel" aria-label="Mover para outro treino"><option value="">Mover para…</option></select>');
+    destinos.forEach(o => mover.appendChild(el('<option value="' + esc(o.uid) + '">' + esc(String(o.nome || '').trim() || 'Sem nome') + '</option>')));
+    mover.addEventListener('change', () => { moverItem(it, d, divisaoPorUid(mover.value)); renderRevisao(); });
+    topoAcoes.appendChild(mover);
+  }
   const rm = el('<button type="button" class="btn-link perigo">Remover da importação</button>');
   rm.addEventListener('click', () => { it.removido = true; rerender(); });
-  topo.appendChild(rm);
+  topoAcoes.appendChild(rm);
+  topo.appendChild(topoAcoes);
   card.appendChild(topo);
+
+  if (it.sem_divisao) {
+    const p = el('<div class="pend erro" style="margin:0 0 10px;"><div><b>A qual treino este exercício pertence?</b> ' + esc(it.motivo_divisao || 'A ficha não deixa claro.') + '</div></div>');
+    const acoes = el('<div class="acoes"></div>');
+    const ativas = revisao.divisoes.filter(o => !o.removido);
+    if (ativas.length) {
+      const sel = el('<select class="mover-sel"><option value="">Mover para…</option></select>');
+      ativas.forEach(o => sel.appendChild(el('<option value="' + esc(o.uid) + '">' + esc(String(o.nome || '').trim() || 'Sem nome') + '</option>')));
+      sel.addEventListener('change', () => {
+        moverItem(it, d, divisaoPorUid(sel.value));
+        // Resolvido o último incerto, abre o treino para onde ele foi.
+        if (!d.exercicios.some(x => !x.removido)) divAtiva = sel.value;
+        renderRevisao();
+      });
+      acoes.appendChild(sel);
+    } else {
+      acoes.appendChild(el('<span class="dica" style="margin:0;">Crie um treino em “+ Treino”.</span>'));
+    }
+    p.appendChild(acoes);
+    card.appendChild(p);
+  }
 
   // Exercício do acervo
   const exWrap = el('<div></div>');
@@ -1023,10 +1151,17 @@ function renderRodape() {
   if (n) {
     const ir = el('<button type="button" class="btn-link" style="margin-left:8px;">Ir para a próxima</button>');
     ir.addEventListener('click', () => {
-      for (const d of revisao.divisoes) {
-        if (d.removido) continue;
+      // Começa pelo treino aberto e segue na ordem das abas.
+      const ordem = [revisao.sem_divisao].concat(revisao.divisoes.filter(d => !d.removido));
+      const ini = Math.max(0, ordem.findIndex(d => d.uid === divAtiva));
+      for (let k = 0; k < ordem.length; k++) {
+        const d = ordem[(ini + k) % ordem.length];
         const it = d.exercicios.find(x => pendenciasDo(x).length);
-        if (it) { const node = document.getElementById('item-' + it.uid); if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+        if (!it) continue;
+        if (d.uid !== divAtiva) { divAtiva = d.uid; renderRevisao(); }
+        const node = document.getElementById('item-' + it.uid);
+        if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
       }
     });
     st.appendChild(ir);
