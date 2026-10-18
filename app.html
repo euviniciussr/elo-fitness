@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elo Fitness</title>
+<link rel="icon" type="image/x-icon" href="/assets/brand/favicon.ico">
+<link rel="apple-touch-icon" href="/assets/brand/favicon-180.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0d13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Elo">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<style>
+html,body{margin:0;height:100%;background:#0a0d13;}
+body{display:flex;align-items:center;justify-content:center;}
+img{width:72px;height:72px;border-radius:18px;animation:pulsa 1.2s ease-in-out infinite;}
+@keyframes pulsa{50%{opacity:.55;}}
+</style>
+</head>
+<body>
+<img src="/assets/brand/favicon-192.png" alt="Elo Fitness">
+<script>
+// Porta de entrada do app instalado (start_url do manifest): manda cada
+// pessoa direto para a área dela. Quem tem os dois cadastros volta para a
+// última área usada (gravada por js/instalar-app.js).
+(async function () {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) { location.replace('/login'); return; }
+    const { data: cad } = await supabaseClient.rpc('meus_cadastros');
+    let ultima = null;
+    try { ultima = localStorage.getItem('elofitness_area'); } catch (e) {}
+    let destino = '/login';
+    if (cad && cad.personal && cad.aluno) destino = ultima === 'aluno' ? '/app-aluno' : '/dashboard';
+    else if (cad && cad.personal) destino = '/dashboard';
+    else if (cad && cad.aluno) destino = '/app-aluno';
+    location.replace(destino);
+  } catch (e) {
+    location.replace('/login');
+  }
+})();
+</script>
+</body>
+</html>
