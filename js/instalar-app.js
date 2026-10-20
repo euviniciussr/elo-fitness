@@ -19,7 +19,7 @@
 // display:block em todo div filho do body que não comece com "pf-".
 (function () {
   var CHAVE = 'elofitness_instalar';
-  var VIDEO = '/assets/tutorial/instalar-app-iphone.mp4?v=2';
+  var VIDEO = '/assets/tutorial/instalar-app-iphone.mp4?v=3';
   var ADIAR_DIAS = 7, MAX_DISPENSAS = 3, ESPERA_PRIMEIRA_MS = 25000, ESPERA_MS = 2500;
 
   function hojeStr() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
