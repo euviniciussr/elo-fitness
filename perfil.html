@@ -291,7 +291,10 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
         <h1 style="margin:0;font-size:24px;font-weight:800;">Perfil</h1>
         <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Como seus alunos e o catálogo público veem você</div>
       </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <sc-if value="{{ erroSalvar }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;color:#f87171;font-weight:600;">{{ erroSalvar }}</span></sc-if>
       <button sc-camel-on-click="{{ salvar }}" style="display:flex;align-items:center;gap:8px;background:{{ salvarBg }};border:none;color:{{ salvarColor }};font-family:inherit;font-size:14px;font-weight:700;padding:11px 20px;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(249,115,22,.25);">{{ salvarLabel }}</button>
+      </div>
     </header>
 
     <section style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
@@ -315,8 +318,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             </div>
             <div style="display:flex;gap:12px;">
               <div style="flex:1;min-width:0;">
-                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">E-mail</label>
-                <input value="{{ email }}" sc-camel-on-change="{{ onEmailChange }}" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
+                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">E-mail de login</label>
+                <input value="{{ email }}" readonly title="O e-mail de login não é alterado pelo perfil" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:11px 14px;color:#66707e;font-family:inherit;font-size:13.5px;outline:none;cursor:default;">
               </div>
               <div style="flex:1;min-width:0;">
                 <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Telefone / WhatsApp</label>
@@ -375,7 +378,7 @@ class Component extends DCLogic {
     bio: '',
     instagram: '',
     especialidadesAtivas: [],
-    salvo: false,
+    salvo: false, salvando: false, erroSalvar: '',
     trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '',
     fotoUploading: false, fotoSalva: false
   };
@@ -387,8 +390,37 @@ class Component extends DCLogic {
   async loadMeuPerfil() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
-    const { data: trainerRes } = await supabaseClient.from('trainers').select('nome, foto_url').eq('id', user.id).maybeSingle();
-    this.setState({ trainerNomeCompleto: (trainerRes && trainerRes.nome) ? trainerRes.nome.trim() : '', trainerEmail: user.email || '', trainerFotoUrl: (trainerRes && trainerRes.foto_url) ? supabaseClient.storage.from('fotos-perfil').getPublicUrl(trainerRes.foto_url).data.publicUrl : '' });
+    const { data: trainerRes } = await supabaseClient.from('trainers').select('nome, foto_url, telefone, cref, bio, instagram, especialidades').eq('id', user.id).maybeSingle();
+    const t = trainerRes || {};
+    const nome = (t.nome || '').trim();
+    this.setState({
+      trainerNomeCompleto: nome, trainerEmail: user.email || '',
+      trainerFotoUrl: t.foto_url ? supabaseClient.storage.from('fotos-perfil').getPublicUrl(t.foto_url).data.publicUrl : '',
+      nome, email: user.email || '', telefone: t.telefone || '', cref: t.cref || '', bio: t.bio || '',
+      instagram: t.instagram || '', especialidadesAtivas: t.especialidades || []
+    });
+  }
+
+  // trainers.nome é o nome oficial do profissional em todo o painel (todas as
+  // páginas leem dali). O e-mail de login não é tocado.
+  async salvar() {
+    if (this.state.salvando) return;
+    const nome = this.state.nome.trim().replace(/\s+/g, ' ');
+    if (!nome) { this.setState({ erroSalvar: 'Preencha o nome completo.' }); return; }
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) return;
+    this.setState({ salvando: true, erroSalvar: '' });
+    const limpo = v => (v || '').trim() || null;
+    const { data, error } = await supabaseClient.from('trainers').update({
+      nome, telefone: limpo(this.state.telefone), cref: limpo(this.state.cref), bio: limpo(this.state.bio),
+      instagram: limpo(this.state.instagram), especialidades: this.state.especialidadesAtivas
+    }).eq('id', user.id).select('nome').maybeSingle();
+    if (error || !data) {
+      this.setState({ salvando: false, erroSalvar: 'Não foi possível salvar: ' + (error ? error.message : 'perfil não encontrado.') });
+      return;
+    }
+    this.setState({ salvando: false, salvo: true, nome: data.nome, trainerNomeCompleto: data.nome });
+    setTimeout(() => this.setState({ salvo: false }), 1800);
   }
 
   // Troca a foto de perfil do próprio profissional: upload direto ao
@@ -431,7 +463,6 @@ class Component extends DCLogic {
       nome: this.state.nome, email: this.state.email, telefone: this.state.telefone, cref: this.state.cref,
       bio: this.state.bio, instagram: this.state.instagram,
       onNomeChange: (e) => this.setState({ nome: e.target.value }),
-      onEmailChange: (e) => this.setState({ email: e.target.value }),
       onTelefoneChange: (e) => this.setState({ telefone: e.target.value }),
       onCrefChange: (e) => this.setState({ cref: e.target.value }),
       onBioChange: (e) => this.setState({ bio: e.target.value }),
@@ -443,13 +474,11 @@ class Component extends DCLogic {
         border: this.state.especialidadesAtivas.includes(label) ? 'rgba(249,115,22,.35)' : '#1e2633',
         color: this.state.especialidadesAtivas.includes(label) ? '#f97316' : '#9aa4b2'
       })),
-      salvarLabel: this.state.salvo ? 'Salvo ✓' : 'Salvar alterações',
+      salvarLabel: this.state.salvando ? 'Salvando…' : (this.state.salvo ? 'Salvo ✓' : 'Salvar alterações'),
+      erroSalvar: this.state.erroSalvar,
       salvarBg: this.state.salvo ? '#4ade80' : 'linear-gradient(135deg,#f97316,#ea580c)',
       salvarColor: this.state.salvo ? '#0a0d13' : '#fff',
-      salvar: () => {
-        this.setState({ salvo: true });
-        setTimeout(() => this.setState({ salvo: false }), 1800);
-      }
+      salvar: () => this.salvar()
     };
   }
 }

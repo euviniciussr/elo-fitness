@@ -17,6 +17,8 @@
 <script src="js/auth-guard.js"></script>
 <script src="js/exercicios-personalizados.js?v=1"></script>
 <script src="js/series-validas.js?v=1"></script>
+<script src="js/busca-inteligente.js?v=1"></script>
+<script src="js/categorias-exercicio.js?v=1"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -1934,10 +1936,10 @@ function renderAddExForm(treino) {
 
   const selLabelRow = el('<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;"></div>');
   selLabelRow.appendChild(el('<label style="margin-bottom:0;">Exercício</label>'));
-  const categoriasDisponiveis = Array.from(new Set(exerciciosLib.map(e => e.categoria).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const categoriasDisponiveis = CategoriasExercicio.paraFiltro(exerciciosLib);
   const catSel = el('<select style="flex:0 0 auto;width:auto;min-width:130px;"><option value="">Todos</option></select>');
   categoriasDisponiveis.forEach(c => catSel.appendChild(el('<option value="' + c.replace(/"/g, '&quot;') + '">' + c + '</option>')));
-  const categoriaAtual = editTe ? (editTe.exercicios || {}).categoria : null;
+  const categoriaAtual = editTe ? CategoriasExercicio.canonica((editTe.exercicios || {}).categoria) : null;
   if (categoriaAtual && categoriasDisponiveis.includes(categoriaAtual)) catSel.value = categoriaAtual;
   selLabelRow.appendChild(catSel);
   const selWrap = el('<div></div>');
@@ -1948,8 +1950,6 @@ function renderAddExForm(treino) {
   const dropdown = el('<div class="ex-search-dropdown" style="display:none;"></div>');
   let exercicioEscolhido = editTe ? exerciciosLib.find(e => e.id === editTe.exercicio_id) || null : null;
 
-  const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-
   const fecharDropdown = () => { dropdown.style.display = 'none'; dropdown.innerHTML = ''; };
 
   catSel.addEventListener('change', () => {
@@ -1959,9 +1959,8 @@ function renderAddExForm(treino) {
   });
 
   const abrirDropdown = () => {
-    const q = norm(sel.value.trim());
-    const base = catSel.value ? exerciciosLib.filter(e => e.categoria === catSel.value) : exerciciosLib;
-    const matches = (q ? base.filter(e => norm(e.nome).includes(q)) : base).slice(0, 40);
+    const base = catSel.value ? exerciciosLib.filter(e => CategoriasExercicio.canonica(e.categoria) === catSel.value) : exerciciosLib;
+    const matches = BuscaInteligente.filtrar(base, sel.value).slice(0, 40);
     dropdown.innerHTML = '';
     if (!matches.length) {
       dropdown.appendChild(el('<div class="ex-search-empty">Não encontramos exercícios para essa busca.</div>'));
@@ -2008,7 +2007,7 @@ function renderAddExForm(treino) {
   const exercicioSelecionado = () => {
     if (exercicioEscolhido) return exercicioEscolhido;
     const nome = sel.value.trim().toLowerCase();
-    return exerciciosLib.find(e => e.nome.toLowerCase() === nome && (!catSel.value || e.categoria === catSel.value));
+    return exerciciosLib.find(e => e.nome.toLowerCase() === nome && (!catSel.value || CategoriasExercicio.canonica(e.categoria) === catSel.value));
   };
 
   const seriesAquecWrap = el('<div><label>Séries de aquecimento (opcional)</label></div>');

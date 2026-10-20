@@ -15,6 +15,8 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/exercicios-personalizados.js?v=1"></script>
+<script src="js/busca-inteligente.js?v=1"></script>
+<script src="js/categorias-exercicio.js?v=1"></script>
 <script src="assets/acervo/0deb736f-e88b-4758-a37c-0cf7cb7d61d8.js"></script>
 </head>
 <body>
@@ -503,6 +505,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 <option value="Abdômen">Abdômen</option>
                 <option value="Lombar">Lombar</option>
                 <option value="Pliometria">Pliometria</option>
+                <option value="Potência e aceleração">Potência e aceleração</option>
               </select>
             </div>
             <div>
@@ -667,6 +670,13 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
         <!-- DEMAIS TIPOS: cards -->
         <sc-if value="{{ isCards }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ isExercicios }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;-webkit-overflow-scrolling:touch;">
+              <sc-for list="{{ categoriasFiltro }}" as="c" hint-placeholder-count="6">
+                <button sc-camel-on-click="{{ c.onClick }}" style="flex:0 0 auto;white-space:nowrap;background:{{ c.bg }};border:1px solid {{ c.border }};color:{{ c.color }};font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:999px;cursor:pointer;">{{ c.label }} <span style="opacity:.7;font-weight:600;">{{ c.count }}</span></button>
+              </sc-for>
+            </div>
+          </sc-if>
           <sc-if value="{{ itensVazio }}" hint-placeholder-val="{{ true }}">
             <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
               <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg></div>
@@ -780,7 +790,7 @@ class Component extends DCLogic {
 
     isAdmin: false, trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: '',
 
-    alimentosDb: [], buscaAlimentos: '', buscaGeral: '',
+    alimentosDb: [], buscaAlimentos: '', buscaGeral: '', filtroCategoria: '',
     alimentoModalOpen: false, alimentoEditId: '', alimentoNome: '', alimentoCategoria: '', alimentoKcal: '', alimentoPtn: '', alimentoCho: '', alimentoLip: '', alimentoFib: '', alimentoErro: '', alimentoSalvarLabel: 'Adicionar alimento',
     importAlimentosBusy: false, importAlimentosMsg: '', importAlimentosColor: '#4ade80',
 
@@ -911,7 +921,7 @@ class Component extends DCLogic {
       this.loadAcervo();
       return;
     }
-    const payload = { nome, categoria: this.state.exCategoria.trim() || null, video_url: this.state.exVideoUrl.trim() || null };
+    const payload = { nome, categoria: CategoriasExercicio.canonica(this.state.exCategoria), video_url: this.state.exVideoUrl.trim() || null };
     // Só o admin escolhe a origem; profissional comum sempre cria particular
     // (default false no banco, e a RLS barra is_global = true pra quem não é admin).
     if (this.state.isAdmin) payload.is_global = this.state.exGlobal;
@@ -994,7 +1004,7 @@ class Component extends DCLogic {
           trainer_id: user.id,
           is_global: this.state.isAdmin,
           nome,
-          categoria: catKey ? (String(row[catKey] || '').trim() || null) : null,
+          categoria: catKey ? CategoriasExercicio.canonica(row[catKey]) : null,
           video_url: videoKey ? (String(row[videoKey] || '').trim() || null) : null
         };
         if (idiomaKey) {
@@ -1374,13 +1384,14 @@ class Component extends DCLogic {
 
     const diasLabel = (dias) => (!dias || !dias.length) ? 'Sem dias definidos' : dias.slice().sort().map(d => DIAS_SEMANA[d].slice(0, 3)).join(', ');
 
-    const DIACRITICOS_ACERVO = new RegExp('[' + String.fromCharCode(0x0300) + '-' + String.fromCharCode(0x036f) + ']', 'g');
-    const normAcervo = s => (s || '').toLowerCase().normalize('NFD').replace(DIACRITICOS_ACERVO, '');
-    const buscaGeralNorm = normAcervo(this.state.buscaGeral.trim());
-    const combinaBusca = (nome) => !buscaGeralNorm || normAcervo(nome).includes(buscaGeralNorm);
+    const combinaBusca = (nome) => BuscaInteligente.combina(nome, this.state.buscaGeral);
+    const filtroCategoria = this.state.filtroCategoria;
+    const exerciciosDaCategoria = filtroCategoria
+      ? this.state.exerciciosDb.filter(ex => CategoriasExercicio.canonica(ex.categoria) === filtroCategoria)
+      : this.state.exerciciosDb;
 
     const dados = {
-      exercicios: this.state.exerciciosDb.filter(ex => combinaBusca(ex.nome)).map(ex => ({
+      exercicios: BuscaInteligente.filtrar(exerciciosDaCategoria, this.state.buscaGeral).map(ex => ({
         icon: '', iconBg: 'rgba(249,115,22,.12)',
         nome: ex.nome, meta: ex.categoria || 'Sem categoria',
         tags: ex.video_url ? ['com vídeo'] : [], uso: '', border: '#1a2130',
@@ -1464,9 +1475,7 @@ class Component extends DCLogic {
       minhasDietas: this.state.dietasDb.filter(d => combinaBusca(d.nome)).map(d => this.dietaParaCard(d))
     };
 
-    const buscaNorm = this.state.buscaAlimentos.trim().toLowerCase();
-    const alimentos = this.state.alimentosDb
-      .filter(a => !buscaNorm || a.nome.toLowerCase().includes(buscaNorm))
+    const alimentos = BuscaInteligente.filtrar(this.state.alimentosDb, this.state.buscaAlimentos, a => a.nome + ' ' + (a.brand_name || ''))
       .map(a => ({
         nome: a.nome, grupo: a.categoria || 'Sem categoria', porcao: '100 g',
         cho: a.carboidrato_g != null ? a.carboidrato_g : '—',
@@ -1627,6 +1636,20 @@ class Component extends DCLogic {
       onSalvarExercicio: () => this.onSalvarExercicio(),
 
       isExercicios: tipo === 'exercicios',
+      categoriasFiltro: [{ label: 'Todas', valor: '', count: this.state.exerciciosDb.length }]
+        .concat(CategoriasExercicio.paraFiltro(this.state.exerciciosDb).map(c => ({
+          label: c, valor: c, count: this.state.exerciciosDb.filter(ex => CategoriasExercicio.canonica(ex.categoria) === c).length
+        })))
+        .map(c => {
+          const ativo = filtroCategoria === c.valor;
+          return {
+            label: c.label, count: String(c.count),
+            onClick: () => this.setState({ filtroCategoria: c.valor }),
+            bg: ativo ? 'rgba(249,115,22,.12)' : '#0d1119',
+            border: ativo ? 'rgba(249,115,22,.35)' : '#1e2633',
+            color: ativo ? '#f97316' : '#9aa4b2'
+          };
+        }),
       importLabel: this.state.importBusy ? 'Importando…' : 'Importar exercícios',
       onImportarFileChange: (e) => this.onImportarFileChange(e),
       onExportarExercicios: () => this.onExportarExercicios(),

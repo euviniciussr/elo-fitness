@@ -7,22 +7,10 @@
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import type { FoodProvider, FoodSearchParams, NormalizedFood } from "./types.ts";
+import { filtrar, padroesIlike, termos } from "../busca.ts";
 
-// Mesmo fix de busca-por-palavras do provider-app.ts (ver comentário lá):
-// nomes no formato "Alimento, Descritor" não batem com ILIKE de frase
-// inteira. Mantido aqui pra quando a TBCA tiver dados reais.
-function stripAccentsLower(s: string): string {
-  return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
-
-function splitWords(q: string): string[] {
-  return stripAccentsLower(q.replace(/,/g, " ")).split(/\s+/).filter(Boolean);
-}
-
-function matchesAllWords(text: string, words: string[]): boolean {
-  const norm = stripAccentsLower(text);
-  return words.every((w) => norm.includes(w));
-}
+// Mesma busca inteligente do provider-app.ts (ver ../busca.ts): termos
+// obrigatórios filtrados no Postgres pela coluna `busca`, relevância em memória.
 
 interface TbcaRow {
   source_id: string | null;
@@ -69,32 +57,22 @@ export function createTbcaProvider(supabase: SupabaseClient): FoodProvider {
   return {
     name: "TBCA",
     async search({ q }: FoodSearchParams): Promise<NormalizedFood[]> {
-      const words = splitWords(q);
+      const words = termos(q);
       if (!words.length) return [];
-      const { data, error } = await supabase
-        .from("tbca_alimentos")
-        .select(SELECT_COLUMNS)
-        .or(words.map((w) => `nome.ilike.%${w}%`).join(","))
-        .limit(200);
+      let query = supabase.from("tbca_alimentos").select(SELECT_COLUMNS);
+      for (const p of padroesIlike(words)) query = query.ilike("busca", p);
+      const { data, error } = await query.limit(200);
       if (error || !data) return [];
-      return (data as TbcaRow[])
-        .filter((r) => matchesAllWords(r.nome, words))
-        .slice(0, 30)
-        .map(toNormalized);
+      return filtrar(data as TbcaRow[], words, (r) => r.nome).slice(0, 30).map(toNormalized);
     },
     async autocomplete({ q }: FoodSearchParams): Promise<string[]> {
-      const words = splitWords(q);
+      const words = termos(q);
       if (!words.length) return [];
-      const { data, error } = await supabase
-        .from("tbca_alimentos")
-        .select("nome")
-        .or(words.map((w) => `nome.ilike.%${w}%`).join(","))
-        .limit(50);
+      let query = supabase.from("tbca_alimentos").select("nome");
+      for (const p of padroesIlike(words)) query = query.ilike("busca", p);
+      const { data, error } = await query.limit(50);
       if (error || !data) return [];
-      return (data as Pick<TbcaRow, "nome">[])
-        .filter((r) => matchesAllWords(r.nome, words))
-        .slice(0, 10)
-        .map((r) => r.nome);
+      return filtrar(data as Pick<TbcaRow, "nome">[], words, (r) => r.nome).slice(0, 10).map((r) => r.nome);
     },
     async getById(sourceId: string): Promise<NormalizedFood | null> {
       const { data, error } = await supabase

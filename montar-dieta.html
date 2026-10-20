@@ -18,6 +18,7 @@
 <script src="js/food-measures.js"></script>
 <script src="js/avaliacao-fisica.js"></script>
 <script src="js/macros.js"></script>
+<script src="js/busca-inteligente.js?v=1"></script>
 <style>
 :root{
   --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
@@ -235,8 +236,6 @@ function el(html) {
 }
 
 function round1(n) { return Math.round(n * 10) / 10; }
-
-function normalizarSemAcento(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
 
 function novaRefeicao(nome) {
   return { nome, opcoes: [{ nome: 'Opção 1', itens: [] }] };
@@ -918,8 +917,7 @@ function abrirBibliotecaPresets(opcao, onChange) {
     if (state.loading) { body.appendChild(el('<div class="fp-empty">Carregando…</div>')); return; }
     if (state.msg) body.appendChild(el('<div class="fp-warning">' + state.msg + '</div>'));
     if (!state.presets.length) { body.appendChild(el('<div class="fp-empty">Nenhum preset criado ainda. Salve um alimento como preset numa dieta pra ele aparecer aqui.</div>')); return; }
-    const q = normalizarSemAcento(state.query);
-    const filtrados = state.presets.filter(p => !q || normalizarSemAcento(p.nome).includes(q));
+    const filtrados = BuscaInteligente.filtrar(state.presets, state.query);
     if (!filtrados.length) { body.appendChild(el('<div class="fp-empty">Nenhum preset encontrado pra "' + state.query + '".</div>')); return; }
     const porCategoria = {};
     filtrados.forEach(p => {
@@ -1020,28 +1018,22 @@ async function fpFetchSearch(q) {
     // Parte 24: se a Edge Function estiver fora do ar (não só a FatSecret),
     // a base própria do app (cadastros do treinador + biblioteca padrão)
     // continua pesquisável direto via RLS, sem depender de nada externo.
-    // Busca por PALAVRAS (não frase inteira) — mesmo motivo do backend:
-    // "Pão, trigo, francês" não bate com ILIKE %pão francês% de uma vez só.
-    const palavras = normalizarSemAcento(q.replace(/,/g, ' ')).split(/\s+/).filter(Boolean);
-    if (!palavras.length) return { results: [], warning: 'edge_function_unavailable' };
-    const orAlimentos = palavras.map((w) => 'nome.ilike.%' + w + '%,brand_name.ilike.%' + w + '%').join(',');
-    const orTaco = palavras.map((w) => 'nome.ilike.%' + w + '%').join(',');
-    const [ownRes, tacoRes] = await Promise.all([
-      supabaseClient
-        .from('alimentos')
-        .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, source, source_id, brand_name, barcode, other_nutrients, default_unit, measures')
-        .eq('trainer_id', userId)
-        .or(orAlimentos)
-        .limit(200),
-      supabaseClient
-        .from('taco_alimentos')
-        .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, default_unit, measures')
-        .or(orTaco)
-        .limit(1000)
-    ]);
-    const combina = (nome, marca) => palavras.every((w) => normalizarSemAcento((nome || '') + ' ' + (marca || '')).includes(w));
-    const results = (ownRes.data || []).filter((r) => combina(r.nome, r.brand_name)).slice(0, 30).map(rowToNormalizedApp)
-      .concat((tacoRes.data || []).filter((r) => combina(r.nome)).slice(0, 30).map(rowToNormalizedTaco));
+    // Mesma busca inteligente do backend (js/busca-inteligente.js): todos os
+    // termos filtrados no Postgres pela coluna `busca` (sem acento, migration
+    // 0067), relevância em memória.
+    const padroes = BuscaInteligente.padroesIlike(q);
+    if (!padroes.length) return { results: [], warning: 'edge_function_unavailable' };
+    let ownQuery = supabaseClient
+      .from('alimentos')
+      .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, source, source_id, brand_name, barcode, other_nutrients, default_unit, measures')
+      .eq('trainer_id', userId);
+    let tacoQuery = supabaseClient
+      .from('taco_alimentos')
+      .select('id, nome, categoria, kcal, proteina_g, carboidrato_g, gordura_g, fibra_g, sodio_mg, default_unit, measures');
+    padroes.forEach((p) => { ownQuery = ownQuery.ilike('busca', p); tacoQuery = tacoQuery.ilike('busca', p); });
+    const [ownRes, tacoRes] = await Promise.all([ownQuery.limit(200), tacoQuery.limit(200)]);
+    const results = BuscaInteligente.filtrar(ownRes.data || [], q, (r) => r.nome + ' ' + (r.brand_name || '')).slice(0, 30).map(rowToNormalizedApp)
+      .concat(BuscaInteligente.filtrar(tacoRes.data || [], q).slice(0, 30).map(rowToNormalizedTaco));
     return { results, warning: 'edge_function_unavailable' };
   }
 }

@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       searchFatSecretWithCache(q, region, language),
     ]);
 
-    const results = normalizeAndDedupe([...appResults, ...tbcaResults, ...fatSecret.results]);
+    const results = normalizeAndDedupe([...appResults, ...tbcaResults, ...fatSecret.results], q);
     const warnings = fatSecret.warning ? [fatSecret.warning] : [];
     return jsonResponse({ results, warnings });
   } catch (err) {

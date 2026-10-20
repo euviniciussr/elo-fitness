@@ -5,6 +5,7 @@
 // um item distinto de "Pão francês Marca X").
 
 import type { NormalizedFood } from "./types.ts";
+import { pontuar, termos } from "../busca.ts";
 
 function stripAccents(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -28,7 +29,12 @@ function priorityScore(food: NormalizedFood): number {
   return 3; // FATSECRET genérico
 }
 
-export function normalizeAndDedupe(results: NormalizedFood[]): NormalizedFood[] {
+// Dentro da mesma prioridade de fonte, o que corresponde melhor à busca vem
+// antes (resultados da FatSecret que não combinam com os termos ficam no fim
+// da faixa deles, nunca são descartados — a FatSecret tem a própria busca).
+export function normalizeAndDedupe(results: NormalizedFood[], q = ""): NormalizedFood[] {
+  const ts = termos(q);
+  const relevancia = (f: NormalizedFood) => pontuar([f.nome, f.brandName].filter(Boolean).join(" "), ts) ?? 1e6;
   const byKey = new Map<string, NormalizedFood>();
   for (const food of results) {
     if (!food.nome || !food.nome.trim()) continue;
@@ -41,6 +47,8 @@ export function normalizeAndDedupe(results: NormalizedFood[]): NormalizedFood[] 
   return Array.from(byKey.values()).sort((a, b) => {
     const diff = priorityScore(a) - priorityScore(b);
     if (diff !== 0) return diff;
+    const rel = relevancia(a) - relevancia(b);
+    if (rel !== 0) return rel;
     return a.nome.localeCompare(b.nome, "pt-BR");
   });
 }
