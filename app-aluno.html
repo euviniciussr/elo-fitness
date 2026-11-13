@@ -1262,6 +1262,32 @@ aside + * table{display:block!important;overflow-x:auto!important}
   </div>
 </sc-if>
 </x-dc>
+<script>
+function mostrarAvisoPlanoBloqueado() {
+  if (document.getElementById('plano-bloqueado-aviso')) return;
+  const box = document.createElement('div');
+  box.id = 'plano-bloqueado-aviso';
+  box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,11,17,.97);display:flex;align-items:center;justify-content:center;padding:24px;font-family:inherit;';
+  box.innerHTML =
+    '<div style="max-width:380px;width:100%;background:#10151f;border:1px solid #1e2633;border-radius:18px;padding:28px 22px;text-align:center;color:#e5e9f0;">' +
+      '<div style="font-size:34px;margin-bottom:10px;">🔒</div>' +
+      '<div style="font-size:17px;font-weight:800;">Seu plano não está ativo</div>' +
+      '<div style="font-size:13px;color:#9aa4b2;margin-top:8px;line-height:1.5;">O acesso ao treino, à dieta e às avaliações fica liberado assim que seu personal renovar o seu plano. Fale com ele para renovar.</div>' +
+      '<button type="button" id="plano-bloqueado-recarregar" style="margin-top:20px;width:100%;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:0;border-radius:11px;padding:12px;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer;">Já renovei, verificar de novo</button>' +
+      '<button type="button" id="plano-bloqueado-sair" style="margin-top:10px;width:100%;background:transparent;color:#9aa4b2;border:1px solid #1e2633;border-radius:11px;padding:11px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer;">Sair</button>' +
+    '</div>';
+  document.body.appendChild(box);
+  box.querySelector('#plano-bloqueado-recarregar').addEventListener('click', () => window.location.reload());
+  box.querySelector('#plano-bloqueado-sair').addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'login.html';
+  });
+}
+function ocultarAvisoPlanoBloqueado() {
+  const box = document.getElementById('plano-bloqueado-aviso');
+  if (box) box.remove();
+}
+</script>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;abaInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;hoje&quot;,&quot;options&quot;:[&quot;hoje&quot;,&quot;treino&quot;,&quot;dieta&quot;,&quot;evolucao&quot;,&quot;agenda&quot;,&quot;mensagens&quot;,&quot;plano&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Navegação&quot;}}">
 // Trainers costumam escrever séries no formato curto "4x12" (4 séries de 12
 // reps) numa linha só, em vez de uma linha por série. Pra ter um check por
@@ -1470,6 +1496,14 @@ class Component extends DCLogic {
       window.location.replace('anamnese.html');
       return true;
     }
+
+    // Gate de plano (migration 0070): plano expirado ou cancelado bloqueia
+    // treino/dieta/cardio/avaliações no banco (policies RESTRICTIVE). A
+    // decisão vem do servidor via RPC — aqui só mostramos o aviso no lugar
+    // de telas vazias. Mensagens com o personal continuam liberadas.
+    const { data: planoBloqueado } = await supabaseClient.rpc('aluno_plano_bloqueado');
+    if (planoBloqueado) mostrarAvisoPlanoBloqueado();
+    else ocultarAvisoPlanoBloqueado();
 
     const alunoNome = (cliente.nome || '').trim().split(/\s+/)[0] || '';
     this.setState({

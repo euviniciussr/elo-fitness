@@ -588,6 +588,9 @@ class Component extends DCLogic {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
     const inicioAnoStr = new Date().getFullYear() + '-01-01';
+    // Gera (uma vez por situação) os avisos de plano vencendo/vencido antes
+    // de ler as notificações — migration 0070.
+    await supabaseClient.rpc('gerar_avisos_vencimento_plano');
     const [trainerRes, clientesRes, pagamentosRes, notifRes] = await Promise.all([
       supabaseClient.from('trainers').select('nome, foto_url').eq('id', user.id).maybeSingle(),
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),

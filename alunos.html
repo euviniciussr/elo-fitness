@@ -671,8 +671,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
       <div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px;">
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Receita prevista · 30d</div><div style="font-size:24px;font-weight:800;margin-top:6px;">R$ 0,00</div></div>
-          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Vencem em até 15 dias</div><div style="font-size:24px;font-weight:800;margin-top:6px;">0</div></div>
-          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Risco alto de não renovar</div><div style="font-size:24px;font-weight:800;margin-top:6px;">0</div></div>
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Vencem em até 15 dias</div><div style="font-size:24px;font-weight:800;margin-top:6px;">{{ qtdVencem15 }}</div></div>
+          <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Planos vencidos</div><div style="font-size:24px;font-weight:800;margin-top:6px;">{{ qtdVencidos }}</div></div>
           <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;"><div style="font-size:12px;color:#9aa4b2;font-weight:600;">Taxa histórica de renovação</div><div style="font-size:24px;font-weight:800;margin-top:6px;color:#66707e;">—</div></div>
         </div>
         <sc-if value="{{ semRenovacoes }}" hint-placeholder-val="{{ true }}">
@@ -700,7 +700,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
                 <span style="font-size:11.5px;font-weight:700;color:{{ r.probColor }};">{{ r.prob }}</span>
               </div>
               <div style="flex:0 0 100px;font-size:12.5px;font-weight:700;">{{ r.valor }}</div>
-              <button style="flex:0 0 110px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:8px;border-radius:9px;cursor:pointer;" style-hover="color:#f97316;border-color:rgba(249,115,22,.35);">{{ r.acao }}</button>
+              <button sc-camel-on-click="{{ r.onClick }}" style="flex:0 0 110px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:8px;border-radius:9px;cursor:pointer;" style-hover="color:#f97316;border-color:rgba(249,115,22,.35);">{{ r.acao }}</button>
             </div>
           </sc-for>
         </div>
@@ -778,6 +778,7 @@ class Component extends DCLogic {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) return;
     const desde30 = new Date(); desde30.setDate(desde30.getDate() - 30);
+    await supabaseClient.rpc('gerar_avisos_vencimento_plano');
     const [clientesRes, convitesRes, exerciciosRes, notifRes, treinosRes, execucoesRes, trainerRes] = await Promise.all([
       supabaseClient.from('clientes').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       supabaseClient.from('convites').select('*').eq('trainer_id', user.id).eq('status', 'pendente').order('created_at', { ascending: false }),
@@ -965,6 +966,25 @@ class Component extends DCLogic {
       };
     };
 
+    // Renovações: planos ativos que vencem em até 15 dias ou já venceram
+    // (até 60 dias atrás). Ação abre a aba Plano do aluno.
+    const hojeR = new Date(); hojeR.setHours(0, 0, 0, 0);
+    const renovacoes = this.state.clientes
+      .filter(c => c.plano_status !== 'cancelado' && c.plano_data_expiracao)
+      .map(c => ({ c, dias: Math.round((new Date(c.plano_data_expiracao + 'T00:00:00') - hojeR) / 86400000) }))
+      .filter(x => x.dias <= 15 && x.dias >= -60)
+      .sort((a, b) => a.dias - b.dias)
+      .map(({ c, dias }) => ({
+        initials: iniciais(c.nome), nome: c.nome,
+        tempo: (() => { const m = Math.max(0, Math.round((hojeR - new Date(c.created_at)) / (30 * 86400000))); return m < 1 ? 'menos de 1 mês' : m + (m === 1 ? ' mês' : ' meses'); })(),
+        vencido: dias < 0,
+        vence: dias < 0 ? 'Venceu há ' + (-dias) + (dias === -1 ? ' dia' : ' dias') : dias === 0 ? 'Vence hoje' : 'Em ' + dias + (dias === 1 ? ' dia' : ' dias'),
+        venceColor: dias < 0 ? '#f87171' : dias <= 7 ? '#facc15' : '#9aa4b2',
+        plano: c.plano || '—',
+        probW: '0%', probColor: '#66707e', prob: '—', valor: '—',
+        acao: 'Renovar',
+        onClick: () => { window.location.href = 'aluno-detalhe.html?cliente_id=' + c.id + '&cliente_nome=' + encodeURIComponent(c.nome || '') + '&tab=plano'; }
+      }));
     return {
       tituloAba: titulos[tab][0], subtituloAba: titulos[tab][1],
       meuNome: this.state.trainerNomeCompleto || 'Seu nome',
@@ -1082,8 +1102,10 @@ class Component extends DCLogic {
       prescricoes: [],
       semPrescricoes: true,
 
-      renovacoes: [],
-      semRenovacoes: true, temRenovacoes: false
+      renovacoes,
+      semRenovacoes: renovacoes.length === 0, temRenovacoes: renovacoes.length > 0,
+      qtdVencem15: renovacoes.filter(r => !r.vencido).length,
+      qtdVencidos: renovacoes.filter(r => r.vencido).length
     };
   }
 }
