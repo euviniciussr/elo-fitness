@@ -12,6 +12,12 @@ import { asaasFetch } from "../_shared/asaas.ts";
 
 const ORIGENS_OK = /^https:\/\/([a-z0-9-]+\.)*(elofitness\.com\.br|vercel\.app)(\/|$)|^http:\/\/localhost(:\d+)?(\/|$)/;
 
+// Nome do item no checkout do Asaas (máx. 30 caracteres).
+function comMarca(nome: string): string {
+  const n = String(nome || "").trim();
+  return n.length <= 16 ? `Elo Fitness · ${n}` : n.slice(0, 30);
+}
+
 function soDigitos(s: unknown): string {
   return String(s || "").replace(/\D/g, "");
 }
@@ -70,8 +76,10 @@ Deno.serve(async (req) => {
         minutesToExpire: 60,
         callback: { successUrl: voltar, cancelUrl: pagina, expiredUrl: pagina },
         items: [{
-          name: produto.nome.slice(0, 30),
-          description: String(produto.descricao || produto.nome).slice(0, 150),
+          // A conta Asaas é compartilhada com outras empresas: a marca Elo vai
+          // em cada cobrança (nome do item), nunca na configuração da conta.
+          name: comMarca(produto.nome),
+          description: ("Elo Fitness · " + String(produto.descricao || produto.nome)).slice(0, 150),
           value: Number(produto.preco),
           quantity: 1,
         }],

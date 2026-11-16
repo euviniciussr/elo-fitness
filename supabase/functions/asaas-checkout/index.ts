@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
         chargeTypes: ["RECURRENT"],
         minutesToExpire: 60,
         callback: { successUrl, cancelUrl, expiredUrl },
-        items: [{ name: plano.nome.slice(0, 30), value: plano.valor, quantity: 1 }],
+        items: [{ name: `Elo Fitness · ${plano.nome}`.slice(0, 30), description: "Assinatura Elo Fitness", value: plano.valor, quantity: 1 }],
         // Sem customerData: em produção o Asaas exige endereço e telefone
         // completos quando ele é enviado. Sem ele, o próprio checkout pede os
         // dados ao pagador.
