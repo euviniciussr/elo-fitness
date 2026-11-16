@@ -287,7 +287,8 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 </x-dc>
 <script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:480}}">
 class Component extends DCLogic {
-  state = { perfil: null, modo: 'login', cad: null, proprioPersonal: false, nome: '', email: '', senha: '', erro: '', carregando: false, resetMensagem: '', resetEnviando: false };
+  // ?perfil=personal&modo=cadastro abre direto no cadastro (link de afiliado, indicacao.html).
+  state = { perfil: ['personal', 'aluno'].includes(new URLSearchParams(location.search).get('perfil')) ? new URLSearchParams(location.search).get('perfil') : null, modo: new URLSearchParams(location.search).get('modo') === 'cadastro' ? 'cadastro' : 'login', cad: null, proprioPersonal: false, nome: '', email: '', senha: '', erro: '', carregando: false, resetMensagem: '', resetEnviando: false };
 
   // Cooldown fica no localStorage (não no state) pra sobreviver a um F5 —
   // sem isso dava pra recarregar a página e pedir de novo na hora, o que
@@ -308,9 +309,22 @@ class Component extends DCLogic {
     }
     this.setState({ resetEnviando: true, resetMensagem: '' });
     const redirectTo = new URL('redefinir-senha.html', window.location.href).href;
-    await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+    // Aluno que nunca abriu o convite não tem conta no Auth: o reset do
+    // Supabase não manda nada pra ele. O enviar-email reenvia o convite.
+    const [{ error }] = await Promise.all([
+      supabaseClient.auth.resetPasswordForEmail(email, { redirectTo }),
+      supabaseClient.functions.invoke('enviar-email', { body: { tipo: 'recuperar_acesso', email } }).catch(() => null),
+    ]);
+    if (error && (error.status === 429 || /rate limit/i.test(error.message || ''))) {
+      this.setState({ resetEnviando: false, resetMensagem: 'Muitos pedidos agora. Tente de novo em alguns minutos.' });
+      return;
+    }
+    if (error) {
+      this.setState({ resetEnviando: false, resetMensagem: 'Não conseguimos enviar agora. Tente de novo em alguns minutos.' });
+      return;
+    }
     localStorage.setItem('resetSenhaCooldownAte', String(Date.now() + 60000));
-    this.setState({ resetEnviando: false, resetMensagem: 'Se esse e-mail tiver conta, enviamos um link pra redefinir a senha.' });
+    this.setState({ resetEnviando: false, resetMensagem: 'Se esse e-mail estiver cadastrado, enviamos um link pra redefinir a senha (ou pra criar, se você ainda não criou). Confira também o spam.' });
   }
 
   destinoDe(perfil) { return perfil === 'personal' ? 'dashboard.html' : 'app-aluno.html'; }

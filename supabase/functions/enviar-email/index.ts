@@ -89,10 +89,43 @@ Deno.serve(async (req) => {
     });
     const svc = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+    const body = await req.json().catch(() => ({}));
+
+    // { tipo: "recuperar_acesso", email } — público (tela de login, sem
+    // sessão). Aluno cadastrado pelo personal que nunca abriu o convite não
+    // tem conta no Auth, então o "esqueci a senha" do Supabase não manda
+    // nada (responde 200 em silêncio). Aqui, se o e-mail tem convite
+    // pendente, reenviamos o link do convite pra ele criar a senha. A
+    // resposta é sempre a mesma, pra não revelar quais e-mails existem.
+    if (body.tipo === "recuperar_acesso") {
+      const email = String(body.email || "").trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ ok: true });
+      const padrao = email.replace(/[\\%_]/g, (c) => "\\" + c);
+      const { data: convite } = await svc
+        .from("convites")
+        .select("id, email, token, trainer_id")
+        .ilike("email", padrao)
+        .eq("status", "pendente")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (convite?.email) {
+        const { data: trainer } = await svc.from("trainers").select("nome").eq("id", convite.trainer_id).maybeSingle();
+        const nomeTrainer = (trainer?.nome || "").trim() || "Seu personal";
+        const link = `${APP_URL}/c/${slugTrainer(nomeTrainer)}/${convite.token}`;
+        const html = layout(
+          "Ative seu acesso ao Elo Fitness",
+          `Olá!<br><br>Você pediu pra recuperar o acesso, mas ainda não criou sua senha no Elo Fitness.<br><br><strong>${esc(nomeTrainer)}</strong> já cadastrou você. Clique no botão abaixo para criar sua senha e entrar na sua conta.`,
+          { texto: "Criar minha senha", url: link },
+        );
+        const r = await enviarResend(convite.email, "Crie sua senha no Elo Fitness", html);
+        if (!r.ok) console.error("recuperar_acesso:", r.erro);
+      }
+      return json({ ok: true });
+    }
+
     const { data: { user } } = await caller.auth.getUser();
     if (!user) return json({ error: "Não autenticado." }, 401);
-
-    const body = await req.json().catch(() => ({}));
 
     if (body.tipo === "convite") {
       if (!body.convite_id) return json({ error: "convite_id obrigatório." }, 400);
