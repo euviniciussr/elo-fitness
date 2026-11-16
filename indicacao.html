@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="/assets/brand/favicon.ico">
+<meta name="theme-color" content="#0a0d13">
+<title>Elo Fitness</title>
+<!-- Link de afiliado: /r/<codigo> (rewrite no vercel.json). Registra o
+     clique, guarda o código neste navegador por 60 dias e manda a pessoa
+     pro cadastro de personal. O vínculo de verdade acontece no primeiro
+     acesso ao painel (js/auth-guard.js → vincular_afiliado, migration 0069).
+     Paths root-relative: com o rewrite a URL continua /r/<codigo>. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<style>html,body{margin:0;background:#0a0d13;color:#9aa4b2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}div{padding:40px 20px;text-align:center;font-size:14px;}</style>
+</head>
+<body>
+<div>Abrindo a Elo Fitness…</div>
+<script>
+(async function () {
+  const codigo = ((location.pathname.match(/\/r\/([a-z0-9-]+)/i) || [])[1] || new URLSearchParams(location.search).get('ref') || '').toLowerCase();
+  if (codigo) {
+    try {
+      const { data: valido } = await supabaseClient.rpc('registrar_clique_afiliado', { p_codigo: codigo });
+      if (valido) localStorage.setItem('elo_ref', JSON.stringify({ codigo: codigo, em: Date.now() }));
+    } catch (e) {}
+  }
+  location.replace('/login?perfil=personal&modo=cadastro');
+})();
+</script>
+</body>
+</html>

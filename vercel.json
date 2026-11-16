@@ -1,10 +1,28 @@
 {
   "cleanUrls": true,
   "redirects": [
-    { "source": "/adm", "destination": "/admin", "permanent": false }
+    {
+      "source": "/adm",
+      "destination": "/admin",
+      "permanent": false
+    }
   ],
   "rewrites": [
-    { "source": "/admin", "destination": "/adm" },
-    { "source": "/c/:slug/:codigo", "destination": "/convite?token=:codigo" }
+    {
+      "source": "/admin",
+      "destination": "/adm"
+    },
+    {
+      "source": "/c/:slug/:codigo",
+      "destination": "/convite?token=:codigo"
+    },
+    {
+      "source": "/p/:codigo",
+      "destination": "/produto"
+    },
+    {
+      "source": "/r/:codigo",
+      "destination": "/indicacao"
+    }
   ]
 }

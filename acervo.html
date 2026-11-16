@@ -818,7 +818,7 @@ class Component extends DCLogic {
       // (o isolamento real é a RLS — migration 0061; o filtro aqui só evita trazer
       // exercícios de treinos em que o usuário é aluno de outro personal).
       supabaseClient.from('exercicios').select('*').or('is_global.eq.true,trainer_id.eq.' + user.id).order('nome', { ascending: true }),
-      supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
+      supabaseClient.from('treinos').select('*').eq('trainer_id', user.id).is('produto_id', null).order('created_at', { ascending: false }),
       supabaseClient.from('clientes').select('id, nome').eq('trainer_id', user.id),
       supabaseClient.from('dietas').select('*').eq('trainer_id', user.id).order('created_at', { ascending: false }),
       // Base de alimentos agora é compartilhada entre treinadores (só o admin

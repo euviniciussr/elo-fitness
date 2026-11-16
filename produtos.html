@@ -10,206 +10,84 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Elo">
+<title>Produtos — Elo Fitness</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
-<script src="assets/produtos/ed8a1655-d536-47a7-8244-3603813426e0.js"></script>
+<style>
+:root{
+  --bg:#0a0d13; --bg-2:#0d1119; --bg-3:#10151f; --bg-hover:#131a26; --bg-ativo:#1e2633;
+  --borda:#171d29; --borda-forte:#1a2130;
+  --texto:#e5e9f0; --texto-2:#9aa4b2; --texto-3:#66707e; --texto-4:#4a5364;
+  --erro:#f87171; --ok:#4ade80;
+}
+html[data-tema="claro"]{
+  --bg:#ffffff; --bg-2:#fafafa; --bg-3:#ffffff; --bg-hover:#f4f4f5; --bg-ativo:#e4e4e7;
+  --borda:#ececee; --borda-forte:#e7e7ea;
+  --texto:#0a0a0a; --texto-2:#71717a; --texto-3:#8a8a93; --texto-4:#a1a1aa;
+  --erro:#dc2626; --ok:#16a34a;
+}
+html,body{margin:0;padding:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--texto);}
+*{box-sizing:border-box;}
+a{color:#f97316;text-decoration:none;}
+button{font-family:inherit;cursor:pointer;}
+.sidebar a:hover{background:#131a26;color:#e5e9f0!important;}
+.pg-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-bottom:1px solid var(--borda);margin-bottom:20px;flex-wrap:wrap;}
+.sub{font-size:13px;color:var(--texto-2);margin:0 0 16px;line-height:1.5;}
+.hint{font-size:11.5px;color:var(--texto-3);margin-top:6px;line-height:1.5;}
+.erro{color:var(--erro);font-size:12.5px;margin:10px 0;}
+.btn{display:inline-block;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+.btn-primary{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;}
+.btn-secondary{background:var(--bg-hover);border:1px solid var(--bg-ativo);color:var(--texto);}
+.mini{display:inline-block;background:var(--bg-hover);border:1px solid var(--bg-ativo);color:var(--texto-2);font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;cursor:pointer;}
+.mini.perigo{color:var(--erro);}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px;}
+.stat{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:14px;padding:16px 18px;}
+.stat-l{font-size:12px;color:var(--texto-2);font-weight:600;}
+.stat-v{font-size:24px;font-weight:800;margin:6px 0 4px;}
+.stat-s{font-size:12px;color:var(--texto-3);}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.chip{background:var(--bg-3);border:1px solid var(--borda-forte);color:var(--texto-2);font-size:12.5px;font-weight:700;padding:8px 13px;border-radius:9px;}
+.chip.sel{background:rgba(249,115,22,.12);border-color:rgba(249,115,22,.35);color:#f97316;}
+.vazio{background:var(--bg-3);border:1px dashed var(--bg-ativo);border-radius:16px;padding:48px 20px;text-align:center;}
+.prod-card{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:16px;padding:18px 20px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin-bottom:12px;}
+.prod-acoes{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+.badge{font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.04em;white-space:nowrap;}
+.b-verde{color:#4ade80;background:rgba(74,222,128,.12);}
+.b-amarelo{color:#facc15;background:rgba(250,204,21,.12);}
+.b-vermelho{color:#f87171;background:rgba(248,113,113,.12);}
+.b-cinza{color:var(--texto-2);background:var(--bg-hover);}
+.tag{font-size:11px;font-weight:600;color:var(--texto-2);background:var(--bg-hover);border:1px solid var(--bg-ativo);padding:3px 10px;border-radius:7px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;}
+.modal-box{background:var(--bg-3);border:1px solid var(--borda-forte);border-radius:18px;padding:24px 26px;width:100%;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;}
+.modal-title{font-size:17px;font-weight:800;}
+.x{width:30px;height:30px;background:var(--bg-hover);border:1px solid var(--bg-ativo);border-radius:8px;color:var(--texto-2);font-size:15px;line-height:1;}
+.campo{margin-bottom:14px;}
+label{font-size:12px;font-weight:700;color:var(--texto-2);display:block;margin-bottom:6px;}
+input,select,textarea{width:100%;background:var(--bg-2);border:1px solid var(--bg-ativo);border-radius:9px;padding:10px 13px;color:var(--texto);font-family:inherit;font-size:13.5px;outline:none;}
+textarea{resize:vertical;}
+.check{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--texto);background:var(--bg-2);border:1px solid var(--bg-ativo);border-radius:10px;padding:12px 14px;margin-bottom:14px;cursor:pointer;}
+.check input{width:auto;}
+.secao{border-top:1px solid var(--borda);margin-top:20px;padding-top:18px;}
+.secao-t{font-size:14px;font-weight:800;margin-bottom:10px;}
+.arq{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--bg-2);border:1px solid var(--borda-forte);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.arq-n{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.link-box{background:var(--bg-2);border:1px solid var(--bg-ativo);border-radius:10px;padding:10px 13px;font-family:ui-monospace,monospace;font-size:12.5px;color:var(--texto-2);overflow-wrap:anywhere;}
+.tabela{display:flex;flex-direction:column;gap:8px;}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;background:var(--bg-2);border:1px solid var(--borda-forte);border-radius:10px;padding:10px 12px;font-size:13px;}
+@media (max-width:640px){
+  main{padding:0 16px 90px!important;}
+  .tr{grid-template-columns:1fr;}
+  .prod-acoes{margin-left:0;}
+  .modal-box{padding:18px 16px;}
+}
+</style>
 </head>
 <body>
-
-<x-dc>
-<helmet>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<style>/* cyrillic-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("assets/produtos/35f18e17-4c2a-42e0-a855-561a488c2666.woff2") format('woff2');
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}
-/* vietnamese */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("assets/produtos/8209be7d-685a-4913-8e98-e32fece7028e.woff2") format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}
-/* latin-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("assets/produtos/dc4abb3d-fe8c-4b57-8904-1f28f366ce13.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-/* latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("assets/produtos/491147e6-439e-4721-96a7-69308b74a507.woff2") format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* cyrillic-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("assets/produtos/35f18e17-4c2a-42e0-a855-561a488c2666.woff2") format('woff2');
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}
-/* vietnamese */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("assets/produtos/8209be7d-685a-4913-8e98-e32fece7028e.woff2") format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}
-/* latin-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("assets/produtos/dc4abb3d-fe8c-4b57-8904-1f28f366ce13.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-/* latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("assets/produtos/491147e6-439e-4721-96a7-69308b74a507.woff2") format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* cyrillic-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("assets/produtos/35f18e17-4c2a-42e0-a855-561a488c2666.woff2") format('woff2');
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}
-/* vietnamese */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("assets/produtos/8209be7d-685a-4913-8e98-e32fece7028e.woff2") format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}
-/* latin-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("assets/produtos/dc4abb3d-fe8c-4b57-8904-1f28f366ce13.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-/* latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("assets/produtos/491147e6-439e-4721-96a7-69308b74a507.woff2") format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* cyrillic-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("assets/produtos/35f18e17-4c2a-42e0-a855-561a488c2666.woff2") format('woff2');
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}
-/* vietnamese */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("assets/produtos/8209be7d-685a-4913-8e98-e32fece7028e.woff2") format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}
-/* latin-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("assets/produtos/dc4abb3d-fe8c-4b57-8904-1f28f366ce13.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-/* latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("assets/produtos/491147e6-439e-4721-96a7-69308b74a507.woff2") format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-/* cyrillic-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url("assets/produtos/35f18e17-4c2a-42e0-a855-561a488c2666.woff2") format('woff2');
-  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
-}
-/* vietnamese */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url("assets/produtos/8209be7d-685a-4913-8e98-e32fece7028e.woff2") format('woff2');
-  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
-}
-/* latin-ext */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url("assets/produtos/dc4abb3d-fe8c-4b57-8904-1f28f366ce13.woff2") format('woff2');
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-/* latin */
-@font-face {
-  font-family: 'Plus Jakarta Sans';
-  font-style: normal;
-  font-weight: 800;
-  font-display: swap;
-  src: url("assets/produtos/491147e6-439e-4721-96a7-69308b74a507.woff2") format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-</style>
-<style>
-html,body{margin:0;padding:0;background:#0a0d13;font-family:'Plus Jakarta Sans',sans-serif;color:#e5e9f0;}
-a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
-*{box-sizing:border-box;}
-::-webkit-scrollbar{width:8px;height:8px;}::-webkit-scrollbar-thumb{background:#1e2633;border-radius:4px;}
-</style>
-</helmet>
-<div style="display:flex;min-height:100vh;background:#0a0d13;">
-  <aside style="width:250px;flex-shrink:0;background:#0d1119;border-right:1px solid #171d29;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;">
+<div style="display:flex;min-height:100vh;background:var(--bg);">
+<aside class="sidebar" style="width:250px;flex-shrink:0;background:#0d1119;border-right:1px solid #171d29;display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;">
     <div style="display:flex;align-items:center;gap:6px;padding:0 8px;">
       <img src="assets/brand/logo-inline.png" alt="Elo Fitness" style="width:36px;height:36px;border-radius:10px;object-fit:cover;display:block;">
       <div style="font-size:18px;font-weight:800;">Elo <span style="color:#f97316;">Fitness</span></div>
@@ -218,11 +96,11 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
     <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#4a5364;padding:0 14px;margin-bottom:6px;">PRINCIPAL</div>
     <nav style="display:flex;flex-direction:column;gap:3px;margin-bottom:18px;">
-      <a href="dashboard.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
+      <a href="dashboard.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
         Dashboard
       </a>
-      <a href="agenda.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
+      <a href="agenda.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4"></path><path d="M8 2v4"></path><path d="M3 10h18"></path></svg>
         Agenda
       </a>
@@ -230,22 +108,22 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
     <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#4a5364;padding:0 14px;margin-bottom:6px;">GESTÃO</div>
     <nav style="display:flex;flex-direction:column;gap:3px;margin-bottom:18px;">
-      <a href="alunos.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
+      <a href="alunos.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         Alunos
       </a>
-      <a href="acervo.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
+      <a href="acervo.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4a2 2 0 0 1-2-2Z"></path><path d="M22 6a2 2 0 0 0-2-2h-5a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h5a2 2 0 0 0 2-2Z"></path></svg>
         Acervo
       </a><div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;background:rgba(249,115,22,.12);color:#f97316;font-weight:700;font-size:14px;cursor:pointer;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg>
         Produtos
       </div>
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;cursor:pointer;" style-hover="background:#131a26;color:#e5e9f0;">
-        <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;cursor:pointer;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>
         Planos
       </div>
-      <a href="anamnese-editor.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
+      <a href="anamnese-editor.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
         Anamnese
       </a>
@@ -253,12 +131,12 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
 
     <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#4a5364;padding:0 14px;margin-bottom:6px;">NEGÓCIO</div>
     <nav style="display:flex;flex-direction:column;gap:3px;">
-      <a href="financeiro.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
-        <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>
+      <a href="financeiro.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>
         Financeiro
       </a>
-      <a href="relatorios.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
-        <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+      <a href="relatorios.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
         Relatórios
       </a>
     </nav>
@@ -266,319 +144,509 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
     <div style="margin-top:auto;">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;color:#4a5364;padding:0 14px;margin-bottom:6px;">CONTA</div>
       <nav style="display:flex;flex-direction:column;gap:3px;">
-        <a href="perfil.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
-          <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <a href="perfil.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           Perfil
         </a>
-        <a href="configuracoes.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#e5e9f0;">
-          <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v4"></path><path d="M12 19v4"></path><path d="m4.2 4.2 2.8 2.8"></path><path d="m17 17 2.8 2.8"></path><path d="M1 12h4"></path><path d="M19 12h4"></path><path d="m4.2 19.8 2.8-2.8"></path><path d="m17 7 2.8-2.8"></path></svg>
+        <a href="configuracoes.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 1v4"></path><path d="M12 19v4"></path><path d="m4.2 4.2 2.8 2.8"></path><path d="m17 17 2.8 2.8"></path><path d="M1 12h4"></path><path d="M19 12h4"></path><path d="m4.2 19.8 2.8-2.8"></path><path d="m17 7 2.8-2.8"></path></svg>
           Configurações
         </a>
-        <a href="login.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;" style-hover="background:#131a26;color:#f87171;">
-          <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg>
+        <a href="login.html" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:#9aa4b2;font-weight:600;font-size:14px;text-decoration:none;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="m16 17 5-5-5-5"></path><path d="M21 12H9"></path></svg>
           Sair
         </a>
       </nav>
       <div style="display:flex;align-items:center;gap:10px;padding:14px 8px 0;border-top:1px solid #171d29;margin-top:10px;">
-        <div style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;"><sc-if value="{{ meuFotoUrl }}" hint-placeholder-val="{{ false }}"><img src="{{ meuFotoUrl }}" style="width:100%;height:100%;object-fit:cover;"></sc-if><sc-if value="{{ semFoto }}" hint-placeholder-val="{{ true }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.5-7 8-7s8 3 8 7"></path></svg></sc-if></div>
-        <div><div style="font-size:13px;font-weight:700;">{{ meuNome }}</div><div style="font-size:11px;color:#66707e;">{{ meuEmail }}</div></div>
+        <div id="meu-avatar" style="width:34px;height:34px;border-radius:50%;background:rgba(249,115,22,.15);color:#f97316;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;overflow:hidden;"></div>
+        <div><div id="meu-nome" style="font-size:13px;font-weight:700;">Seu nome</div><div id="meu-email" style="font-size:11px;color:#66707e;"></div></div>
       </div>
     </div>
   </aside>
-
   <main style="flex:1;min-width:0;padding:0 32px 48px;">
-    <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0;border-bottom:1px solid #171d29;margin-bottom:20px;flex-wrap:wrap;">
+    <header class="pg-header">
       <div>
         <h1 style="margin:0;font-size:24px;font-weight:800;">Produtos</h1>
-        <div style="font-size:13px;color:#9aa4b2;margin-top:5px;">Planos, pacotes, serviços e produtos digitais que você vende — com o desempenho de cada um</div>
+        <div class="sub" style="margin:5px 0 0;">Treinos e materiais em PDF que você vende com link próprio. O comprador recebe o conteúdo automaticamente na Elo.</div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:10px;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:6px 6px 6px 14px;">
-          <span style="font-size:12px;color:#66707e;font-family:ui-monospace,monospace;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">elofitness.app/m/seuusuario</span>
-          <button sc-camel-on-click="{{ copyCatalogo }}" style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer;" style-hover="color:#e5e9f0;">{{ copyCatalogoLabel }}</button>
-        </div>
-        <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:13px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;" style-hover="color:#e5e9f0;border-color:#2a3444;">Cupons</button>
-        <button sc-camel-on-click="{{ openModal }}" style="display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:11px 20px;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(249,115,22,.25);" style-hover="filter:brightness(1.08);">
-          <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Novo produto
-        </button>
-      </div>
+      <button type="button" class="btn btn-primary" id="novo-produto">+ Novo produto</button>
     </header>
 
-    <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ true }}">
-      <div style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#10151f;border:1px solid #1a2130;border-radius:18px;padding:26px 28px;width:100%;max-width:460px;max-height:88vh;overflow-y:auto;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-            <div style="font-size:17px;font-weight:800;">Novo produto</div>
-            <button sc-camel-on-click="{{ closeModal }}" style="width:30px;height:30px;background:#131a26;border:1px solid #1e2633;border-radius:8px;color:#9aa4b2;cursor:pointer;font-size:15px;line-height:1;">×</button>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:14px;">
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Nome</label>
-              <input value="{{ formNome }}" sc-camel-on-change="{{ onNomeChange }}" placeholder="Ex: Planilha de treino para corredores" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Tipo</label>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <sc-for list="{{ tipoOptions }}" as="o" hint-placeholder-count="4">
-                  <button sc-camel-on-click="{{ o.onClick }}" style="background:{{ o.bg }};border:1px solid {{ o.border }};color:{{ o.color }};font-family:inherit;font-size:12px;font-weight:700;padding:8px 13px;border-radius:8px;cursor:pointer;">{{ o.label }}</button>
-                </sc-for>
-              </div>
-            </div>
-            <div style="display:flex;gap:12px;">
-              <div style="flex:1;min-width:0;">
-                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Preço</label>
-                <input value="{{ formPreco }}" sc-camel-on-change="{{ onPrecoChange }}" placeholder="R$ 0,00" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-              </div>
-              <div style="flex:1;min-width:0;">
-                <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">Duração</label>
-                <input value="{{ formDuracao }}" sc-camel-on-change="{{ onDuracaoChange }}" placeholder="Ex: 45 dias" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;">
-              </div>
-            </div>
-            <div>
-              <label style="font-size:12px;font-weight:700;color:#9aa4b2;display:block;margin-bottom:6px;">O que está incluído</label>
-              <textarea value="{{ formDescricao }}" sc-camel-on-change="{{ onDescricaoChange }}" placeholder="Descreva o que o cliente recebe…" rows="3" style="width:100%;background:#0d1119;border:1px solid #1e2633;border-radius:9px;padding:10px 13px;color:#e5e9f0;font-family:inherit;font-size:13.5px;outline:none;resize:vertical;"></textarea>
-            </div>
-            <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:#c3cad6;cursor:pointer;background:#0d1119;border:1px solid #1e2633;border-radius:10px;padding:12px 14px;">
-              <input type="checkbox" sc-camel-checked="{{ formAnamnese }}" sc-camel-on-change="{{ toggleAnamnese }}">
-              Exigir anamnese + fotos antes de liberar o acesso
-            </label>
-            <sc-if value="{{ formAnamnese }}" hint-placeholder-val="{{ true }}">
-              <div style="font-size:11.5px;color:#66707e;line-height:1.5;">Assim que o cliente comprar, ele recebe o link <span style="color:#f97316;font-family:ui-monospace,monospace;">elofitness.app/anamnese/seuusuario</span> pra preencher antes de ganhar acesso.</div>
-            </sc-if>
-          </div>
-          <button sc-camel-on-click="{{ criarProduto }}" style="width:100%;margin-top:20px;background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-family:inherit;font-size:14px;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;">Criar produto</button>
-        </div>
-      </div>
-    </sc-if>
-
-    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:16px;">
-      <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
-        <div style="font-size:12px;color:#9aa4b2;font-weight:600;">Receita dos produtos · 30d</div>
-        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">R$ 0,00</div>
-      </div>
-      <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
-        <div style="font-size:12px;color:#9aa4b2;font-weight:600;">Conversão média do link</div>
-        <div style="font-size:24px;font-weight:800;margin:6px 0 4px;">—</div>
-        <div style="font-size:12px;color:#66707e;">0 visitas · 0 vendas</div>
-      </div>
-      <div style="background:#10151f;border:1px solid #1a2130;border-radius:14px;padding:16px 18px;">
-        <div style="font-size:12px;color:#9aa4b2;font-weight:600;">Produtos ativos</div>
-        <div style="font-size:15px;font-weight:800;margin:6px 0 4px;">0 produtos</div>
-      </div>
-    </section>
-
-    <section style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:8px;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:9px 14px;flex:1 1 260px;min-width:0;">
-        <svg width="15" height="15" sc-camel-view-box="0 0 24 24" fill="none" stroke="#4a5364" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
-        <input placeholder="Buscar produto, plano ou pacote…" style="flex:1;background:transparent;border:none;outline:none;color:#e5e9f0;font-family:inherit;font-size:13px;min-width:0;">
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <sc-for list="{{ filtros }}" as="f" hint-placeholder-count="4">
-          <button sc-camel-on-click="{{ f.onClick }}" style="background:{{ f.bg }};border:1px solid {{ f.border }};color:{{ f.color }};font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:9px;cursor:pointer;">{{ f.label }}</button>
-        </sc-for>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;background:#10151f;border:1px solid #1a2130;border-radius:10px;padding:9px 14px;">
-        <span style="font-size:12px;color:#66707e;">Ordenar:</span>
-        <button sc-camel-on-click="{{ cycleSort }}" style="background:transparent;border:none;color:#f97316;font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;padding:0;">{{ sortLabel }} ▾</button>
-      </div>
-    </section>
-
-    <sc-if value="{{ semProdutos }}" hint-placeholder-val="{{ true }}">
-      <div style="background:#10151f;border:1px dashed #1e2633;border-radius:16px;padding:48px 20px;text-align:center;">
-        <div style="font-size:30px;margin-bottom:10px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:3px;flex-shrink:0;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg></div>
-        <div style="font-size:14.5px;font-weight:800;">Nenhum produto cadastrado</div>
-        <div style="font-size:12.5px;color:#66707e;margin-top:6px;">Clique em "Novo produto" pra criar seu primeiro plano, pacote, serviço ou produto digital.</div>
-      </div>
-    </sc-if>
-    <section style="display:flex;flex-direction:column;gap:12px;">
-      <sc-for list="{{ produtos }}" as="p" hint-placeholder-count="4">
-        <div style="background:#10151f;border:1px solid {{ p.cardBorder }};border-radius:16px;padding:18px 20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;" style-hover="border-color:#2a3444;">
-          <div style="flex:1 1 240px;min-width:0;">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-              <span style="font-size:16px;font-weight:800;">{{ p.nome }}</span>
-              <span style="font-size:10px;font-weight:800;color:{{ p.statusColor }};background:{{ p.statusBg }};padding:3px 9px;border-radius:999px;letter-spacing:.04em;">{{ p.status }}</span>
-              <sc-if value="{{ p.destaque }}" hint-placeholder-val="{{ true }}">
-                <span style="font-size:10px;font-weight:800;color:#f97316;background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.3);padding:3px 9px;border-radius:999px;">{{ p.destaque }}</span>
-              </sc-if>
-              <sc-if value="{{ p.isDigital }}" hint-placeholder-val="{{ true }}">
-                <span style="font-size:10px;font-weight:800;color:#a855f7;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);padding:3px 9px;border-radius:999px;display:flex;align-items:center;gap:4px;">⬇ Produto digital</span>
-              </sc-if>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;">
-              <sc-for list="{{ p.tags }}" as="t" hint-placeholder-count="3">
-                <span style="font-size:11px;font-weight:600;color:#9aa4b2;background:#131a26;border:1px solid #1e2633;padding:3px 10px;border-radius:7px;">{{ t }}</span>
-              </sc-for>
-            </div>
-            <div style="font-size:11.5px;color:#66707e;margin-top:9px;">{{ p.duracao }} · {{ p.pagamento }}</div>
-          </div>
-
-          <div style="flex:1 1 170px;min-width:0;">
-            <div style="display:flex;align-items:baseline;gap:8px;">
-              <span style="font-size:22px;font-weight:800;">{{ p.preco }}</span>
-              <span style="font-size:11px;color:#66707e;">{{ p.parcela }}</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
-              <div style="flex:1;height:6px;border-radius:999px;background:#131a26;overflow:hidden;"><div style="width:{{ p.shareWidth }};height:100%;background:{{ p.barColor }};border-radius:999px;"></div></div>
-              <span style="font-size:11px;font-weight:700;color:#9aa4b2;">{{ p.share }}</span>
-            </div>
-            <div style="font-size:11.5px;color:#66707e;margin-top:6px;">{{ p.receita }} em 30 dias</div>
-          </div>
-
-          <div style="flex:1 1 150px;min-width:0;display:flex;align-items:center;gap:14px;">
-            <div>{{ p.spark }}</div>
-            <div>
-              <div style="font-size:17px;font-weight:800;">{{ p.vendas }}</div>
-              <div style="font-size:11px;color:#66707e;">vendas · 30d</div>
-              <div style="font-size:11px;font-weight:700;color:{{ p.convColor }};margin-top:4px;">conv. {{ p.conv }}</div>
-            </div>
-          </div>
-
-          <div style="flex:0 0 auto;margin-left:auto;display:flex;align-items:center;gap:8px;">
-            <button sc-camel-on-click="{{ p.onCopy }}" style="display:flex;align-items:center;gap:7px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 14px;border-radius:9px;cursor:pointer;white-space:nowrap;" style-hover="color:#e5e9f0;border-color:#2a3444;">
-              <svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-              {{ p.copyLabel }}
-            </button>
-            <button style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:9px 14px;border-radius:9px;cursor:pointer;" style-hover="color:#e5e9f0;">Editar</button>
-            <button style="width:36px;height:36px;background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:15px;font-weight:800;border-radius:9px;cursor:pointer;" style-hover="color:#e5e9f0;">···</button>
-          </div>
-        </div>
-      </sc-for>
-    </section>
+    <section class="stats" id="stats"></section>
+    <div class="chips" id="filtros"></div>
+    <section id="lista"><div class="sub">Carregando…</div></section>
   </main>
 </div>
-</x-dc>
-<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440},&quot;mostrarSugestaoIA&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Conteúdo&quot;}}">
-class Component extends DCLogic {
-  state = {
-    filtro: 'todos', sort: 0, copiedId: null, copiedCatalogo: false,
-    modalOpen: false, formNome: '', formTipo: 'pacote', formPreco: '', formDuracao: '', formDescricao: '', formAnamnese: true,
-    criados: [], trainerNomeCompleto: '', trainerEmail: '', trainerFotoUrl: ''
-  };
 
-  componentDidMount() {
-    this.loadMeuPerfil();
-  }
+<div id="modal-root"></div>
 
-  async loadMeuPerfil() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
-    const { data: trainerRes } = await supabaseClient.from('trainers').select('nome, foto_url').eq('id', user.id).maybeSingle();
-    this.setState({ trainerNomeCompleto: (trainerRes && trainerRes.nome) ? trainerRes.nome.trim() : '', trainerEmail: user.email || '', trainerFotoUrl: (trainerRes && trainerRes.foto_url) ? supabaseClient.storage.from('fotos-perfil').getPublicUrl(trainerRes.foto_url).data.publicUrl : '' });
-  }
+<script>
+const LIMITE_PDF_MB = 50;
+const PERIODOS = [[7, '7 dias'], [30, '30 dias'], [90, '90 dias'], [180, '6 meses'], [365, '12 meses']];
+let userId = null;
+let produtos = [];
+let compras = [];
+let acessos = [];
+let arquivosPorProduto = {};
+let treinosPorProduto = {};
+let filtro = 'todos';
 
-  spark(points, color) {
-    const W = 62, H = 30;
-    const max = Math.max(...points, 1);
-    const x = (i) => i * W / (points.length - 1);
-    const y = (v) => H - 2 - (v / max) * (H - 6);
-    let d = 'M' + x(0) + ',' + y(points[0]);
-    for (let i = 1; i < points.length; i++) d += ' L' + x(i) + ',' + y(points[i]);
-    return React.createElement('svg', { viewBox: `0 0 ${W} ${H}`, style: { width: 62, height: 30, display: 'block' } },
-      React.createElement('path', { d: d + ` L${W},${H} L0,${H} Z`, fill: color, fillOpacity: .12 }),
-      React.createElement('path', { d, fill: 'none', stroke: color, strokeWidth: 1.8, strokeLinejoin: 'round', strokeLinecap: 'round' }));
-  }
-
-  renderVals() {
-    const sorts = ['Maior receita', 'Mais vendidos', 'Melhor conversão', 'Recentes'];
-    const sortIdx = this.state.sort;
-    const filtro = this.state.filtro;
-
-    let base = [...this.state.criados];
-
-    if (filtro !== 'todos') base = base.filter(p => filtro === 'sem-venda' ? p.vendas === 0 : p.tipo === filtro);
-    const sorters = [
-      (a, b) => b.receitaN - a.receitaN,
-      (a, b) => b.vendas - a.vendas,
-      (a, b) => parseFloat(b.conv) - parseFloat(a.conv),
-      () => 0
-    ];
-    base = base.slice().sort(sorters[sortIdx]);
-
-    const chip = (key, label) => ({
-      label,
-      onClick: () => this.setState({ filtro: key }),
-      bg: filtro === key ? 'rgba(249,115,22,.12)' : '#10151f',
-      border: filtro === key ? 'rgba(249,115,22,.35)' : '#1a2130',
-      color: filtro === key ? '#f97316' : '#9aa4b2'
-    });
-
-    const tipoChip = (key, label) => ({
-      label,
-      onClick: () => this.setState({ formTipo: key }),
-      bg: this.state.formTipo === key ? 'rgba(249,115,22,.12)' : '#0d1119',
-      border: this.state.formTipo === key ? 'rgba(249,115,22,.35)' : '#1e2633',
-      color: this.state.formTipo === key ? '#f97316' : '#9aa4b2'
-    });
-
-    return {
-      meuNome: this.state.trainerNomeCompleto || 'Seu nome',
-      meuEmail: this.state.trainerEmail || 'seu@email.com',
-      meuFotoUrl: this.state.trainerFotoUrl || '',
-      semFoto: !this.state.trainerFotoUrl,
-      filtros: [chip('todos', 'Todos'), chip('plano', 'Planos'), chip('pacote', 'Pacotes'), chip('servico', 'Serviços'), chip('digital', 'Digital'), chip('sem-venda', 'Sem venda')],
-      sortLabel: sorts[sortIdx],
-      cycleSort: () => this.setState(s => ({ sort: (s.sort + 1) % 4 })),
-
-      modalOpen: this.state.modalOpen,
-      formNome: this.state.formNome, formPreco: this.state.formPreco, formDuracao: this.state.formDuracao, formDescricao: this.state.formDescricao,
-      formAnamnese: this.state.formAnamnese,
-      tipoOptions: [tipoChip('plano', 'Plano'), tipoChip('pacote', 'Pacote'), tipoChip('servico', 'Serviço'), tipoChip('digital', 'Digital')],
-      openModal: () => this.setState({ modalOpen: true, formNome: '', formTipo: 'pacote', formPreco: '', formDuracao: '', formDescricao: '', formAnamnese: true }),
-      closeModal: () => this.setState({ modalOpen: false }),
-      onNomeChange: (e) => this.setState({ formNome: e.target.value }),
-      onPrecoChange: (e) => this.setState({ formPreco: e.target.value }),
-      onDuracaoChange: (e) => this.setState({ formDuracao: e.target.value }),
-      onDescricaoChange: (e) => this.setState({ formDescricao: e.target.value }),
-      toggleAnamnese: () => this.setState(s => ({ formAnamnese: !s.formAnamnese })),
-      criarProduto: () => {
-        if (!this.state.formNome.trim()) return;
-        const tipoLabel = { plano: 'Recorrente', pacote: 'Pacote', servico: 'Serviço', digital: 'Digital' }[this.state.formTipo];
-        const novo = {
-          id: 'novo-' + Date.now(), nome: this.state.formNome, status: 'RASCUNHO', destaque: '', tipo: this.state.formTipo,
-          tags: [tipoLabel, this.state.formAnamnese ? 'Exige anamnese' : 'Sem anamnese'],
-          duracao: this.state.formDuracao || '—', pagamento: 'À vista',
-          preco: this.state.formPreco || 'R$ 0,00', parcela: '', receita: 'R$ 0,00',
-          share: '0%', shareW: 0, vendas: 0, conv: '0%', convGood: false, spark: [0, 0, 0, 0, 0, 0, 0], receitaN: 0
-        };
-        this.setState(s => ({ criados: [...s.criados, novo], modalOpen: false }));
-      },
-      copyCatalogoLabel: this.state.copiedCatalogo ? 'Copiado!' : 'Copiar catálogo',
-      copyCatalogo: () => {
-        navigator.clipboard && navigator.clipboard.writeText('https://elofitness.app/m/seuusuario');
-        this.setState({ copiedCatalogo: true });
-        setTimeout(() => this.setState({ copiedCatalogo: false }), 1800);
-      },
-      semProdutos: base.length === 0,
-      produtos: base.map(p => ({
-        nome: p.nome,
-        status: p.status,
-        statusColor: p.status === 'ATIVO' ? '#4ade80' : '#facc15',
-        statusBg: p.status === 'ATIVO' ? 'rgba(74,222,128,.12)' : 'rgba(250,204,21,.12)',
-        destaque: p.destaque,
-        isDigital: p.tipo === 'digital',
-        cardBorder: p.destaque === 'Carro-chefe' ? 'rgba(249,115,22,.3)' : p.tipo === 'digital' ? 'rgba(168,85,247,.3)' : '#1a2130',
-        tags: p.tags, duracao: p.duracao, pagamento: p.pagamento,
-        preco: p.preco, parcela: p.parcela, receita: p.receita,
-        share: p.share, shareWidth: p.shareW + '%',
-        barColor: p.shareW >= 40 ? '#f97316' : p.shareW > 0 ? '#3b82f6' : '#3a4352',
-        vendas: String(p.vendas), conv: p.conv,
-        convColor: p.vendas === 0 ? '#f87171' : '#4ade80',
-        spark: this.spark(p.spark, p.vendas === 0 ? '#3a4352' : (p.shareW >= 40 ? '#f97316' : '#3b82f6')),
-        copyLabel: this.state.copiedId === p.id ? 'Copiado!' : 'Link',
-        onCopy: () => {
-          navigator.clipboard && navigator.clipboard.writeText('https://elofitness.app/p/' + p.id);
-          this.setState({ copiedId: p.id });
-          setTimeout(() => this.setState({ copiedId: null }), 1800);
-        }
-      }))
-    };
-  }
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
 }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'; }
+function parsePreco(txt) {
+  const limpo = String(txt || '').replace(/[^\d,.]/g, '');
+  if (!limpo) return NaN;
+  const norm = limpo.includes(',') ? limpo.replace(/\./g, '').replace(',', '.')
+    : /^\d{1,3}(\.\d{3})+$/.test(limpo) ? limpo.replace(/\./g, '') : limpo;
+  return Math.round(parseFloat(norm) * 100) / 100;
+}
+function linkPublico(p) { return location.origin + '/p/' + p.codigo; }
+function descreverAcesso(p) {
+  if (p.acesso_tipo === 'ilimitado') return 'Acesso ilimitado';
+  const pre = PERIODOS.find(x => x[0] === p.acesso_dias);
+  return 'Acesso por ' + (pre ? pre[1] : p.acesso_dias + ' dias');
+}
+function descreverEntrega(p) {
+  if (p.entrega_pdf && p.entrega_treino) return 'PDF + treino no app';
+  return p.entrega_pdf ? 'Material em PDF' : 'Treino no app';
+}
+function statusAcesso(a) {
+  if (!a) return { label: 'Sem acesso', cls: 'b-cinza' };
+  if (!a.vence_em) return { label: 'Ilimitado', cls: 'b-verde' };
+  return new Date(a.vence_em) > new Date()
+    ? { label: 'Ativo até ' + dataBR(a.vence_em), cls: 'b-verde' }
+    : { label: 'Expirado em ' + dataBR(a.vence_em) + ' · pode renovar', cls: 'b-vermelho' };
+}
+
+async function init() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+  userId = user.id;
+  document.getElementById('meu-email').textContent = user.email || '';
+  supabaseClient.from('trainers').select('nome, foto_url').eq('id', userId).maybeSingle().then(({ data }) => {
+    if (data && data.nome) document.getElementById('meu-nome').textContent = data.nome.trim();
+    const av = document.getElementById('meu-avatar');
+    if (data && data.foto_url) av.innerHTML = '<img src="' + esc(supabaseClient.storage.from('fotos-perfil').getPublicUrl(data.foto_url).data.publicUrl) + '" style="width:100%;height:100%;object-fit:cover;">';
+    else av.textContent = ((data && data.nome) || 'E').trim().charAt(0).toUpperCase();
+  });
+  document.getElementById('novo-produto').addEventListener('click', () => abrirEditor(null));
+  await carregar();
+  const abrir = new URLSearchParams(location.search).get('produto');
+  const p = abrir && produtos.find(x => x.id === abrir);
+  if (p) abrirEditor(p);
+}
+
+async function carregar() {
+  const [{ data: ps, error }, { data: cs }, { data: as }, { data: arqs }, { data: trs }] = await Promise.all([
+    supabaseClient.from('produtos').select('*').eq('trainer_id', userId).order('created_at', { ascending: false }),
+    supabaseClient.from('compras_produto').select('*').eq('trainer_id', userId).order('created_at', { ascending: false }),
+    supabaseClient.from('acessos_produto').select('*').eq('trainer_id', userId),
+    supabaseClient.from('produto_arquivos').select('*').eq('trainer_id', userId).order('ordem').order('created_at'),
+    supabaseClient.from('treinos').select('id, nome, ordem, produto_id, split_id, treino_exercicios(count)').eq('trainer_id', userId).not('produto_id', 'is', null).order('ordem')
+  ]);
+  if (error) {
+    document.getElementById('lista').innerHTML = '<div class="erro">Não foi possível carregar os produtos: ' + esc(error.message) + '</div>';
+    return;
+  }
+  produtos = ps || [];
+  compras = cs || [];
+  acessos = as || [];
+  arquivosPorProduto = {};
+  (arqs || []).forEach(a => (arquivosPorProduto[a.produto_id] = arquivosPorProduto[a.produto_id] || []).push(a));
+  treinosPorProduto = {};
+  (trs || []).forEach(t => (treinosPorProduto[t.produto_id] = treinosPorProduto[t.produto_id] || []).push(t));
+  render();
+}
+
+function qtdExercicios(produtoId) {
+  return (treinosPorProduto[produtoId] || []).reduce((s, t) => s + ((t.treino_exercicios && t.treino_exercicios[0] && t.treino_exercicios[0].count) || 0), 0);
+}
+function pendenciasPublicacao(p) {
+  const out = [];
+  if (p.entrega_pdf && !(arquivosPorProduto[p.id] || []).length) out.push('anexe pelo menos um PDF');
+  if (p.entrega_treino && !qtdExercicios(p.id)) out.push('monte o treino com pelo menos um exercício');
+  return out;
+}
+
+function render() {
+  const desde = Date.now() - 30 * 86400000;
+  const pagas30 = compras.filter(c => c.status === 'pago' && new Date(c.pago_em).getTime() >= desde);
+  const ativos = acessos.filter(a => !a.vence_em || new Date(a.vence_em) > new Date()).length;
+  document.getElementById('stats').innerHTML =
+    '<div class="stat"><div class="stat-l">Receita dos produtos · 30d</div><div class="stat-v">' + brl(pagas30.reduce((s, c) => s + Number(c.valor), 0)) + '</div><div class="stat-s">' + pagas30.length + ' pagamento(s) confirmado(s)</div></div>' +
+    '<div class="stat"><div class="stat-l">Compradores com acesso ativo</div><div class="stat-v">' + ativos + '</div><div class="stat-s">' + (acessos.length - ativos) + ' expirado(s)</div></div>' +
+    '<div class="stat"><div class="stat-l">Produtos publicados</div><div class="stat-v">' + produtos.filter(p => p.publicado).length + '</div><div class="stat-s">' + produtos.length + ' no total</div></div>';
+
+  const chips = [['todos', 'Todos'], ['publicados', 'Publicados'], ['rascunhos', 'Não publicados'], ['arquivados', 'Arquivados']];
+  const fw = document.getElementById('filtros');
+  fw.innerHTML = '';
+  chips.forEach(([k, l]) => {
+    const b = el('<button type="button" class="chip' + (filtro === k ? ' sel' : '') + '">' + l + '</button>');
+    b.addEventListener('click', () => { filtro = k; render(); });
+    fw.appendChild(b);
+  });
+
+  const base = produtos.filter(p => filtro === 'todos' ? !p.arquivado
+    : filtro === 'publicados' ? p.publicado
+    : filtro === 'rascunhos' ? !p.publicado && !p.arquivado
+    : p.arquivado);
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+  if (!base.length) {
+    lista.appendChild(el('<div class="vazio"><div style="font-size:14.5px;font-weight:800;">' + (produtos.length ? 'Nenhum produto neste filtro' : 'Nenhum produto cadastrado') + '</div><div class="sub" style="margin:6px 0 0;">Clique em "Novo produto" pra vender um treino ou material em PDF com link próprio.</div></div>'));
+    return;
+  }
+  base.forEach(p => lista.appendChild(cardProduto(p)));
+}
+
+function cardProduto(p) {
+  const vendas = compras.filter(c => c.produto_id === p.id && c.status === 'pago');
+  const ac = acessos.filter(a => a.produto_id === p.id);
+  const ativos = ac.filter(a => !a.vence_em || new Date(a.vence_em) > new Date()).length;
+  const status = p.arquivado ? ['ARQUIVADO', 'b-cinza'] : p.publicado ? ['PUBLICADO', 'b-verde'] : ['NÃO PUBLICADO', 'b-amarelo'];
+  const card = el(
+    '<div class="prod-card">' +
+      '<div style="flex:1 1 260px;min-width:0;">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-size:16px;font-weight:800;">' + esc(p.nome) + '</span><span class="badge ' + status[1] + '">' + status[0] + '</span></div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;"><span class="tag">' + descreverEntrega(p) + '</span><span class="tag">' + descreverAcesso(p) + '</span></div>' +
+      '</div>' +
+      '<div style="flex:0 1 160px;"><div style="font-size:22px;font-weight:800;">' + brl(p.preco) + '</div><div class="sub" style="margin:4px 0 0;">' + vendas.length + ' venda(s) · ' + ativos + ' acesso(s) ativo(s)</div></div>' +
+      '<div class="prod-acoes"></div>' +
+    '</div>'
+  );
+  const acoes = card.querySelector('.prod-acoes');
+  if (p.publicado) {
+    const copiar = el('<button type="button" class="btn btn-secondary">Copiar link</button>');
+    copiar.addEventListener('click', () => copiarTexto(linkPublico(p), copiar));
+    acoes.appendChild(copiar);
+  }
+  const editar = el('<button type="button" class="btn btn-secondary">Editar</button>');
+  editar.addEventListener('click', () => abrirEditor(p));
+  const comp = el('<button type="button" class="btn btn-secondary">Compradores (' + ac.length + ')</button>');
+  comp.addEventListener('click', () => abrirCompradores(p));
+  acoes.appendChild(editar);
+  acoes.appendChild(comp);
+  return card;
+}
+
+function copiarTexto(txt, btn) {
+  const fim = () => { const o = btn.textContent; btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = o, 1600); };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fim, () => prompt('Copie o link:', txt));
+  else prompt('Copie o link:', txt);
+}
+
+function abrirModal(titulo, largura) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = '';
+  const overlay = el('<div class="modal-overlay"></div>');
+  const box = el('<div class="modal-box" style="max-width:' + (largura || 560) + 'px;"><div class="modal-head"><div class="modal-title">' + esc(titulo) + '</div><button type="button" class="x">×</button></div><div class="modal-body"></div></div>');
+  const fechar = () => { root.innerHTML = ''; history.replaceState(null, '', 'produtos.html'); };
+  box.querySelector('.x').addEventListener('click', fechar);
+  overlay.addEventListener('mousedown', e => { if (e.target === overlay) fechar(); });
+  overlay.appendChild(box);
+  root.appendChild(overlay);
+  return { body: box.querySelector('.modal-body'), fechar, setTitulo: t => box.querySelector('.modal-title').textContent = t };
+}
+
+// ── Editor ─────────────────────────────────────────────────────────────
+function abrirEditor(produto) {
+  let p = produto ? { ...produto } : {
+    nome: '', descricao: '', preco: null, entrega_pdf: true, entrega_treino: false,
+    permite_download: true, acesso_tipo: 'ilimitado', acesso_dias: 30, publicado: false, arquivado: false
+  };
+  if (p.id) history.replaceState(null, '', 'produtos.html?produto=' + p.id);
+  const modal = abrirModal(p.id ? 'Editar produto' : 'Novo produto', 620);
+  const b = modal.body;
+
+  b.innerHTML =
+    '<div class="campo"><label>Nome do produto</label><input id="f-nome" maxlength="120" placeholder="Ex: Hipertrofia em casa — 8 semanas"></div>' +
+    '<div class="campo"><label>Descrição</label><textarea id="f-desc" rows="5" placeholder="O que está sendo vendido, o que vem incluído e pra quem é indicado."></textarea></div>' +
+    '<div class="campo"><label>Preço de venda</label><input id="f-preco" inputmode="decimal" placeholder="R$ 0,00"><div class="hint">Mínimo de R$ 5,00. Pagamento por Pix ou cartão.</div></div>' +
+    '<div class="campo"><label>Conteúdo entregue</label><div class="chips" id="f-entrega"></div></div>' +
+    '<label class="check" id="f-download-wrap"><input type="checkbox" id="f-download"> Permitir que o comprador baixe os PDFs</label>' +
+    '<div class="campo"><label>Tipo de acesso</label><div class="chips" id="f-acesso"></div><div id="f-periodo" style="margin-top:10px;"></div></div>' +
+    '<div class="erro" id="f-erro" style="display:none;"></div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;"><button type="button" class="btn btn-primary" id="f-salvar">' + (p.id ? 'Salvar alterações' : 'Criar produto') + '</button></div>' +
+    '<div id="f-conteudo"></div>';
+
+  const $ = id => b.querySelector('#' + id);
+  $('f-nome').value = p.nome || '';
+  $('f-desc').value = p.descricao || '';
+  $('f-preco').value = p.preco != null ? Number(p.preco).toFixed(2).replace('.', ',') : '';
+  $('f-download').checked = !!p.permite_download;
+
+  function renderEntrega() {
+    const w = $('f-entrega'); w.innerHTML = '';
+    [['pdf', 'Material em PDF', true, false], ['treino', 'Treino no app', false, true], ['ambos', 'PDF + treino', true, true]].forEach(([k, l, pdf, tr]) => {
+      const sel = p.entrega_pdf === pdf && p.entrega_treino === tr;
+      const c = el('<button type="button" class="chip' + (sel ? ' sel' : '') + '">' + l + '</button>');
+      c.addEventListener('click', () => { p.entrega_pdf = pdf; p.entrega_treino = tr; renderEntrega(); });
+      w.appendChild(c);
+    });
+    $('f-download-wrap').style.display = p.entrega_pdf ? '' : 'none';
+  }
+  function renderAcesso() {
+    const w = $('f-acesso'); w.innerHTML = '';
+    [['ilimitado', 'Ilimitado'], ['periodo', 'Por período']].forEach(([k, l]) => {
+      const c = el('<button type="button" class="chip' + (p.acesso_tipo === k ? ' sel' : '') + '">' + l + '</button>');
+      c.addEventListener('click', () => { p.acesso_tipo = k; if (k === 'periodo' && !p.acesso_dias) p.acesso_dias = 30; renderAcesso(); });
+      w.appendChild(c);
+    });
+    const per = $('f-periodo'); per.innerHTML = '';
+    if (p.acesso_tipo !== 'periodo') {
+      per.appendChild(el('<div class="hint" style="margin:0;">O comprador mantém o acesso sem data de vencimento.</div>'));
+      return;
+    }
+    const row = el('<div class="chips"></div>');
+    const ehPreset = PERIODOS.some(x => x[0] === p.acesso_dias);
+    PERIODOS.forEach(([d, l]) => {
+      const c = el('<button type="button" class="chip' + (p.acesso_dias === d ? ' sel' : '') + '">' + l + '</button>');
+      c.addEventListener('click', () => { p.acesso_dias = d; renderAcesso(); });
+      row.appendChild(c);
+    });
+    const outro = el('<label class="chip' + (!ehPreset ? ' sel' : '') + '" style="display:flex;align-items:center;gap:6px;margin:0;">Outro: <input type="number" min="1" max="3650" style="width:76px;padding:4px 8px;" value="' + (!ehPreset ? p.acesso_dias : '') + '"> dias</label>');
+    outro.querySelector('input').addEventListener('input', e => { const v = parseInt(e.target.value, 10); p.acesso_dias = v > 0 ? v : null; });
+    row.appendChild(outro);
+    per.appendChild(row);
+    per.appendChild(el('<div class="hint">O prazo conta a partir da confirmação do pagamento. Renovação soma o período ao vencimento atual.</div>'));
+  }
+  renderEntrega();
+  renderAcesso();
+
+  $('f-salvar').addEventListener('click', async () => {
+    const erro = $('f-erro');
+    erro.style.display = 'none';
+    const preco = parsePreco($('f-preco').value);
+    const payload = {
+      nome: $('f-nome').value.trim(),
+      descricao: $('f-desc').value.trim(),
+      preco,
+      entrega_pdf: p.entrega_pdf, entrega_treino: p.entrega_treino,
+      permite_download: $('f-download').checked,
+      acesso_tipo: p.acesso_tipo,
+      acesso_dias: p.acesso_tipo === 'periodo' ? p.acesso_dias : null
+    };
+    const falha = !payload.nome ? 'Dê um nome ao produto.'
+      : !(preco >= 5) ? 'Informe um preço de pelo menos R$ 5,00.'
+      : p.acesso_tipo === 'periodo' && !(payload.acesso_dias >= 1 && payload.acesso_dias <= 3650) ? 'Informe a duração do acesso (1 a 3650 dias).'
+      : null;
+    if (falha) { erro.textContent = falha; erro.style.display = ''; return; }
+    const btn = $('f-salvar');
+    btn.disabled = true; btn.textContent = 'Salvando…';
+    const res = p.id
+      ? await supabaseClient.from('produtos').update(payload).eq('id', p.id).select().single()
+      : await supabaseClient.from('produtos').insert({ ...payload, trainer_id: userId }).select().single();
+    btn.disabled = false; btn.textContent = 'Salvar alterações';
+    if (res.error) { erro.textContent = 'Não foi possível salvar: ' + res.error.message; erro.style.display = ''; return; }
+    const eraNovo = !p.id;
+    p = res.data;
+    await carregar();
+    if (eraNovo) { abrirEditor(p); return; }
+    modal.setTitulo('Editar produto');
+    renderConteudo();
+    btn.textContent = 'Salvo ✓';
+    setTimeout(() => btn.textContent = 'Salvar alterações', 1500);
+  });
+
+  function renderConteudo() {
+    const w = $('f-conteudo');
+    w.innerHTML = '';
+    if (!p.id) {
+      w.appendChild(el('<div class="hint" style="margin-top:14px;">Depois de criar, você anexa os PDFs, monta o treino e publica o link de venda.</div>'));
+      return;
+    }
+    const atual = produtos.find(x => x.id === p.id) || p;
+    if (atual.entrega_pdf) w.appendChild(secaoPdfs(atual, renderConteudo));
+    if (atual.entrega_treino) w.appendChild(secaoTreino(atual));
+    w.appendChild(secaoPublicacao(atual, renderConteudo));
+  }
+  renderConteudo();
+}
+
+function secaoPdfs(p, rerender) {
+  const sec = el('<div class="secao"><div class="secao-t">Arquivos PDF</div><div class="arqs"></div><label class="btn btn-secondary" style="display:inline-block;margin-top:10px;">+ Anexar PDF<input type="file" accept="application/pdf,.pdf" multiple style="display:none;"></label><div class="hint">Somente PDF, até ' + LIMITE_PDF_MB + ' MB por arquivo. Os arquivos ficam privados — só quem comprou consegue abrir.</div><div class="erro" style="display:none;"></div></div>');
+  const lista = sec.querySelector('.arqs');
+  const erro = sec.querySelector('.erro');
+  const arqs = arquivosPorProduto[p.id] || [];
+  if (!arqs.length) lista.appendChild(el('<div class="sub" style="margin:0;">Nenhum PDF anexado ainda.</div>'));
+  arqs.forEach(a => {
+    const row = el('<div class="arq"><div style="min-width:0;"><div class="arq-n">' + esc(a.nome) + '</div><div class="hint" style="margin:0;">' + (a.tamanho ? (a.tamanho / 1048576).toFixed(1) + ' MB' : '') + '</div></div><div style="display:flex;gap:6px;flex-shrink:0;"><button type="button" class="mini" data-a="ver">Ver</button><label class="mini" style="margin:0;">Substituir<input type="file" accept="application/pdf,.pdf" style="display:none;"></label><button type="button" class="mini perigo" data-a="rm">Remover</button></div></div>');
+    row.querySelector('[data-a="ver"]').addEventListener('click', async () => {
+      const { data, error } = await supabaseClient.storage.from('produtos-arquivos').createSignedUrl(a.storage_path, 600);
+      if (error) { erro.textContent = error.message; erro.style.display = ''; return; }
+      window.open(data.signedUrl, '_blank', 'noopener');
+    });
+    row.querySelector('input[type=file]').addEventListener('change', async e => {
+      const f = e.target.files[0];
+      if (!f) return;
+      const v = validarPdf(f);
+      if (v) { erro.textContent = v; erro.style.display = ''; return; }
+      row.style.opacity = .5;
+      const novoPath = userId + '/' + p.id + '/' + crypto.randomUUID() + '.pdf';
+      const up = await supabaseClient.storage.from('produtos-arquivos').upload(novoPath, f, { contentType: 'application/pdf' });
+      if (up.error) { erro.textContent = 'Falha no envio: ' + up.error.message; erro.style.display = ''; row.style.opacity = 1; return; }
+      const { error: e2 } = await supabaseClient.from('produto_arquivos').update({ nome: f.name, storage_path: novoPath, tamanho: f.size }).eq('id', a.id);
+      if (e2) { await supabaseClient.storage.from('produtos-arquivos').remove([novoPath]); erro.textContent = e2.message; erro.style.display = ''; row.style.opacity = 1; return; }
+      await supabaseClient.storage.from('produtos-arquivos').remove([a.storage_path]);
+      await carregar(); rerender();
+    });
+    row.querySelector('[data-a="rm"]').addEventListener('click', async () => {
+      if (!confirm('Remover "' + a.nome + '"? Quem já comprou deixa de ver este arquivo.')) return;
+      const { error } = await supabaseClient.from('produto_arquivos').delete().eq('id', a.id);
+      if (error) { erro.textContent = error.message; erro.style.display = ''; return; }
+      await supabaseClient.storage.from('produtos-arquivos').remove([a.storage_path]);
+      await carregar(); rerender();
+    });
+    lista.appendChild(row);
+  });
+  sec.querySelector('label.btn input').addEventListener('change', async e => {
+    const files = [...e.target.files];
+    erro.style.display = 'none';
+    const invalido = files.map(validarPdf).find(Boolean);
+    if (invalido) { erro.textContent = invalido; erro.style.display = ''; return; }
+    const lbl = sec.querySelector('label.btn');
+    lbl.firstChild.textContent = 'Enviando…';
+    let ordem = arqs.length;
+    for (const f of files) {
+      const path = userId + '/' + p.id + '/' + crypto.randomUUID() + '.pdf';
+      const up = await supabaseClient.storage.from('produtos-arquivos').upload(path, f, { contentType: 'application/pdf' });
+      if (up.error) { erro.textContent = 'Falha no envio de "' + f.name + '": ' + up.error.message; erro.style.display = ''; break; }
+      const { error } = await supabaseClient.from('produto_arquivos').insert({ produto_id: p.id, trainer_id: userId, nome: f.name, storage_path: path, tamanho: f.size, ordem: ordem++ });
+      if (error) { await supabaseClient.storage.from('produtos-arquivos').remove([path]); erro.textContent = error.message; erro.style.display = ''; break; }
+    }
+    await carregar(); rerender();
+  });
+  return sec;
+}
+
+function validarPdf(f) {
+  const ehPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  if (!ehPdf) return '"' + f.name + '" não é um PDF.';
+  if (f.size > LIMITE_PDF_MB * 1048576) return '"' + f.name + '" passa de ' + LIMITE_PDF_MB + ' MB.';
+  return null;
+}
+
+function secaoTreino(p) {
+  const trs = treinosPorProduto[p.id] || [];
+  const n = qtdExercicios(p.id);
+  const sec = el('<div class="secao"><div class="secao-t">Treino no app</div><div class="sub" style="margin:0 0 10px;"></div><div style="display:flex;gap:8px;flex-wrap:wrap;"></div></div>');
+  sec.querySelector('.sub').textContent = trs.length
+    ? trs.map(t => t.nome).join(' · ') + ' — ' + n + ' exercício(s) no total'
+    : 'Nenhum treino montado ainda. Use o mesmo editor de treinos dos seus alunos (divisões, séries, técnicas, intervalos).';
+  const row = sec.querySelector('div[style*="display:flex"]');
+  const montar = el('<a class="btn btn-secondary">' + (trs.length ? 'Editar treino' : 'Montar treino') + '</a>');
+  montar.href = 'montar-treino.html?produto_id=' + p.id;
+  row.appendChild(montar);
+  if (trs.length) {
+    const prev = el('<a class="btn btn-secondary" target="_blank" rel="noopener">Pré-visualizar ↗</a>');
+    prev.href = 'meus-produtos.html?produto=' + p.id;
+    row.appendChild(prev);
+  }
+  return sec;
+}
+
+function secaoPublicacao(p, rerender) {
+  const sec = el('<div class="secao"><div class="secao-t">Venda</div><div class="pub"></div><div class="erro" style="display:none;"></div></div>');
+  const w = sec.querySelector('.pub');
+  const erro = sec.querySelector('.erro');
+  const temCompras = compras.some(c => c.produto_id === p.id);
+  async function atualizar(campos) {
+    const { error } = await supabaseClient.from('produtos').update(campos).eq('id', p.id);
+    if (error) { erro.textContent = error.message; erro.style.display = ''; return; }
+    await carregar(); rerender();
+  }
+  if (p.arquivado) {
+    w.appendChild(el('<div class="sub" style="margin:0 0 10px;">Produto arquivado: fora de venda. Compras e acessos de quem já comprou continuam valendo.</div>'));
+    const des = el('<button type="button" class="btn btn-secondary">Desarquivar</button>');
+    des.addEventListener('click', () => atualizar({ arquivado: false }));
+    w.appendChild(des);
+    return sec;
+  }
+  if (p.publicado) {
+    const link = linkPublico(p);
+    w.appendChild(el('<div class="link-box"><span>' + esc(link) + '</span></div>'));
+    const row = el('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>');
+    const copiar = el('<button type="button" class="btn btn-primary">Copiar link de venda</button>');
+    copiar.addEventListener('click', () => copiarTexto(link, copiar));
+    const abrir = el('<a class="btn btn-secondary" target="_blank" rel="noopener">Abrir página ↗</a>');
+    abrir.href = link;
+    const despub = el('<button type="button" class="btn btn-secondary">Despublicar</button>');
+    despub.addEventListener('click', () => atualizar({ publicado: false }));
+    row.appendChild(copiar); row.appendChild(abrir); row.appendChild(despub);
+    w.appendChild(row);
+  } else {
+    const pend = pendenciasPublicacao(p);
+    w.appendChild(el('<div class="sub" style="margin:0 0 10px;">' + (pend.length ? 'Para publicar: ' + pend.join(' e ') + '.' : 'Pronto pra vender. Ao publicar, você recebe o link público de venda.') + '</div>'));
+    const pub = el('<button type="button" class="btn btn-primary">Publicar e gerar link</button>');
+    pub.disabled = pend.length > 0;
+    pub.addEventListener('click', () => atualizar({ publicado: true }));
+    w.appendChild(pub);
+  }
+  const row2 = el('<div style="margin-top:14px;"></div>');
+  if (temCompras) {
+    const arq = el('<button type="button" class="mini">Arquivar produto</button>');
+    arq.addEventListener('click', () => { if (confirm('Arquivar? Ele sai de venda, mas quem comprou mantém o acesso.')) atualizar({ arquivado: true }); });
+    row2.appendChild(arq);
+  } else {
+    const exc = el('<button type="button" class="mini perigo">Excluir produto</button>');
+    exc.addEventListener('click', async () => {
+      if (!confirm('Excluir "' + p.nome + '" com seus PDFs e treino? Isso não pode ser desfeito.')) return;
+      const paths = (arquivosPorProduto[p.id] || []).map(a => a.storage_path);
+      const { error } = await supabaseClient.from('produtos').delete().eq('id', p.id);
+      if (error) { erro.textContent = error.message; erro.style.display = ''; return; }
+      if (paths.length) await supabaseClient.storage.from('produtos-arquivos').remove(paths);
+      document.getElementById('modal-root').innerHTML = '';
+      history.replaceState(null, '', 'produtos.html');
+      carregar();
+    });
+    row2.appendChild(exc);
+  }
+  w.appendChild(row2);
+  return sec;
+}
+
+// ── Compradores ────────────────────────────────────────────────────────
+function abrirCompradores(p) {
+  const modal = abrirModal('Compradores — ' + p.nome, 760);
+  const cs = compras.filter(c => c.produto_id === p.id);
+  const porComprador = {};
+  cs.forEach(c => (porComprador[c.comprador_id] = porComprador[c.comprador_id] || []).push(c));
+  const ids = Object.keys(porComprador).filter(id => porComprador[id].some(c => c.status === 'pago') || acessos.some(a => a.produto_id === p.id && a.comprador_id === id));
+  if (!cs.length) {
+    modal.body.appendChild(el('<div class="sub" style="margin:0;">Ninguém comprou este produto ainda.</div>'));
+    return;
+  }
+  if (ids.length) {
+    modal.body.appendChild(el('<div class="secao-t">Acessos</div>'));
+    const t = el('<div class="tabela"></div>');
+    ids.forEach(id => {
+      const ult = porComprador[id][0];
+      const a = acessos.find(x => x.produto_id === p.id && x.comprador_id === id);
+      const st = statusAcesso(a);
+      t.appendChild(el('<div class="tr"><div style="min-width:0;"><div style="font-weight:700;">' + esc(ult.comprador_nome || '—') + '</div><div class="hint" style="margin:0;">' + esc(ult.comprador_email || '') + '</div></div><div class="hint" style="margin:0;">Desde ' + dataBR(a && a.inicio) + '</div><span class="badge ' + st.cls + '">' + esc(st.label) + '</span></div>'));
+    });
+    modal.body.appendChild(t);
+  }
+  modal.body.appendChild(el('<div class="secao-t" style="margin-top:18px;">Histórico de pagamentos</div>'));
+  const h = el('<div class="tabela"></div>');
+  const ST = { pago: ['Pago', 'b-verde'], pendente: ['Aguardando pagamento', 'b-amarelo'], divergente: ['Valor divergente', 'b-vermelho'], cancelado: ['Cancelado', 'b-cinza'] };
+  cs.forEach(c => {
+    const st = ST[c.status] || [c.status, 'b-cinza'];
+    h.appendChild(el('<div class="tr"><div style="min-width:0;"><div style="font-weight:700;">' + esc(c.comprador_nome || '—') + '</div><div class="hint" style="margin:0;">' + (c.tipo === 'renovacao' ? 'Renovação' : 'Compra') + ' · ' + dataBR(c.pago_em || c.created_at) + '</div></div><div style="font-weight:700;">' + brl(c.valor) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div>'));
+  });
+  modal.body.appendChild(h);
+}
+
+init();
 </script>
-
-
-
 <style>
 .pf-bottom-nav{display:none}
 .pf-more-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100001}

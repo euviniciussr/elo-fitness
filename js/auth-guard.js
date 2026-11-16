@@ -52,7 +52,22 @@ async function bloquearAcessoForaDoPerfil(userId) {
     window.location.replace('app-aluno.html');
     return true;
   }
+  if (trainer) vincularAfiliadoPendente();
   return false;
+}
+
+// Link de afiliado (/r/<codigo>, indicacao.html) guarda o código neste
+// navegador. No primeiro acesso ao painel de personal, grava o vínculo — o
+// servidor decide se vale (conta nova, uma vez só, sem autoindicação,
+// migration 0069). Resposta definitiva limpa o código; falha de rede mantém
+// pra tentar de novo na próxima página.
+async function vincularAfiliadoPendente() {
+  let ref = null;
+  try { ref = JSON.parse(localStorage.getItem('elo_ref') || 'null'); } catch (e) {}
+  if (!ref || !ref.codigo) return;
+  if (!ref.em || Date.now() - ref.em > 60 * 86400000) { localStorage.removeItem('elo_ref'); return; }
+  const { error } = await supabaseClient.rpc('vincular_afiliado', { p_codigo: ref.codigo });
+  if (!error) localStorage.removeItem('elo_ref');
 }
 
 document.addEventListener('click', function (e) {

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="/assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="/assets/brand/favicon-180.png">
+<meta name="theme-color" content="#0a0d13">
+<title>Elo Fitness</title>
+<!-- Página pública de venda (/p/<codigo>, rewrite no vercel.json). Sem
+     auth-guard: visitante anônimo vê o produto; login/cadastro só no
+     momento da compra. Paths sempre root-relative — com o rewrite, a URL
+     do browser continua sendo /p/<codigo>. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/produto-auth.js?v=1"></script>
+<link rel="stylesheet" href="/assets/loja.css?v=1">
+</head>
+<body>
+<div class="topbar">
+  <div class="logo"><img class="logo-badge" src="/assets/brand/logo-inline.png" alt="Elo Fitness"><div class="logo-text">Elo <span>Fitness</span></div></div>
+  <a class="voltar" id="topo-link" href="/meus-produtos">Meus produtos</a>
+</div>
+<div class="wrap" id="app"><div class="sub">Carregando…</div></div>
+
+<script>
+const app = document.getElementById('app');
+const codigo = (location.pathname.match(/\/p\/([a-z0-9]+)/i) || [])[1] || new URLSearchParams(location.search).get('c') || '';
+let produto = null;
+let user = null;
+let meuAcesso = null;
+
+function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
+function duracao(d) { return ({ 7: '7 dias', 30: '30 dias', 90: '90 dias', 180: '6 meses', 365: '12 meses' })[d] || d + ' dias'; }
+
+async function init() {
+  if (!codigo) return indisponivel();
+  const { data, error } = await supabaseClient.rpc('produto_publico', { p_codigo: codigo });
+  if (error || !data) return indisponivel();
+  produto = data;
+  document.title = produto.nome + ' — Elo Fitness';
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  user = session ? session.user : null;
+  if (user) await carregarMeuAcesso();
+  render();
+}
+
+async function carregarMeuAcesso() {
+  const { data } = await supabaseClient.from('acessos_produto').select('vence_em').eq('produto_id', produto.id).eq('comprador_id', user.id).maybeSingle();
+  meuAcesso = data || null;
+}
+
+function indisponivel() {
+  app.innerHTML = '<div class="card" style="text-align:center;"><h1>Produto indisponível</h1><p class="sub" style="margin:0;">Este link não está mais à venda ou não existe. Fale com o profissional que te enviou.</p></div>';
+}
+
+function render() {
+  const p = produto;
+  const entrega = p.entrega_pdf && p.entrega_treino ? 'Material em PDF + treino no app Elo' : p.entrega_pdf ? 'Material em PDF' : 'Treino no app Elo';
+  const itens = [];
+  if (p.entrega_pdf) itens.push(p.arquivos + (p.arquivos === 1 ? ' arquivo PDF' : ' arquivos PDF') + (p.permite_download ? ' — visualize e baixe' : ' — visualize no app'));
+  if (p.entrega_treino) {
+    const n = p.divisoes.reduce((s, d) => s + d.exercicios, 0);
+    itens.push('Treino com ' + p.divisoes.length + (p.divisoes.length === 1 ? ' divisão' : ' divisões') + ' (' + p.divisoes.map(d => esc(d.nome.replace(/^Treino\s*/i, ''))).join(', ') + ') e ' + n + ' exercícios, com séries, repetições, intervalos e técnicas');
+  }
+  const acesso = p.acesso_tipo === 'ilimitado' ? 'Acesso ilimitado — sem data de vencimento' : 'Acesso por ' + duracao(p.acesso_dias) + ' a partir da confirmação do pagamento';
+
+  app.innerHTML = '';
+  const card = el(
+    '<div class="card">' +
+      '<div class="por">por ' + esc(p.profissional) + '</div>' +
+      '<h1 style="font-size:26px;">' + esc(p.nome) + '</h1>' +
+      '<div class="preco">' + brl(p.preco) + '</div>' +
+      '<div class="tags"><span class="tag">' + entrega + '</span><span class="tag">' + (p.acesso_tipo === 'ilimitado' ? 'Acesso ilimitado' : 'Acesso por ' + duracao(p.acesso_dias)) + '</span></div>' +
+      (p.descricao ? '<div class="desc"></div>' : '') +
+      '<div class="bloco"><div class="bloco-t">O que você recebe</div><ul class="lista">' + itens.map(i => '<li>' + i + '</li>').join('') + '</ul></div>' +
+      '<div class="bloco"><div class="bloco-t">Como funciona</div><ul class="lista"><li>Pagamento por Pix ou cartão, com segurança pelo Asaas.</li><li>Assim que o pagamento é confirmado, o conteúdo aparece em <b>Meus produtos</b> na sua conta Elo.</li><li>' + acesso + '.</li></ul></div>' +
+      '<div id="compra"></div>' +
+    '</div>'
+  );
+  if (p.descricao) card.querySelector('.desc').textContent = p.descricao;
+  app.appendChild(card);
+  renderCompra();
+}
+
+function renderCompra(etapa) {
+  const w = document.getElementById('compra');
+  w.innerHTML = '';
+  const ativo = meuAcesso && (!meuAcesso.vence_em || new Date(meuAcesso.vence_em) > new Date());
+
+  if (meuAcesso && !meuAcesso.vence_em) {
+    w.appendChild(el('<div class="aviso ok">Você já tem este produto com acesso ilimitado.</div>'));
+    w.appendChild(el('<a class="cta" href="/meus-produtos?produto=' + produto.id + '">Abrir meu conteúdo</a>'));
+    return;
+  }
+  if (!etapa) {
+    if (ativo) w.appendChild(el('<div class="aviso ok">Você tem acesso até ' + dataBR(meuAcesso.vence_em) + '. Renovar agora soma ' + duracao(produto.acesso_dias) + ' ao vencimento atual.</div>'));
+    else if (meuAcesso) w.appendChild(el('<div class="aviso">Seu acesso expirou em ' + dataBR(meuAcesso.vence_em) + '. Renove para voltar a acessar.</div>'));
+    const b = el('<button type="button" class="cta">' + (meuAcesso ? 'Renovar acesso — ' : 'Comprar agora — ') + brl(produto.preco) + '</button>');
+    b.addEventListener('click', () => renderCompra(user ? 'pagamento' : 'conta'));
+    w.appendChild(b);
+    if (ativo) w.appendChild(el('<a class="cta sec" href="/meus-produtos?produto=' + produto.id + '">Abrir meu conteúdo</a>'));
+    return;
+  }
+
+  if (etapa === 'conta') {
+    w.appendChild(el('<div class="bloco-t" style="margin-top:22px;">Entre ou crie sua conta Elo</div>'));
+    w.appendChild(el('<p class="sub">É nela que o conteúdo comprado vai ficar disponível.</p>'));
+    const box = el('<div class="pa"></div>');
+    w.appendChild(box);
+    ProdutoAuth.montar(box, async u => { user = u; await carregarMeuAcesso(); renderCompra(meuAcesso && !meuAcesso.vence_em ? null : 'pagamento'); });
+    return;
+  }
+
+  // etapa pagamento
+  w.appendChild(el('<div class="bloco-t" style="margin-top:22px;">Dados para o pagamento</div>'));
+  w.appendChild(el('<p class="sub">Conectado como <b>' + esc(user.email) + '</b>. <a href="#" id="trocar">Trocar conta</a></p>'));
+  const box = el('<div class="pa"><label>CPF ou CNPJ do pagador</label><input id="cpf" inputmode="numeric" placeholder="000.000.000-00"><div class="sub" style="margin:6px 0 0;font-size:11.5px;">Exigido pelo Asaas para emitir a cobrança.</div><div class="pa-erro" id="erro" style="display:none;"></div><button type="button" class="pa-btn" id="pagar">Ir para o pagamento</button></div>');
+  w.appendChild(box);
+  w.querySelector('#trocar').addEventListener('click', async e => { e.preventDefault(); await supabaseClient.auth.signOut(); user = null; meuAcesso = null; renderCompra('conta'); });
+  box.querySelector('#pagar').addEventListener('click', async () => {
+    const erro = box.querySelector('#erro');
+    const cpf = box.querySelector('#cpf').value.replace(/\D/g, '');
+    erro.style.display = 'none';
+    if (cpf.length !== 11 && cpf.length !== 14) { erro.textContent = 'Digite um CPF (11 dígitos) ou CNPJ (14 dígitos).'; erro.style.display = ''; return; }
+    const btn = box.querySelector('#pagar');
+    btn.disabled = true; btn.textContent = 'Gerando pagamento…';
+    const meta = user.user_metadata || {};
+    const { data, error } = await supabaseClient.functions.invoke('produto-checkout', {
+      body: { codigo: produto.codigo, cpf_cnpj: cpf, nome: meta.nome || '', base_url: location.origin }
+    });
+    if (data && data.ja_possui) { await carregarMeuAcesso(); renderCompra(); return; }
+    if (error || !data || !data.link) {
+      let m = 'Não foi possível gerar o pagamento. Tente de novo.';
+      try { const j = error && error.context && await error.context.json(); if (j && j.error) m = j.error; } catch (e) {}
+      erro.textContent = m; erro.style.display = '';
+      btn.disabled = false; btn.textContent = 'Ir para o pagamento';
+      return;
+    }
+    window.location.href = data.link;
+  });
+}
+
+init();
+</script>
+</body>
+</html>

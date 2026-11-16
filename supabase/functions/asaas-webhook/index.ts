@@ -24,6 +24,37 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+
+    // Produtos digitais (migration 0068). CHECKOUT_PAID chega com o id do
+    // checkout que gravamos em compras_produto; PAYMENT_* chega com o
+    // externalReference "elofitness-produto:<compra_id>" e é revalidado
+    // buscando o pagamento direto na API do Asaas. Os dois caminhos caem
+    // na mesma RPC idempotente — evento repetido não libera duas vezes.
+    if (body.event === "CHECKOUT_PAID" && body.checkout && body.checkout.id) {
+      const svc = serviceClient();
+      const { data: compra } = await svc.from("compras_produto")
+        .select("id").eq("asaas_checkout_id", body.checkout.id).maybeSingle();
+      if (!compra) return jsonResponse({ ignored: true });
+      const { data, error } = await svc.rpc("confirmar_compra_produto", { p_compra: compra.id });
+      if (error) throw error;
+      return jsonResponse({ ok: true, produto: data });
+    }
+
+    if (["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"].includes(body.event) && body.payment && body.payment.id
+        && String(body.payment.externalReference || "").startsWith("elofitness-produto:")) {
+      const payment = await asaasFetch(`/payments/${body.payment.id}`);
+      const ref = String(payment.externalReference || "");
+      if (!ref.startsWith("elofitness-produto:") || !["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"].includes(payment.status)) {
+        return jsonResponse({ ignored: true });
+      }
+      const compraId = ref.split(":")[1];
+      const { data, error } = await serviceClient().rpc("confirmar_compra_produto", {
+        p_compra: compraId, p_payment_id: payment.id, p_valor: payment.value,
+      });
+      if (error) throw error;
+      return jsonResponse({ ok: true, produto: data });
+    }
+
     const eventosConfirmacao = ["PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"];
     const eventosAtraso = ["PAYMENT_OVERDUE"];
     if (!body.payment || !body.payment.id || (!eventosConfirmacao.includes(body.event) && !eventosAtraso.includes(body.event))) {
@@ -49,6 +80,11 @@ Deno.serve(async (req) => {
         status: payment.status,
         data_pagamento: new Date().toISOString().slice(0, 10),
       }, { onConflict: "asaas_payment_id" });
+
+      // Comissão do afiliado que indicou o profissional (migration 0069).
+      // Idempotente por pagamento; falha aqui nunca derruba a ativação.
+      const { error: comissaoErr } = await svc.rpc("registrar_comissao_afiliado", { p_asaas_payment_id: payment.id });
+      if (comissaoErr) console.error("[asaas-webhook] comissão de afiliado falhou:", comissaoErr);
 
       await svc.from("trainers").update({
         status_assinatura: "ativo",

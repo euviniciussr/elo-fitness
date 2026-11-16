@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="/assets/brand/favicon.ico">
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="/assets/brand/favicon-180.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0d13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Elo">
+<title>Meus produtos — Elo Fitness</title>
+<!-- Área do comprador de produtos digitais (migration 0068). Qualquer conta
+     logada entra — comprador não precisa ser aluno de acompanhamento. Todo
+     conteúdo vem do backend já checando acesso vigente: conteudo_produto()
+     pro treino e a policy do bucket produtos-arquivos pros PDFs. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase-client.js"></script>
+<script src="/js/produto-auth.js?v=1"></script>
+<script src="/js/series-validas.js?v=1"></script>
+<link rel="stylesheet" href="/assets/loja.css?v=1">
+</head>
+<body>
+<div class="topbar">
+  <div class="logo"><img class="logo-badge" src="/assets/brand/logo-inline.png" alt="Elo Fitness"><div class="logo-text">Elo <span>Fitness</span></div></div>
+  <a class="voltar" id="topo-link" href="/app">Ir para o app</a>
+</div>
+<div class="wrap" id="app"><div class="sub">Carregando…</div></div>
+
+<script>
+const app = document.getElementById('app');
+const params = new URLSearchParams(location.search);
+let user = null;
+let lista = [];
+
+function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
+function hojeStr() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+async function init() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) return telaLogin();
+  user = session.user;
+  const compraId = params.get('compra');
+  if (compraId) return aguardarCompra(compraId);
+  const produtoId = params.get('produto');
+  if (produtoId) return abrirProduto(produtoId);
+  carregarLista();
+}
+
+function telaLogin() {
+  app.innerHTML = '';
+  const card = el('<div class="card"><h1>Meus produtos</h1><p class="sub">Entre com a conta usada na compra para acessar seus treinos e materiais.</p><div class="pa"></div></div>');
+  app.appendChild(card);
+  ProdutoAuth.montar(card.querySelector('.pa'), u => { user = u; init(); }, { modo: 'login' });
+}
+
+// Volta do checkout: só libera quando o webhook confirmar (status 'pago'
+// gravado pelo servidor) — chegar aqui não libera nada sozinho.
+async function aguardarCompra(compraId) {
+  app.innerHTML = '';
+  const card = el('<div class="card" style="text-align:center;"><div class="spin"></div><h1>Confirmando seu pagamento…</h1><p class="sub" id="msg" style="margin:0;">Assim que o Asaas confirmar, o conteúdo é liberado aqui automaticamente.</p></div>');
+  app.appendChild(card);
+  let tentativas = 0;
+  const tick = async () => {
+    const { data } = await supabaseClient.from('compras_produto').select('status, produto_id').eq('id', compraId).maybeSingle();
+    if (data && data.status === 'pago') {
+      history.replaceState(null, '', '/meus-produtos?produto=' + data.produto_id);
+      return abrirProduto(data.produto_id, true);
+    }
+    if (data && data.status === 'divergente') {
+      card.innerHTML = '<h1>Pagamento em análise</h1><p class="sub" style="margin:0;">O valor recebido não confere com o preço do produto. Fale com o profissional ou com o suporte da Elo.</p>';
+      return;
+    }
+    tentativas++;
+    if (tentativas === 15) card.querySelector('#msg').innerHTML = 'Pix e cartão costumam confirmar em segundos, mas às vezes levam alguns minutos. Pode deixar esta página aberta ou voltar depois em <a href="/meus-produtos">Meus produtos</a>.';
+    setTimeout(tick, tentativas < 30 ? 4000 : 15000);
+  };
+  tick();
+}
+
+async function carregarLista() {
+  history.replaceState(null, '', '/meus-produtos');
+  app.innerHTML = '<div class="sub">Carregando…</div>';
+  const { data, error } = await supabaseClient.rpc('meus_produtos');
+  if (error) { app.innerHTML = '<div class="card"><div class="pa-erro">Não foi possível carregar: ' + esc(error.message) + '</div></div>'; return; }
+  lista = data || [];
+  app.innerHTML = '';
+  app.appendChild(el('<div><h1>Meus produtos</h1><p class="sub">Treinos e materiais que você comprou.</p></div>'));
+  if (!lista.length) {
+    app.appendChild(el('<div class="card" style="text-align:center;"><div class="bloco-t">Nenhum produto ainda</div><p class="sub" style="margin:0;">Quando você comprar um treino ou material pelo link de um profissional, ele aparece aqui.</p></div>'));
+    return;
+  }
+  lista.forEach(p => {
+    const entrega = p.entrega_pdf && p.entrega_treino ? 'PDF + treino no app' : p.entrega_pdf ? 'Material em PDF' : 'Treino no app';
+    const status = !p.vence_em ? '<span class="badge b-verde">Acesso ilimitado</span>'
+      : p.ativo ? '<span class="badge b-verde">Acesso até ' + dataBR(p.vence_em) + '</span>'
+      : '<span class="badge b-vermelho">Acesso expirado em ' + dataBR(p.vence_em) + '</span>';
+    const card = el('<div class="card item"><div style="min-width:0;flex:1;"><div class="por">por ' + esc(p.profissional) + '</div><div class="bloco-t" style="margin:2px 0 8px;">' + esc(p.nome) + '</div><div class="tags" style="margin:0;"><span class="tag">' + entrega + '</span>' + status + '</div></div><div class="item-acoes"></div></div>');
+    const acoes = card.querySelector('.item-acoes');
+    if (p.ativo) {
+      const b = el('<button type="button" class="cta" style="margin:0;">Abrir</button>');
+      b.addEventListener('click', () => abrirProduto(p.produto_id));
+      acoes.appendChild(b);
+    } else if (p.a_venda) {
+      acoes.appendChild(el('<a class="cta" style="margin:0;" href="/p/' + esc(p.codigo) + '">Renovar acesso</a>'));
+    } else {
+      acoes.appendChild(el('<span class="sub" style="margin:0;">Renovação indisponível</span>'));
+    }
+    app.appendChild(card);
+  });
+}
+
+async function abrirProduto(produtoId, recemComprado) {
+  history.replaceState(null, '', '/meus-produtos?produto=' + produtoId);
+  app.innerHTML = '<div class="sub">Carregando…</div>';
+  const { data, error } = await supabaseClient.rpc('conteudo_produto', { p_produto: produtoId });
+  if (error) {
+    const expirado = /acesso_expirado/.test(error.message);
+    let info = lista.find(x => x.produto_id === produtoId);
+    if (!info) { const r = await supabaseClient.rpc('meus_produtos'); lista = r.data || []; info = lista.find(x => x.produto_id === produtoId); }
+    app.innerHTML = '';
+    const card = el('<div class="card" style="text-align:center;"><h1>' + (expirado && info ? 'Seu acesso expirou' : 'Conteúdo indisponível') + '</h1><p class="sub"></p><div class="acoes-c"></div></div>');
+    card.querySelector('.sub').textContent = expirado && info
+      ? 'O acesso a "' + info.nome + '" terminou em ' + dataBR(info.vence_em) + '. Seu histórico de compra continua guardado — renove para voltar a acessar.'
+      : 'Você não tem acesso a este produto com esta conta (' + user.email + ').';
+    const ac = card.querySelector('.acoes-c');
+    if (expirado && info && info.a_venda) ac.appendChild(el('<a class="cta" href="/p/' + esc(info.codigo) + '">Renovar acesso</a>'));
+    const v = el('<button type="button" class="cta sec">Ver meus produtos</button>');
+    v.addEventListener('click', carregarLista);
+    ac.appendChild(v);
+    app.appendChild(card);
+    return;
+  }
+  renderConteudo(data, recemComprado);
+}
+
+function renderConteudo(c, recemComprado) {
+  app.innerHTML = '';
+  const voltar = el('<a href="#" class="voltar-l">← Meus produtos</a>');
+  voltar.addEventListener('click', e => { e.preventDefault(); carregarLista(); });
+  app.appendChild(voltar);
+  if (recemComprado) app.appendChild(el('<div class="aviso ok">Pagamento confirmado! Seu conteúdo já está liberado.</div>'));
+  const head = el('<div><h1 style="font-size:24px;">' + esc(c.nome) + '</h1></div>');
+  if (c.descricao) { const d = el('<div class="desc" style="margin-bottom:18px;"></div>'); d.textContent = c.descricao; head.appendChild(d); }
+  app.appendChild(head);
+
+  if (c.entrega_pdf) {
+    const sec = el('<div class="card"><div class="bloco-t">Materiais em PDF</div><div class="arqs"></div><div class="viewer" style="display:none;"></div></div>');
+    const w = sec.querySelector('.arqs');
+    const viewer = sec.querySelector('.viewer');
+    if (!c.arquivos.length) w.appendChild(el('<p class="sub" style="margin:0;">O profissional ainda não anexou arquivos.</p>'));
+    c.arquivos.forEach(a => {
+      const row = el('<div class="arq"><div class="arq-n">' + esc(a.nome) + '</div><div style="display:flex;gap:6px;flex-shrink:0;"><button type="button" class="mini" data-a="ver">Visualizar</button>' + (c.permite_download ? '<button type="button" class="mini" data-a="baixar">Baixar</button>' : '') + '</div></div>');
+      row.querySelector('[data-a="ver"]').addEventListener('click', async () => {
+        const { data, error } = await supabaseClient.storage.from('produtos-arquivos').createSignedUrl(a.path, 600);
+        if (error) { alert('Não foi possível abrir: ' + error.message); return; }
+        viewer.style.display = '';
+        viewer.innerHTML = '';
+        const fr = el('<iframe title="PDF"></iframe>');
+        fr.src = data.signedUrl + (c.permite_download ? '' : '#toolbar=0');
+        viewer.appendChild(el('<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;"><b style="font-size:13px;">' + esc(a.nome) + '</b></div>'));
+        const fechar = el('<button type="button" class="mini">Fechar</button>');
+        fechar.addEventListener('click', () => { viewer.style.display = 'none'; viewer.innerHTML = ''; });
+        viewer.firstChild.appendChild(fechar);
+        viewer.appendChild(fr);
+        if (c.permite_download) viewer.appendChild(el('<a class="sub" style="display:block;margin-top:6px;" target="_blank" rel="noopener" href="' + esc(data.signedUrl) + '">Não carregou? Abrir em nova aba ↗</a>'));
+        viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      const bx = row.querySelector('[data-a="baixar"]');
+      if (bx) bx.addEventListener('click', async () => {
+        const { data, error } = await supabaseClient.storage.from('produtos-arquivos').createSignedUrl(a.path, 600, { download: a.nome });
+        if (error) { alert('Não foi possível baixar: ' + error.message); return; }
+        location.href = data.signedUrl;
+      });
+      w.appendChild(row);
+    });
+    app.appendChild(sec);
+  }
+
+  if (c.entrega_treino) app.appendChild(secaoTreino(c));
+}
+
+// ── Treino ─────────────────────────────────────────────────────────────
+let divisaoAtiva = 0;
+let timer = null;
+
+function secaoTreino(c) {
+  const sec = el('<div class="card"><div class="bloco-t">Treino</div><div class="tabs"></div><div class="treino-body"></div></div>');
+  if (!c.treinos.length) { sec.querySelector('.treino-body').appendChild(el('<p class="sub" style="margin:0;">O profissional ainda está montando este treino.</p>')); return sec; }
+  const keyDiv = 'elo-prod-div-' + c.id;
+  divisaoAtiva = Math.min(lsGet(keyDiv) || 0, c.treinos.length - 1);
+  const render = () => {
+    const tabs = sec.querySelector('.tabs');
+    tabs.innerHTML = '';
+    c.treinos.forEach((t, i) => {
+      const b = el('<button type="button" class="tab' + (i === divisaoAtiva ? ' sel' : '') + '">' + esc(t.nome) + '</button>');
+      b.addEventListener('click', () => { divisaoAtiva = i; lsSet(keyDiv, i); render(); });
+      tabs.appendChild(b);
+    });
+    const body = sec.querySelector('.treino-body');
+    body.innerHTML = '';
+    const t = c.treinos[divisaoAtiva];
+    if (!t.exercicios.length) { body.appendChild(el('<p class="sub" style="margin:0;">Sem exercícios nesta divisão.</p>')); return; }
+    const keyFeitos = 'elo-prod-feito-' + t.id + '-' + hojeStr();
+    const feitos = lsGet(keyFeitos) || {};
+    const total = t.exercicios.reduce((s, te) => s + SeriesValidas.linhas(te.series).length, 0);
+    const prog = el('<div class="prog"><div class="prog-bar"><div></div></div><span></span></div>');
+    const atualizarProg = () => {
+      const n = Object.values(feitos).filter(Boolean).length;
+      prog.querySelector('.prog-bar div').style.width = (total ? Math.round(n / total * 100) : 0) + '%';
+      prog.querySelector('span').textContent = n + '/' + total + ' séries hoje';
+    };
+    body.appendChild(prog);
+    atualizarProg();
+
+    const letraGrupo = {};
+    let prox = 0;
+    t.exercicios.forEach(te => { if (te.grupo_id && t.exercicios.filter(x => x.grupo_id === te.grupo_id).length > 1 && !(te.grupo_id in letraGrupo)) letraGrupo[te.grupo_id] = prox++; });
+
+    t.exercicios.forEach((te, idx) => {
+      const ex = el('<div class="ex"></div>');
+      const grupo = te.grupo_id in letraGrupo ? '<span class="tag" style="margin-left:6px;">Conjugado ' + (letraGrupo[te.grupo_id] + 1) + '</span>' : '';
+      ex.appendChild(el('<div class="ex-h"><div style="min-width:0;"><div class="ex-n">' + (idx + 1) + '. ' + esc(te.nome) + grupo + '</div>' + (te.categoria ? '<div class="ex-c">' + esc(te.categoria) + '</div>' : '') + '</div></div>'));
+      if (te.video_url) {
+        const v = el('<a class="mini" target="_blank" rel="noopener">▶ Ver execução</a>');
+        v.href = te.video_url;
+        ex.querySelector('.ex-h').appendChild(v);
+      }
+      if (te.tecnica_nome) {
+        const tec = el('<div class="tec"><b>Técnica: </b></div>');
+        tec.appendChild(document.createTextNode(te.tecnica_nome + (te.tecnica_obs ? ' — ' + te.tecnica_obs : '')));
+        ex.appendChild(tec);
+      }
+      const aq = SeriesValidas.linhas(te.series_aquecimento);
+      if (aq.length) ex.appendChild(el('<div class="ex-meta">Aquecimento: ' + aq.map(s => esc(SeriesValidas.rotulo(s))).join(' · ') + '</div>'));
+      const series = SeriesValidas.linhas(te.series);
+      const sw = el('<div class="series"></div>');
+      series.forEach((s, i) => {
+        const k = te.id + ':' + i;
+        const b = el('<button type="button" class="serie' + (feitos[k] ? ' feita' : '') + '"><span class="sn">' + (i + 1) + 'ª</span><span>' + esc(SeriesValidas.rotulo(s)) + '</span><span class="ck">' + (feitos[k] ? '✓' : '') + '</span></button>');
+        b.addEventListener('click', () => {
+          feitos[k] = !feitos[k];
+          lsSet(keyFeitos, feitos);
+          b.classList.toggle('feita', feitos[k]);
+          b.querySelector('.ck').textContent = feitos[k] ? '✓' : '';
+          atualizarProg();
+          const seg = te.descanso_segundos || parseDescanso(te.intervalo_descanso);
+          if (feitos[k] && seg) iniciarDescanso(seg);
+        });
+        sw.appendChild(b);
+      });
+      ex.appendChild(sw);
+      if (te.intervalo_descanso || te.descanso_segundos) ex.appendChild(el('<div class="ex-meta">Descanso: ' + esc(te.intervalo_descanso || (te.descanso_segundos + 's')) + '</div>'));
+      if (te.observacoes) { const o = el('<div class="obs"></div>'); o.textContent = te.observacoes; ex.appendChild(o); }
+      body.appendChild(ex);
+    });
+  };
+  render();
+  return sec;
+}
+
+function parseDescanso(txt) {
+  if (!txt) return null;
+  const t = String(txt).toLowerCase().trim();
+  let m = t.match(/^(\d+)\s*:\s*(\d{1,2})$/); if (m) return +m[1] * 60 + +m[2];
+  m = t.match(/^(\d+)\s*(?:min|m)/); if (m) return +m[1] * 60;
+  m = t.match(/^(\d+)\s*(?:s|seg)?/); if (m) return +m[1];
+  return null;
+}
+
+function iniciarDescanso(seg) {
+  let barra = document.getElementById('descanso');
+  if (!barra) { barra = el('<div id="descanso" class="descanso"><span></span><button type="button" class="mini">Pular</button></div>'); document.body.appendChild(barra); }
+  clearInterval(timer);
+  let rest = seg;
+  const pintar = () => barra.querySelector('span').textContent = 'Descanso: ' + Math.floor(rest / 60) + ':' + String(rest % 60).padStart(2, '0');
+  barra.style.display = 'flex';
+  pintar();
+  barra.querySelector('button').onclick = () => { clearInterval(timer); barra.style.display = 'none'; };
+  timer = setInterval(() => {
+    rest--;
+    if (rest <= 0) { clearInterval(timer); barra.querySelector('span').textContent = 'Descanso encerrado — próxima série!'; if (navigator.vibrate) navigator.vibrate(300); setTimeout(() => barra.style.display = 'none', 2500); return; }
+    pintar();
+  }, 1000);
+}
+
+init();
+</script>
+<script>window.TEMA_CONTA = 'nenhuma';</script>
+<script src="/js/tema.js?v=9"></script>
+</body>
+</html>

@@ -96,6 +96,30 @@ tr:last-child td{border-bottom:none;}
 .bar-track{background:var(--borda-forte);border-radius:999px;height:6px;width:100px;overflow:hidden;display:inline-block;vertical-align:middle;}
 .bar-fill{height:100%;background:#f97316;}
 .funnel-row{margin-bottom:16px;}
+.tbl-wrap{overflow-x:auto;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px;}
+.form-grid label{display:block;font-size:11px;font-weight:800;color:var(--texto-2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px;}
+.inp{width:100%;background:var(--bg-sidebar);border:1px solid var(--bg-ativo);border-radius:8px;padding:8px 10px;color:var(--texto);font-family:inherit;font-size:13px;outline:none;}
+.btn-acao{background:linear-gradient(135deg,#f97316,#ea580c);border:none;color:#fff;font-size:12.5px;font-weight:700;padding:9px 14px;border-radius:9px;}
+.btn-mini{background:var(--bg-hover);border:1px solid var(--bg-ativo);color:var(--texto);font-size:12px;font-weight:700;padding:5px 10px;border-radius:7px;white-space:nowrap;}
+.erro-admin{color:#f87171;font-size:12.5px;margin:6px 0;}
+.badge-gratis{background:rgba(168,85,247,.15);color:#a855f7;}
+.badge-a_pagar{background:rgba(249,115,22,.15);color:#f97316;}
+.badge-pago{background:rgba(74,222,128,.15);color:var(--status-verde);}
+.badge-cancelado,.badge-inativo{background:rgba(154,164,178,.15);color:var(--texto-2);}
+@media (max-width:860px){
+  .shell{flex-direction:column;}
+  .sidebar{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;padding:12px;}
+  .sidebar .logo{padding:0 8px 0 0;}
+  .nav-group-label{display:none;}
+  .sidebar-foot{margin:0 0 0 auto;padding:0;display:flex;align-items:center;}
+  .sidebar-foot .conta{display:none;}
+  .topbar{padding:16px;}
+  .wrap{padding:16px 16px 60px;}
+  .panel{padding:16px;}
+  .panel > table{display:block;overflow-x:auto;}
+  div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important;}
+}
 .funnel-row:last-child{margin-bottom:0;}
 .funnel-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;}
 .funnel-top b{font-weight:700;}
@@ -236,7 +260,7 @@ async function init() {
 
 async function carregarDados() {
   const [trainersRes, planosRes, assinPagRes, clientesRes, treinosRes, agendamentosRes, pagamentosRes] = await Promise.all([
-    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, created_at'),
+    supabaseClient.from('trainers').select('id, nome, email, status_assinatura, plano_id, trial_termina_em, created_at, afiliado_id, afiliado_vinculado_em'),
     supabaseClient.from('planos_assinatura').select('id, nome, valor'),
     supabaseClient.from('assinatura_pagamentos').select('trainer_id, valor, status, data_pagamento'),
     supabaseClient.from('clientes').select('id, trainer_id, status, created_at'),
@@ -244,6 +268,16 @@ async function carregarDados() {
     supabaseClient.from('agendamentos').select('id, trainer_id'),
     supabaseClient.from('pagamentos').select('trainer_id, valor, data'),
   ]);
+  // Telas novas (migrations 0068/0069). Falha aqui não derruba o resto do painel.
+  const [afRes, clqRes, comRes, prodRes, compRes, impRes] = await Promise.all([
+    supabaseClient.from('afiliados').select('*').order('created_at', { ascending: false }),
+    supabaseClient.from('afiliado_cliques').select('afiliado_id, created_at'),
+    supabaseClient.from('comissoes_afiliado').select('*').order('created_at', { ascending: false }),
+    supabaseClient.from('produtos').select('id, trainer_id, nome, preco, publicado, arquivado, created_at'),
+    supabaseClient.from('compras_produto').select('id, produto_id, trainer_id, valor, status, tipo, pago_em, created_at'),
+    supabaseClient.from('importacoes_treino').select('id, trainer_id, status, erro, created_at, cota_consumida_em'),
+  ]);
+  STATE.errosNovos = [afRes, clqRes, comRes, prodRes, compRes, impRes].filter(function (r) { return r.error; }).map(function (r) { return r.error.message; });
 
   STATE.raw = {
     trainers: trainersRes.data || [],
@@ -253,8 +287,24 @@ async function carregarDados() {
     treinos: treinosRes.data || [],
     agendamentos: agendamentosRes.data || [],
     pagamentos: pagamentosRes.data || [],
+    afiliados: afRes.data || [],
+    cliques: clqRes.data || [],
+    comissoes: comRes.data || [],
+    produtos: prodRes.data || [],
+    compras: compRes.data || [],
+    importacoes: impRes.data || [],
   };
+  if (trainersRes.error) STATE.errosNovos.unshift(trainersRes.error.message);
 }
+
+// Plano Grátis (valor 0) também fica com status 'ativo' (ativar-plano-gratis),
+// mas não é pagante — não pode entrar em MRR, ticket, funil nem inadimplência.
+function valorPlano(raw, t) {
+  const p = raw.planos.find(function (x) { return x.id === t.plano_id; });
+  return p ? Number(p.valor) : 0;
+}
+function ehPagante(raw, t) { return t.status_assinatura === 'ativo' && valorPlano(raw, t) > 0; }
+function ehGratis(raw, t) { return t.status_assinatura === 'ativo' && valorPlano(raw, t) === 0; }
 
 function periodCutoff() {
   const d = new Date();
@@ -275,11 +325,15 @@ function render() {
 
   const app = document.getElementById('app');
   app.innerHTML = '';
+  STATE._csv = null;
+  if (STATE.errosNovos && STATE.errosNovos.length) {
+    app.appendChild(el('<div class="panel" style="margin:0 0 14px;border-color:#3a2418;"><b style="color:#f97316;">Parte dos dados não carregou.</b> <span style="font-size:12.5px;color:#9aa4b2;">Provavelmente falta aplicar as migrations 0068/0069 no banco. Detalhe: ' + esc(STATE.errosNovos[0]) + '</span></div>'));
+  }
   if (STATE.page === 'dashboard') return renderDashboardOverview(app);
   if (STATE.page === 'receita') return renderReceita(app);
   if (STATE.page === 'usuarios') return renderUsuariosPage(app);
-  if (STATE.page === 'afiliados') return renderEmptyFeature(app, 'Afiliados', 'Ainda não existe programa de indicação/afiliados no Elo Fitness — nenhuma tabela ou fluxo de comissão foi criado. Essa tela está reservada no menu, mas precisa ser desenhada e construída antes de mostrar dados aqui.');
-  if (STATE.page === 'operacao') return renderEmptyFeature(app, 'Operação', 'Ainda não existe rastreamento de custo/consumo de IA nem alertas automáticos da plataforma — não há tabela de log de operações hoje. Essa tela está reservada no menu, mas precisa de instrumentação nova antes de mostrar dados aqui.');
+  if (STATE.page === 'afiliados') return renderAfiliados(app);
+  if (STATE.page === 'operacao') return renderOperacao(app);
 }
 
 function renderEmptyFeature(app, nome, texto) {
@@ -324,7 +378,8 @@ function renderDashboardOverview(app) {
 
   const planosById = {};
   raw.planos.forEach(function (p) { planosById[p.id] = p; });
-  const trainersAtivos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const trainersAtivos = raw.trainers.filter(function (t) { return ehPagante(raw, t); });
+  const trainersGratis = raw.trainers.filter(function (t) { return ehGratis(raw, t); });
   const trainersTrial = raw.trainers.filter(function (t) { return t.status_assinatura === 'trial'; });
   const trainersInadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
   const trainersIsentos = raw.trainers.filter(function (t) { return t.status_assinatura === 'isento'; });
@@ -339,7 +394,7 @@ function renderDashboardOverview(app) {
   cards.appendChild(el(cardHTML('Ticket médio', fmtBRL(ticketMedio))));
   cards.appendChild(el(cardHTML('Novos alunos', String(novosAtual), false, deltaText(novosAtual, novosAnterior))));
   cards.appendChild(el(cardHTML('Alunos ativos', String(alunosAtivos.length), false, raw.clientes.length + ' no total')));
-  cards.appendChild(el(cardHTML('Personal ativos', String(trainersAtivos.length), false, raw.trainers.length + ' cadastrados no total')));
+  cards.appendChild(el(cardHTML('Personal pagantes', String(trainersAtivos.length), false, raw.trainers.length + ' cadastrados no total · ' + trainersGratis.length + ' no plano grátis')));
   app.appendChild(cards);
 
   const months = last12Months();
@@ -362,7 +417,8 @@ function renderDashboardOverview(app) {
   const statusPanel = el('<div class="panel"><h3>Profissionais por status</h3><div class="panel-sub">Distribuição da base de trainers</div></div>');
   const totalTrainers = raw.trainers.length || 1;
   [
-    ['Ativo', trainersAtivos.length, '#4ade80'],
+    ['Pagante', trainersAtivos.length, '#4ade80'],
+    ['Plano grátis', trainersGratis.length, '#a855f7'],
     ['Trial', trainersTrial.length, '#60a5fa'],
     ['Inadimplente', trainersInadimplentes.length, '#f97316'],
     ['Isento', trainersIsentos.length, '#9aa4b2'],
@@ -444,7 +500,7 @@ function renderReceita(app) {
   const planosById = {};
   raw.planos.forEach(function (p) { planosById[p.id] = p; });
 
-  const ativos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const ativos = raw.trainers.filter(function (t) { return ehPagante(raw, t); });
   const inadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
 
   const mrr = ativos.reduce(function (s, t) { return s + (planosById[t.plano_id] ? Number(planosById[t.plano_id].valor) : 0); }, 0);
@@ -465,6 +521,11 @@ function renderReceita(app) {
   cards.appendChild(el(cardHTML('Receita no período', fmtBRL(receitaPeriodo), false, 'cobranças confirmadas via Asaas')));
   cards.appendChild(el(cardHTML('Ticket médio', fmtBRL(ticketMedio), false, 'por profissional ativo')));
   cards.appendChild(el(cardHTML('Inadimplência', fmtPct(inadimplenciaPct), false, inadimplentes.length + ' profissional(is) em atraso', true)));
+  const vendasProdPeriodo = raw.compras.filter(function (c) { return c.status === 'pago' && c.pago_em && new Date(c.pago_em) >= cutoff; });
+  const gmvProdutos = vendasProdPeriodo.reduce(function (s, c) { return s + Number(c.valor); }, 0);
+  cards.appendChild(el(cardHTML('Vendas de produtos digitais', fmtBRL(gmvProdutos), false, vendasProdPeriodo.length + ' venda(s) no período · dinheiro dos profissionais')));
+  const comissoesAPagar = raw.comissoes.filter(function (c) { return c.status === 'a_pagar'; }).reduce(function (s, c) { return s + Number(c.valor); }, 0);
+  cards.appendChild(el(cardHTML('Comissões a pagar', fmtBRL(comissoesAPagar), false, 'afiliados', comissoesAPagar > 0)));
   app.appendChild(cards);
 
   const months = last12Months();
@@ -479,13 +540,18 @@ function renderReceita(app) {
   app.appendChild(chartPanel);
 
   const totalReceita = monthlyTotals.reduce(function (a, b) { return a + b; }, 0) || receitaPeriodo;
-  const compPanel = el('<div class="panel"><h3>Composição da receita</h3><div class="panel-sub">Única fonte de receita hoje: assinatura do profissional</div></div>');
-  compPanel.appendChild(el(
-    '<div class="bar-track" style="width:100%;height:8px;margin-bottom:10px;"><div class="bar-fill" style="width:100%"></div></div>' +
-    '<div style="display:flex;justify-content:space-between;font-size:13px;"><span>Assinaturas de personais</span><b>' + fmtBRL(totalReceita) + ' · 100%</b></div>'
-  ));
+  const compPanel = el('<div class="panel"><h3>Entradas na conta Asaas</h3><div class="panel-sub">Assinaturas são receita da Elo; vendas de produtos digitais entram na mesma conta mas pertencem aos profissionais (repasse abaixo)</div></div>');
+  const totalEntradas = receitaPeriodo + gmvProdutos;
+  [['Assinaturas de personais (receita Elo)', receitaPeriodo, '#f97316'], ['Produtos digitais (a repassar)', gmvProdutos, '#a855f7']].forEach(function (r) {
+    const pct = totalEntradas ? (r[1] / totalEntradas) * 100 : 0;
+    compPanel.appendChild(el(
+      '<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;"><span>' + r[0] + '</span><b>' + fmtBRL(r[1]) + ' · ' + fmtPct(pct) + '</b></div>' +
+      '<div class="funnel-track"><div class="funnel-fill" style="width:' + pct.toFixed(1) + '%;background:' + r[2] + '"></div></div></div>'
+    ));
+  });
   app.appendChild(compPanel);
 
+  renderRepassesProdutos(app, raw);
   renderHistoricoPagamentos(app, raw);
 }
 
@@ -562,7 +628,7 @@ function renderUsuariosPage(app) {
 
 function renderUsuarios(app) {
   const raw = STATE.raw;
-  const trainersAtivos = raw.trainers.filter(function (t) { return t.status_assinatura === 'ativo'; });
+  const trainersAtivos = raw.trainers.filter(function (t) { return ehPagante(raw, t); });
   const trainersTrial = raw.trainers.filter(function (t) { return t.status_assinatura === 'trial'; });
   const trainersInadimplentes = raw.trainers.filter(function (t) { return t.status_assinatura === 'inadimplente'; });
   const alunosPorTrainer = {};
@@ -571,7 +637,7 @@ function renderUsuarios(app) {
   app.appendChild(el('<h2>Profissionais</h2>'));
 
   const cards = el('<div class="cards"></div>');
-  cards.appendChild(el(cardHTML('Personais ativos', String(trainersAtivos.length), true)));
+  cards.appendChild(el(cardHTML('Personais pagantes', String(trainersAtivos.length), true, raw.trainers.filter(function (t) { return ehGratis(raw, t); }).length + ' no plano grátis')));
   cards.appendChild(el(cardHTML('Alunos na base', String(raw.clientes.length))));
   cards.appendChild(el(cardHTML('Alunos por personal', trainersAtivos.length ? (raw.clientes.length / trainersAtivos.length).toFixed(1) : '0')));
   cards.appendChild(el(cardHTML('Contas em trial', String(trainersTrial.length))));
@@ -629,19 +695,34 @@ function renderGestaoAssinaturas(app, raw) {
   raw.planos.forEach(function (p) { planosById[p.id] = p; });
 
   const panel = el('<div class="panel"><h3>Gestão de assinaturas</h3><div class="panel-sub">Trocar de plano ou estender o trial manualmente</div></div>');
-  const table = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Trial até</th><th>Ações</th></tr></thead><tbody></tbody></table>');
+  const busca = el('<input class="inp" placeholder="Buscar por nome ou e-mail…" style="max-width:320px;margin-bottom:12px;">');
+  busca.value = STATE.buscaGestao || '';
+  busca.addEventListener('input', function () {
+    STATE.buscaGestao = busca.value;
+    const q = busca.value.trim().toLowerCase();
+    tbody.querySelectorAll('tr[data-busca]').forEach(function (tr) { tr.style.display = !q || tr.getAttribute('data-busca').includes(q) ? '' : 'none'; });
+  });
+  panel.appendChild(busca);
+  const table = el('<table><thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Plano</th><th>Trial até</th><th>Indicado por</th><th>Ações</th></tr></thead><tbody></tbody></table>');
   const tbody = table.querySelector('tbody');
   if (!raw.trainers.length) {
-    tbody.appendChild(el('<tr><td colspan="6" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
+    tbody.appendChild(el('<tr><td colspan="7" style="text-align:center;color:#66707e;">Nenhum profissional cadastrado.</td></tr>'));
   }
+  const afById = {};
+  raw.afiliados.forEach(function (a) { afById[a.id] = a; });
+  STATE._csv = [['Nome', 'E-mail', 'Status', 'Plano', 'Trial até', 'Indicado por']];
   raw.trainers.forEach(function (t) {
+    STATE._csv.push([t.nome || '', t.email || '', t.status_assinatura, t.plano_id && planosById[t.plano_id] ? planosById[t.plano_id].nome : '', t.trial_termina_em || '', t.afiliado_id && afById[t.afiliado_id] ? afById[t.afiliado_id].nome : '']);
     const vitalicio = t.status_assinatura === 'isento';
     const tr = el('<tr></tr>');
+    tr.setAttribute('data-busca', ((t.nome || '') + ' ' + (t.email || '')).toLowerCase());
     tr.appendChild(el('<td>' + esc(t.nome || '—') + '</td>'));
     tr.appendChild(el('<td>' + esc(t.email) + '</td>'));
-    tr.appendChild(el('<td><span class="' + badgeClass(t.status_assinatura) + '">' + (vitalicio ? 'Vitalício' : esc(t.status_assinatura)) + '</span></td>'));
+    const gratis = ehGratis(raw, t);
+    tr.appendChild(el('<td><span class="' + (gratis ? 'badge badge-gratis' : badgeClass(t.status_assinatura)) + '">' + (vitalicio ? 'Vitalício' : gratis ? 'grátis' : esc(t.status_assinatura)) + '</span></td>'));
     tr.appendChild(el('<td>' + (vitalicio ? '—' : (t.plano_id && planosById[t.plano_id] ? esc(planosById[t.plano_id].nome) : '—')) + '</td>'));
     tr.appendChild(el('<td>' + (vitalicio ? '—' : (t.trial_termina_em ? new Date(t.trial_termina_em + 'T00:00:00').toLocaleDateString('pt-BR') : '—')) + '</td>'));
+    tr.appendChild(el('<td>' + (t.afiliado_id && afById[t.afiliado_id] ? esc(afById[t.afiliado_id].nome) : '—') + '</td>'));
 
     const tdAcoes = el('<td style="white-space:nowrap;"></td>');
 
@@ -683,8 +764,11 @@ function renderGestaoAssinaturas(app, raw) {
     tr.appendChild(tdAcoes);
     tbody.appendChild(tr);
   });
-  panel.appendChild(table);
+  const wrapT = el('<div class="tbl-wrap"></div>');
+  wrapT.appendChild(table);
+  panel.appendChild(wrapT);
   app.appendChild(panel);
+  if (busca.value) busca.dispatchEvent(new Event('input'));
 }
 
 async function estenderTrial(trainer, dias) {
@@ -789,6 +873,348 @@ function renderRankingPersonais(app, raw, alunosPorTrainer, limite) {
   app.appendChild(panel);
 }
 
+// ── Afiliados (migration 0069) ────────────────────────────────────────
+function slugCodigo(txt) {
+  return String(txt || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+function linkAfiliado(a) { return location.origin + '/r/' + a.codigo; }
+function copiar(txt, btn) {
+  const fim = function () { const o = btn.textContent; btn.textContent = 'Copiado!'; setTimeout(function () { btn.textContent = o; }, 1500); };
+  if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fim, function () { prompt('Copie:', txt); });
+  else prompt('Copie:', txt);
+}
+
+function renderAfiliados(app) {
+  const raw = STATE.raw;
+  const cutoff = periodCutoff();
+  const trainersById = {};
+  raw.trainers.forEach(function (t) { trainersById[t.id] = t; });
+  const stats = {};
+  raw.afiliados.forEach(function (a) { stats[a.id] = { cliques: 0, indicados: 0, indicadosPeriodo: 0, pagantes: 0, aPagar: 0, pago: 0, pagoPeriodo: 0 }; });
+  raw.cliques.forEach(function (c) { if (stats[c.afiliado_id] && new Date(c.created_at) >= cutoff) stats[c.afiliado_id].cliques++; });
+  raw.trainers.forEach(function (t) {
+    const s = stats[t.afiliado_id];
+    if (!s) return;
+    s.indicados++;
+    if (t.afiliado_vinculado_em && new Date(t.afiliado_vinculado_em) >= cutoff) s.indicadosPeriodo++;
+    if (ehPagante(raw, t)) s.pagantes++;
+  });
+  raw.comissoes.forEach(function (c) {
+    const s = stats[c.afiliado_id];
+    if (!s) return;
+    if (c.status === 'a_pagar') s.aPagar += Number(c.valor);
+    if (c.status === 'pago') { s.pago += Number(c.valor); if (c.pago_em && new Date(c.pago_em) >= cutoff) s.pagoPeriodo += Number(c.valor); }
+  });
+  const soma = function (k) { return Object.values(stats).reduce(function (x, s) { return x + s[k]; }, 0); };
+
+  app.appendChild(el('<h2>Programa de afiliados</h2>'));
+  const cards = el('<div class="cards"></div>');
+  cards.appendChild(el(cardHTML('Afiliados ativos', String(raw.afiliados.filter(function (a) { return a.ativo; }).length), true)));
+  cards.appendChild(el(cardHTML('Cliques no período', String(soma('cliques')))));
+  cards.appendChild(el(cardHTML('Cadastros indicados', String(soma('indicadosPeriodo')), false, soma('indicados') + ' no total')));
+  cards.appendChild(el(cardHTML('Indicados pagantes', String(soma('pagantes')))));
+  cards.appendChild(el(cardHTML('Comissão a pagar', fmtBRL(soma('aPagar')), false, 'acumulado', soma('aPagar') > 0)));
+  cards.appendChild(el(cardHTML('Comissão paga no período', fmtBRL(soma('pagoPeriodo')))));
+  app.appendChild(cards);
+
+  app.appendChild(formAfiliado(STATE.editandoAfiliado || null));
+
+  // Tabela
+  const panel = el('<div class="panel"><h3>Afiliados</h3><div class="panel-sub">Link de indicação, desempenho e comissão de cada parceiro · cliques no período selecionado</div></div>');
+  if (!raw.afiliados.length) {
+    panel.appendChild(el('<div class="empty-panel">Nenhum afiliado cadastrado ainda. Crie o primeiro no formulário acima.</div>'));
+  } else {
+    const table = el('<table><thead><tr><th>Afiliado</th><th>Link</th><th>Comissão</th><th>Cliques</th><th>Indicados</th><th>Pagantes</th><th>A pagar</th><th>Pago</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>');
+    const tbody = table.querySelector('tbody');
+    raw.afiliados.forEach(function (a) {
+      const s = stats[a.id];
+      const tr = el('<tr></tr>');
+      tr.appendChild(el('<td><div style="font-weight:700;">' + esc(a.nome) + '</div><div style="font-size:11.5px;color:var(--texto-4);">' + esc(a.email || '') + (a.user_id ? ' · <span style="color:#4ade80;">conta Elo vinculada</span>' : '') + '</div></td>'));
+      const tdLink = el('<td style="white-space:nowrap;"><code style="font-size:11.5px;color:var(--texto-2);">/r/' + esc(a.codigo) + '</code> </td>');
+      const bc = el('<button class="btn-mini">Copiar</button>');
+      bc.addEventListener('click', function () { copiar(linkAfiliado(a), bc); });
+      tdLink.appendChild(bc);
+      tr.appendChild(tdLink);
+      tr.appendChild(el('<td>' + Number(a.comissao_pct).toString().replace('.', ',') + '%<div style="font-size:11px;color:var(--texto-4);">' + (a.comissao_meses ? 'por ' + a.comissao_meses + ' mês(es)' : 'recorrente') + '</div></td>'));
+      tr.appendChild(el('<td>' + s.cliques + '</td><td>' + s.indicados + '</td><td>' + s.pagantes + '</td>'));
+      tr.appendChild(el('<td>' + fmtBRL(s.aPagar) + '</td><td>' + fmtBRL(s.pago) + '</td>'));
+      tr.appendChild(el('<td><span class="badge ' + (a.ativo ? 'badge-ativo' : 'badge-inativo') + '">' + (a.ativo ? 'ativo' : 'inativo') + '</span></td>'));
+      const tdA = el('<td style="white-space:nowrap;"></td>');
+      const be = el('<button class="btn-mini">Editar</button>');
+      be.addEventListener('click', function () { STATE.editandoAfiliado = a; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      const bt = el('<button class="btn-mini" style="margin-left:6px;">' + (a.ativo ? 'Desativar' : 'Ativar') + '</button>');
+      bt.addEventListener('click', async function () {
+        if (a.ativo && !confirm('Desativar ' + a.nome + '? O link para de funcionar e novas cobranças dos indicados deixam de gerar comissão.')) return;
+        const { error } = await supabaseClient.from('afiliados').update({ ativo: !a.ativo }).eq('id', a.id);
+        if (error) { alert(error.message); return; }
+        await carregarDados(); render();
+      });
+      tdA.appendChild(be); tdA.appendChild(bt);
+      tr.appendChild(tdA);
+      tbody.appendChild(tr);
+    });
+    const w = el('<div class="tbl-wrap"></div>'); w.appendChild(table); panel.appendChild(w);
+  }
+  app.appendChild(panel);
+
+  // Comissões a pagar, agrupadas por afiliado
+  const pagar = el('<div class="panel"><h3>Comissões a pagar</h3><div class="panel-sub">Geradas automaticamente a cada mensalidade confirmada de um profissional indicado. Pague por Pix e marque aqui.</div></div>');
+  const comAPagar = raw.afiliados.filter(function (a) { return stats[a.id].aPagar > 0; });
+  if (!comAPagar.length) pagar.appendChild(el('<div class="empty-panel">Nenhuma comissão pendente.</div>'));
+  comAPagar.forEach(function (a) {
+    const row = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--borda);"><div><div style="font-weight:700;">' + esc(a.nome) + ' · ' + fmtBRL(stats[a.id].aPagar) + '</div><div style="font-size:12px;color:var(--texto-4);">Pix: ' + esc(a.chave_pix || 'não informado') + '</div></div></div>');
+    const b = el('<button class="btn-acao">Marcar como pago</button>');
+    b.addEventListener('click', async function () {
+      if (!confirm('Confirmar que você pagou ' + fmtBRL(stats[a.id].aPagar) + ' para ' + a.nome + '?')) return;
+      b.disabled = true;
+      const { error } = await supabaseClient.from('comissoes_afiliado').update({ status: 'pago', pago_em: new Date().toISOString() }).eq('afiliado_id', a.id).eq('status', 'a_pagar');
+      if (error) { alert(error.message); b.disabled = false; return; }
+      await carregarDados(); render();
+    });
+    row.appendChild(b);
+    pagar.appendChild(row);
+  });
+  app.appendChild(pagar);
+
+  // Histórico
+  const hist = el('<div class="panel"><h3>Histórico de comissões</h3><div class="panel-sub">Últimas 100</div></div>');
+  const afById = {};
+  raw.afiliados.forEach(function (a) { afById[a.id] = a; });
+  STATE._csv = [['Data', 'Afiliado', 'Profissional indicado', 'Mensalidade', '%', 'Comissão', 'Status', 'Pago em']];
+  if (!raw.comissoes.length) hist.appendChild(el('<div class="empty-panel">Nenhuma comissão gerada ainda.</div>'));
+  else {
+    const table = el('<table><thead><tr><th>Data</th><th>Afiliado</th><th>Indicado</th><th>Mensalidade</th><th>Comissão</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>');
+    const tbody = table.querySelector('tbody');
+    raw.comissoes.forEach(function (c, i) {
+      const t = trainersById[c.trainer_id];
+      const af = afById[c.afiliado_id];
+      STATE._csv.push([new Date(c.created_at).toLocaleDateString('pt-BR'), af ? af.nome : '', t ? (t.nome || t.email) : '', c.valor_base, c.pct, c.valor, c.status, c.pago_em ? new Date(c.pago_em).toLocaleDateString('pt-BR') : '']);
+      if (i >= 100) return;
+      const tr = el('<tr><td>' + new Date(c.created_at).toLocaleDateString('pt-BR') + '</td><td>' + esc(af ? af.nome : '—') + '</td><td>' + esc(t ? (t.nome || t.email) : '—') + '</td><td>' + fmtBRL(c.valor_base) + '</td><td>' + fmtBRL(c.valor) + ' <span style="font-size:11px;color:var(--texto-4);">(' + Number(c.pct).toString().replace('.', ',') + '%)</span></td><td><span class="badge badge-' + c.status + '">' + esc(c.status.replace('_', ' ')) + '</span></td><td></td></tr>');
+      if (c.status === 'a_pagar') {
+        const bx = el('<button class="btn-mini">Cancelar</button>');
+        bx.addEventListener('click', async function () {
+          if (!confirm('Cancelar esta comissão de ' + fmtBRL(c.valor) + '? (ex.: mensalidade estornada)')) return;
+          const { error } = await supabaseClient.from('comissoes_afiliado').update({ status: 'cancelado' }).eq('id', c.id);
+          if (error) { alert(error.message); return; }
+          await carregarDados(); render();
+        });
+        tr.lastChild.appendChild(bx);
+      }
+      tbody.appendChild(tr);
+    });
+    const w = el('<div class="tbl-wrap"></div>'); w.appendChild(table); hist.appendChild(w);
+  }
+  app.appendChild(hist);
+}
+
+function formAfiliado(a) {
+  const editando = !!(a && a.id);
+  const f = Object.assign({ nome: '', email: '', codigo: '', comissao_pct: 20, comissao_meses: null, chave_pix: '', observacoes: '', user_id: null }, a || {});
+  let conta = null; // {user_id, nome, email, personal, aluno}
+  let codigoManual = editando;
+  const panel = el('<div class="panel"><h3>' + (editando ? 'Editar afiliado' : 'Novo afiliado') + '</h3><div class="panel-sub">Vincule a uma conta Elo existente (personal ou aluno) ou cadastre um parceiro de fora</div></div>');
+
+  const contaBox = el('<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:800;color:var(--texto-2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px;">Conta Elo (opcional)</label><div class="conta-sel"></div></div>');
+  const sel = contaBox.querySelector('.conta-sel');
+  function renderConta() {
+    sel.innerHTML = '';
+    if (f.user_id) {
+      const chip = el('<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg-sidebar);border:1px solid rgba(74,222,128,.35);border-radius:9px;padding:9px 12px;font-size:13px;"><span>Vinculado a <b></b></span></div>');
+      chip.querySelector('b').textContent = conta ? (conta.nome || conta.email) + ' · ' + conta.email + ' (' + [conta.personal && 'personal', conta.aluno && 'aluno'].filter(Boolean).join(' e ') + ')' : (f.email || 'conta vinculada');
+      const rm = el('<button class="btn-mini">Desvincular</button>');
+      rm.addEventListener('click', function () { f.user_id = null; conta = null; renderConta(); });
+      chip.appendChild(rm);
+      sel.appendChild(chip);
+      return;
+    }
+    const busca = el('<input class="inp" placeholder="Buscar conta por nome ou e-mail (mín. 2 letras)…" style="max-width:420px;">');
+    const res = el('<div style="max-width:520px;"></div>');
+    let timer = null;
+    busca.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(async function () {
+        const q = busca.value.trim();
+        res.innerHTML = '';
+        if (q.length < 2) return;
+        const { data, error } = await supabaseClient.rpc('admin_buscar_contas', { p_busca: q });
+        if (error) { res.appendChild(el('<div class="erro-admin">' + esc(error.message) + '</div>')); return; }
+        const jaUsados = {};
+        STATE.raw.afiliados.forEach(function (x) { if (x.user_id && (!editando || x.id !== f.id)) jaUsados[x.user_id] = x.nome; });
+        if (!data || !data.length) { res.appendChild(el('<div style="font-size:12.5px;color:var(--texto-4);padding:8px 2px;">Nenhuma conta encontrada.</div>')); return; }
+        data.forEach(function (c) {
+          const tipos = [c.personal && 'Personal', c.aluno && 'Aluno'].filter(Boolean).join(' · ') || 'Sem cadastro';
+          const item = el('<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--borda-forte);border-radius:8px;margin-top:6px;font-size:13px;"><div style="min-width:0;"><b></b><div style="font-size:11.5px;color:var(--texto-4);"></div></div></div>');
+          item.querySelector('b').textContent = c.nome || '(sem nome)';
+          item.querySelector('div div').textContent = c.email + ' · ' + tipos + (jaUsados[c.user_id] ? ' · já é o afiliado ' + jaUsados[c.user_id] : '');
+          const b = el('<button class="btn-mini">Vincular</button>');
+          b.disabled = !!jaUsados[c.user_id];
+          b.addEventListener('click', function () {
+            conta = c; f.user_id = c.user_id;
+            const inpNome = panel.querySelector('[data-k="nome"]'), inpEmail = panel.querySelector('[data-k="email"]'), inpCod = panel.querySelector('[data-k="codigo"]');
+            if (!inpNome.value.trim()) inpNome.value = c.nome || '';
+            inpEmail.value = c.email || '';
+            inpNome.dispatchEvent(new Event('input'));
+            renderConta();
+          });
+          item.appendChild(b);
+          res.appendChild(item);
+        });
+      }, 300);
+    });
+    sel.appendChild(busca);
+    sel.appendChild(res);
+  }
+  renderConta();
+  panel.appendChild(contaBox);
+
+  const grid = el('<div class="form-grid"></div>');
+  [['nome', 'Nome', 'text'], ['email', 'E-mail', 'email'], ['codigo', 'Código do link', 'text'], ['comissao_pct', 'Comissão (%)', 'number'], ['comissao_meses', 'Por quantos meses (vazio = sempre)', 'number'], ['chave_pix', 'Chave Pix', 'text']].forEach(function (c) {
+    const w = el('<div><label>' + c[1] + '</label><input class="inp" data-k="' + c[0] + '" type="' + c[2] + '"></div>');
+    const v = f[c[0]];
+    w.querySelector('input').value = v == null ? '' : v;
+    grid.appendChild(w);
+  });
+  panel.appendChild(grid);
+  const obs = el('<div style="margin-bottom:12px;"><label style="display:block;font-size:11px;font-weight:800;color:var(--texto-2);text-transform:uppercase;letter-spacing:.03em;margin-bottom:5px;">Observações</label><textarea class="inp" data-k="observacoes" rows="2"></textarea></div>');
+  obs.querySelector('textarea').value = f.observacoes || '';
+  panel.appendChild(obs);
+  const inpNome = grid.querySelector('[data-k="nome"]'), inpCod = grid.querySelector('[data-k="codigo"]');
+  inpNome.addEventListener('input', function () { if (!codigoManual) inpCod.value = slugCodigo(inpNome.value); });
+  inpCod.addEventListener('input', function () { codigoManual = true; });
+  const prev = el('<div style="font-size:12px;color:var(--texto-4);margin:-4px 0 12px;"></div>');
+  const atualizarPrev = function () { prev.textContent = 'Link: ' + location.origin + '/r/' + (slugCodigo(inpCod.value) || '…'); };
+  inpCod.addEventListener('input', atualizarPrev); inpNome.addEventListener('input', atualizarPrev); atualizarPrev();
+  panel.appendChild(prev);
+
+  const erro = el('<div class="erro-admin" style="display:none;"></div>');
+  const row = el('<div style="display:flex;gap:8px;"></div>');
+  const salvar = el('<button class="btn-acao">' + (editando ? 'Salvar alterações' : 'Criar afiliado') + '</button>');
+  row.appendChild(salvar);
+  if (editando) {
+    const cancelar = el('<button class="btn-mini">Cancelar edição</button>');
+    cancelar.addEventListener('click', function () { STATE.editandoAfiliado = null; render(); });
+    row.appendChild(cancelar);
+  }
+  salvar.addEventListener('click', async function () {
+    const g = function (k) { const x = panel.querySelector('[data-k="' + k + '"]'); return x ? x.value.trim() : ''; };
+    const payload = {
+      nome: g('nome'), email: g('email') || null, codigo: slugCodigo(g('codigo')),
+      comissao_pct: Number(String(g('comissao_pct')).replace(',', '.')),
+      comissao_meses: g('comissao_meses') ? parseInt(g('comissao_meses'), 10) : null,
+      chave_pix: g('chave_pix') || null, observacoes: g('observacoes') || null, user_id: f.user_id || null
+    };
+    const falha = !payload.nome ? 'Informe o nome.'
+      : payload.codigo.length < 3 ? 'O código do link precisa ter pelo menos 3 letras/números.'
+      : !(payload.comissao_pct > 0 && payload.comissao_pct <= 100) ? 'Comissão entre 0,01% e 100%.'
+      : payload.comissao_meses != null && !(payload.comissao_meses >= 1 && payload.comissao_meses <= 120) ? 'Meses entre 1 e 120 (ou vazio).'
+      : null;
+    erro.style.display = 'none';
+    if (falha) { erro.textContent = falha; erro.style.display = ''; return; }
+    salvar.disabled = true;
+    const res = editando
+      ? await supabaseClient.from('afiliados').update(payload).eq('id', f.id)
+      : await supabaseClient.from('afiliados').insert(payload);
+    salvar.disabled = false;
+    if (res.error) {
+      erro.textContent = /afiliados_codigo_key/.test(res.error.message) ? 'Esse código de link já está em uso.'
+        : /afiliados_user_id_key/.test(res.error.message) ? 'Essa conta já está vinculada a outro afiliado.'
+        : res.error.message;
+      erro.style.display = '';
+      return;
+    }
+    STATE.editandoAfiliado = null;
+    await carregarDados(); render();
+  });
+  panel.appendChild(erro);
+  panel.appendChild(row);
+  return panel;
+}
+
+// ── Repasses de produtos digitais (migration 0068) ────────────────────
+function renderRepassesProdutos(app, raw) {
+  const cutoff = periodCutoff();
+  const trainersById = {};
+  raw.trainers.forEach(function (t) { trainersById[t.id] = t; });
+  const por = {};
+  raw.compras.filter(function (c) { return c.status === 'pago'; }).forEach(function (c) {
+    const r = por[c.trainer_id] = por[c.trainer_id] || { periodo: 0, vendas: 0, total: 0 };
+    r.total += Number(c.valor);
+    if (c.pago_em && new Date(c.pago_em) >= cutoff) { r.periodo += Number(c.valor); r.vendas++; }
+  });
+  const panel = el('<div class="panel"><h3>Repasse de produtos digitais</h3><div class="panel-sub">Vendas confirmadas por profissional. O valor entra na conta Asaas da Elo e precisa ser repassado (ainda não há split automático).</div></div>');
+  const ids = Object.keys(por).sort(function (a, b) { return por[b].periodo - por[a].periodo; });
+  if (!ids.length) { panel.appendChild(el('<div class="empty-panel">Nenhuma venda de produto digital ainda.</div>')); app.appendChild(panel); return; }
+  const table = el('<table><thead><tr><th>Profissional</th><th>Vendas no período</th><th>Valor no período</th><th>Total acumulado</th></tr></thead><tbody></tbody></table>');
+  ids.forEach(function (id) {
+    const t = trainersById[id];
+    table.querySelector('tbody').appendChild(el('<tr><td>' + esc(t ? (t.nome || t.email) : '—') + '</td><td>' + por[id].vendas + '</td><td>' + fmtBRL(por[id].periodo) + '</td><td>' + fmtBRL(por[id].total) + '</td></tr>'));
+  });
+  panel.appendChild(table);
+  app.appendChild(panel);
+}
+
+// ── Operação ──────────────────────────────────────────────────────────
+function renderOperacao(app) {
+  const raw = STATE.raw;
+  const cutoff = periodCutoff();
+  const trainersById = {};
+  raw.trainers.forEach(function (t) { trainersById[t.id] = t; });
+  const nome = function (id) { const t = trainersById[id]; return t ? (t.nome || t.email) : '—'; };
+
+  const imps = raw.importacoes.filter(function (i) { return new Date(i.created_at) >= cutoff; });
+  const cont = function (st) { return imps.filter(function (i) { return st.includes(i.status); }).length; };
+  const erros = cont(['erro']);
+  const travadas = raw.importacoes.filter(function (i) { return ['enviado', 'processando'].includes(i.status) && Date.now() - new Date(i.created_at).getTime() > 15 * 60000; });
+  const leiturasIA = imps.filter(function (i) { return i.cota_consumida_em; }).length;
+
+  app.appendChild(el('<h2>Importação de treino com IA</h2>'));
+  const cards = el('<div class="cards"></div>');
+  cards.appendChild(el(cardHTML('Importações no período', String(imps.length), true)));
+  cards.appendChild(el(cardHTML('Leituras de IA (consumo)', String(leiturasIA), false, 'cada uma é uma chamada paga à OpenAI')));
+  cards.appendChild(el(cardHTML('Viraram treino', String(cont(['importado'])), false, cont(['concluido']) + ' aguardando revisão')));
+  cards.appendChild(el(cardHTML('Taxa de erro', imps.length ? fmtPct(erros / imps.length * 100) : '—', false, erros + ' erro(s)', erros > 0)));
+  cards.appendChild(el(cardHTML('Travadas (>15 min)', String(travadas.length), false, 'enviado/processando sem terminar', travadas.length > 0)));
+  app.appendChild(cards);
+
+  const porT = {};
+  imps.forEach(function (i) { porT[i.trainer_id] = (porT[i.trainer_id] || 0) + 1; });
+  const top = Object.keys(porT).sort(function (a, b) { return porT[b] - porT[a]; }).slice(0, 10);
+  const pTop = el('<div class="panel"><h3>Quem mais usa a importação</h3><div class="panel-sub">Top 10 no período</div></div>');
+  if (!top.length) pTop.appendChild(el('<div class="empty-panel">Nenhuma importação no período.</div>'));
+  else {
+    const t = el('<table><thead><tr><th>Profissional</th><th>Importações</th></tr></thead><tbody></tbody></table>');
+    top.forEach(function (id) { t.querySelector('tbody').appendChild(el('<tr><td>' + esc(nome(id)) + '</td><td>' + porT[id] + '</td></tr>')); });
+    pTop.appendChild(t);
+  }
+  app.appendChild(pTop);
+
+  const ultErros = raw.importacoes.filter(function (i) { return i.status === 'erro'; }).sort(function (a, b) { return b.created_at.localeCompare(a.created_at); }).slice(0, 10);
+  const pErr = el('<div class="panel"><h3>Últimos erros da IA</h3><div class="panel-sub">Mensagem gravada pelo backend</div></div>');
+  if (!ultErros.length) pErr.appendChild(el('<div class="empty-panel">Nenhum erro registrado.</div>'));
+  else {
+    const t = el('<table><thead><tr><th>Data</th><th>Profissional</th><th>Erro</th></tr></thead><tbody></tbody></table>');
+    ultErros.forEach(function (i) { t.querySelector('tbody').appendChild(el('<tr><td style="white-space:nowrap;">' + new Date(i.created_at).toLocaleString('pt-BR') + '</td><td>' + esc(nome(i.trainer_id)) + '</td><td style="font-size:12px;color:var(--texto-2);">' + esc((i.erro || '').slice(0, 220)) + '</td></tr>')); });
+    pErr.appendChild(t);
+  }
+  app.appendChild(pErr);
+
+  app.appendChild(el('<h2 style="margin-top:26px;">Produtos digitais</h2>'));
+  const comp = raw.compras;
+  const pagas = comp.filter(function (c) { return c.status === 'pago' && c.pago_em && new Date(c.pago_em) >= cutoff; });
+  const abandonadas = comp.filter(function (c) { return c.status === 'pendente' && Date.now() - new Date(c.created_at).getTime() > 86400000 && new Date(c.created_at) >= cutoff; });
+  const divergentes = comp.filter(function (c) { return c.status === 'divergente'; });
+  const cards2 = el('<div class="cards"></div>');
+  cards2.appendChild(el(cardHTML('Produtos publicados', String(raw.produtos.filter(function (p) { return p.publicado; }).length), false, raw.produtos.length + ' cadastrados')));
+  cards2.appendChild(el(cardHTML('Vendas confirmadas', String(pagas.length), false, fmtBRL(pagas.reduce(function (s, c) { return s + Number(c.valor); }, 0)))));
+  cards2.appendChild(el(cardHTML('Checkouts abandonados', String(abandonadas.length), false, 'pendentes há mais de 24h')));
+  cards2.appendChild(el(cardHTML('Pagamentos divergentes', String(divergentes.length), false, 'valor pago ≠ preço — conferir no Asaas', divergentes.length > 0)));
+  app.appendChild(cards2);
+
+  STATE._csv = [['Data', 'Profissional', 'Status', 'Erro']].concat(raw.importacoes.map(function (i) { return [new Date(i.created_at).toLocaleString('pt-BR'), nome(i.trainer_id), i.status, i.erro || '']; }));
+}
+
 function cardHTML(label, val, highlight, delta, warn) {
   return '<div class="card' + (warn ? ' warn' : (highlight ? ' highlight' : '')) + '">' +
     '<div class="label">' + esc(label) + '</div>' +
@@ -850,7 +1276,9 @@ function fmtCompact(n) {
 
 function exportCSV() {
   let rows = [];
-  if (['dashboard', 'usuarios'].includes(STATE.page) && STATE._lastRanking) {
+  if (STATE._csv && STATE._csv.length > 1) {
+    rows = STATE._csv;
+  } else if (['dashboard', 'usuarios'].includes(STATE.page) && STATE._lastRanking) {
     rows.push(['Personal', 'Plano', 'Alunos', 'Recebido no período', 'Alunos ativos %']);
     STATE._lastRanking.forEach(function (r) {
       rows.push([r.nome, r.plano, r.alunos, r.recebido.toFixed(2), r.pctAtivos.toFixed(1)]);
