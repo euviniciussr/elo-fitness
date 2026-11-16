@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
         minutesToExpire: 60,
         callback: { successUrl, cancelUrl, expiredUrl },
         items: [{ name: plano.nome.slice(0, 30), value: plano.valor, quantity: 1 }],
-        customerData: { name: trainer.nome, cpfCnpj: cpf_cnpj, email: trainer.email },
+        // Sem customerData: em produção o Asaas exige endereço e telefone
+        // completos quando ele é enviado. Sem ele, o próprio checkout pede os
+        // dados ao pagador.
         subscription: { cycle: "MONTHLY", nextDueDate: amanha() },
         externalReference: `elofitness:${user.id}:${plano_id}`,
       }),

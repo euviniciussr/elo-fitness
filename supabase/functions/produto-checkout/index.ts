@@ -75,7 +75,9 @@ Deno.serve(async (req) => {
           value: Number(produto.preco),
           quantity: 1,
         }],
-        customerData: { name: nome, cpfCnpj: cpf, email: user.email },
+        // Sem customerData: em produção o Asaas exige endereço e telefone
+        // completos quando ele é enviado. Sem ele, o próprio checkout pede os
+        // dados ao pagador.
         externalReference: `elofitness-produto:${compra.id}`,
       }),
     });
