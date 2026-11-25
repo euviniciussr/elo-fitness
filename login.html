@@ -12,6 +12,22 @@
 <meta name="apple-mobile-web-app-title" content="Elo">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
+<script>
+// Quem já tem sessão salva não deve ver o formulário de login (o app
+// instalado às vezes cai aqui e parecia que a pessoa tinha sido deslogada).
+// Só redireciona se a conta já tem algum cadastro — senão fica aqui pra tela
+// "completar" — e respeita links com ?perfil/?modo (afiliado, cadastro).
+(async function () {
+  const q = new URLSearchParams(location.search);
+  if (q.get('perfil') || q.get('modo')) return;
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return;
+    const { data: cad, error } = await supabaseClient.rpc('meus_cadastros');
+    if (!error && cad && (cad.personal || cad.aluno)) location.replace('/app');
+  } catch (e) {}
+})();
+</script>
 <script src="assets/login/c34902f6-4ea3-4e96-aea0-e68f52b43ff9.js"></script>
 </head>
 <body>

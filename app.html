@@ -31,9 +31,19 @@ img{width:72px;height:72px;border-radius:18px;animation:pulsa 1.2s ease-in-out i
   try {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) { location.replace('/login'); return; }
-    const { data: cad } = await supabaseClient.rpc('meus_cadastros');
     let ultima = null;
     try { ultima = localStorage.getItem('elofitness_area'); } catch (e) {}
+    // App instalado abrindo do zero (rede do celular ainda acordando) pode
+    // falhar a primeira chamada. Falha de rede NÃO é "sem cadastro": tenta de
+    // novo e, se continuar falhando, volta pra última área usada — mandar pro
+    // /login aqui fazia parecer que a pessoa tinha sido deslogada.
+    let cad = null;
+    for (let i = 0; i < 3 && !cad; i++) {
+      if (i) await new Promise(function (r) { setTimeout(r, 800 * i); });
+      const { data, error } = await supabaseClient.rpc('meus_cadastros');
+      if (!error && data) cad = data;
+    }
+    if (!cad && ultima) { location.replace(ultima === 'aluno' ? '/app-aluno' : '/dashboard'); return; }
     let destino = '/login';
     if (cad && cad.personal && cad.aluno) destino = ultima === 'aluno' ? '/app-aluno' : '/dashboard';
     else if (cad && cad.personal) destino = '/dashboard';
