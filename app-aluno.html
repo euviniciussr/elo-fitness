@@ -1336,20 +1336,27 @@ function dataLocalStr(d) {
 
 function parseDescansoSegundos(texto) {
   if (!texto) return null;
-  const t = texto.toLowerCase().trim();
-  let m = t.match(/^(\d+)\s*:\s*(\d{1,2})$/);
+  // O personal escreve texto livre e muitas vezes com complemento depois do
+  // tempo ("1min entre cada lado", "90s cada perna", "2 minutos entre séries").
+  // Por isso o tempo é procurado em qualquer parte do texto, não só no texto
+  // inteiro — antes "1min entre cada lado" não batia e o timer não disparava.
+  const t = String(texto).toLowerCase().replace(',', '.').trim();
+  const MIN = '(?:min(?:uto)?s?|m)(?![a-z])';
+  const SEG = '(?:seg(?:undo)?s?|s)(?![a-z])';
+  const num = '(\\d+(?:\\.\\d+)?)';
+  let m = t.match(/(\d+)\s*:\s*(\d{2})(?!\d)/);
   if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-  m = t.match(/^(\d+)\s*-\s*(\d+)\s*(min|minuto|m|s|seg|segundo)/);
+  m = t.match(new RegExp(num + '\\s*(?:-|a|até)\\s*' + num + '\\s*(' + MIN + '|' + SEG + ')'));
   if (m) {
-    const media = (parseInt(m[1], 10) + parseInt(m[2], 10)) / 2;
+    const media = (parseFloat(m[1]) + parseFloat(m[2])) / 2;
     return Math.round(/^m/.test(m[3]) ? media * 60 : media);
   }
-  m = t.match(/^(\d+)\s*(?:min|minuto)s?\s*(\d+)\s*(?:s|seg|segundo)?s?$/);
-  if (m) return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-  m = t.match(/^(\d+)\s*(?:min|minuto|m)s?$/);
-  if (m) return parseInt(m[1], 10) * 60;
-  m = t.match(/^(\d+)\s*(?:s|seg|segundo)s?$/);
-  if (m) return parseInt(m[1], 10);
+  m = t.match(new RegExp(num + '\\s*' + MIN + '\\s*(?:e\\s*)?(\\d+)\\s*(?:' + SEG + ')?'));
+  if (m && !/^\s*(?:x|séries?|series?|reps?)/.test(t.slice(m.index + m[0].length))) return Math.round(parseFloat(m[1]) * 60) + parseInt(m[2], 10);
+  m = t.match(new RegExp(num + '\\s*' + MIN));
+  if (m) return Math.round(parseFloat(m[1]) * 60);
+  m = t.match(new RegExp(num + '\\s*' + SEG));
+  if (m) return Math.round(parseFloat(m[1]));
   m = t.match(/^(\d+)$/);
   if (m) return parseInt(m[1], 10);
   return null;
@@ -2292,7 +2299,10 @@ class Component extends DCLogic {
     });
     const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
     const fmtCurto = (d) => d.getDate() + ' ' + MESES[d.getMonth()].slice(0, 3);
-    const treinosNaSemanaTotal = semanaReal.filter(d => d.temTreino).length;
+    // Meta da semana = dias com treino marcado, mas nunca menos que a
+    // quantidade de treinos do plano: treino sem dia definido (ou dois
+    // treinos no mesmo dia) fazia um plano de 4 treinos aparecer como "x/3".
+    const treinosNaSemanaTotal = Math.max(semanaReal.filter(d => d.temTreino).length, treinosPlano.length);
     const treinosNaSemanaFeitos = semanaReal.filter(d => d.label === 'feito').length;
 
     const scheduledDow = new Set();
