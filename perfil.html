@@ -13,6 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
+<script src="js/foto-perfil.js"></script>
 <script src="assets/perfil/ed8a1655-d536-47a7-8244-3603813426e0.js"></script>
 </head>
 <body>
@@ -307,7 +308,7 @@ a{color:#f97316;text-decoration:none;}a:hover{color:#fb923c;}
             </div>
             <div>
               <div style="background:#131a26;border:1px solid #1e2633;color:#9aa4b2;font-family:inherit;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;display:inline-block;">{{ trocarFotoLabel }}</div>
-              <div style="font-size:11px;color:#66707e;margin-top:6px;">JPG ou PNG · até 4MB</div>
+              <div style="font-size:11px;color:#66707e;margin-top:6px;">Toque para escolher uma foto</div>
             </div>
             <input type="file" accept="image/*" sc-camel-on-change="{{ onFotoChange }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">
           </label>
@@ -430,17 +431,15 @@ class Component extends DCLogic {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) return;
     this.setState({ fotoUploading: true });
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = user.id + '/perfil-' + Date.now() + '.' + ext;
-    const { error: upErr } = await supabaseClient.storage.from('fotos-perfil').upload(path, file, { upsert: true });
-    if (upErr) { this.setState({ fotoUploading: false }); alert('Não foi possível enviar a foto: ' + upErr.message); return; }
-    const { error: updErr } = await supabaseClient.from('trainers').update({ foto_url: path }).eq('id', user.id);
+    let foto;
+    try { foto = await FotoPerfil.enviar(file, 'perfil'); }
+    catch (err) { this.setState({ fotoUploading: false }); alert('Não foi possível enviar a foto: ' + err.message); return; }
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { error: updErr } = await supabaseClient.from('trainers').update({ foto_url: foto.path }).eq('id', user.id);
     if (updErr) { this.setState({ fotoUploading: false }); alert('Foto enviada, mas não foi possível salvar no perfil: ' + updErr.message); return; }
-    const { data: pub } = supabaseClient.storage.from('fotos-perfil').getPublicUrl(path);
-    this.setState({ fotoUploading: false, fotoSalva: true, trainerFotoUrl: pub.publicUrl });
+    FotoPerfil.limparAntigas('perfil', foto.path);
+    this.setState({ fotoUploading: false, fotoSalva: true, trainerFotoUrl: foto.url });
     setTimeout(() => this.setState({ fotoSalva: false }), 1800);
   }
 
